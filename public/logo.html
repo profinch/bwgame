@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ground State — halftone</title>
+<style>
+  :root{--bg:#f1efe9;--fg:#0a0a0a;--mut:#8a877d;--panel:#fbfaf7}
+  *{margin:0;box-sizing:border-box}
+  body{background:var(--bg);color:var(--fg);font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;
+       -webkit-font-smoothing:antialiased;padding:26px 30px 60px}
+  h1{font-size:13px;font-weight:700;letter-spacing:.22em;text-transform:lowercase}
+  .sub{margin-top:6px;font-size:11px;color:var(--mut);line-height:1.6;max-width:64ch}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px;margin-top:22px}
+  .card{border:1px solid color-mix(in srgb,var(--fg) 12%,transparent);background:var(--panel);padding:14px}
+  .card.pick{border-color:var(--fg)}
+  .card h2{font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:lowercase}
+  .card h2 em{font-style:normal;font-weight:400;letter-spacing:.06em;color:var(--mut)}
+  .card p{margin-top:4px;font-size:11px;line-height:1.5;color:var(--mut)}
+  .row{display:flex;align-items:flex-end;gap:13px;margin-top:11px}
+  .dark{margin-top:9px;padding:10px;background:#070707;display:flex;align-items:flex-end;gap:13px}
+  .size{display:flex;flex-direction:column;align-items:center;gap:4px}
+  .size span{font-size:9px;letter-spacing:.1em;color:var(--mut)}
+  .dark .size span{color:#86867f}
+  .lockup{display:flex;align-items:center;gap:9px;margin-top:10px;padding-top:9px;
+          border-top:1px solid color-mix(in srgb,var(--fg) 10%,transparent)}
+  .lockup b{font-size:13px;font-weight:700;letter-spacing:.22em;text-transform:lowercase}
+  svg{display:block}
+</style>
+</head>
+<body>
+<h1>ground state — halftone</h1>
+<p class="sub">The first one is exactly the mark from before, untouched. The rest change one thing
+each — lattice, density, dot shape, direction, whether the dark end closes into solid — so it is
+clear what every choice costs.</p>
+<div class="grid" id="grid"></div>
+
+<script>
+const svg = (size, body) => `<svg width="${size}" height="${size}" viewBox="0 0 64 64">${body}</svg>`;
+const FRAME = `<rect x="1" y="1" width="62" height="62" fill="none" stroke="currentColor" stroke-width="2"/>`;
+
+/** the mark as it was: 7 rows, dark at the top left, round dots, framed */
+function original(size, { n = 7, rMin = 0.4, gain = 1, shape = 'circle', frame = true, dir = 'diagonal', grow = 1 } = {}) {
+  const s = frame ? [FRAME] : [];
+  const step = 60 / n;
+  for (let row = 0; row < n; row++) for (let col = 0; col < n; col++) {
+    let t = dir === 'diagonal' ? (row + col) / (2 * (n - 1))
+          : dir === 'vertical' ? row / (n - 1)
+          : col / (n - 1);
+    t = Math.pow(t, gain);
+    const r = (rMin + (1 - t) * (step / 2 - rMin)) * grow;
+    const cx = 2 + step * (col + 0.5), cy = 2 + step * (row + 0.5);
+    s.push(shape === 'circle'
+      ? `<circle cx="${cx.toFixed(2)}" cy="${cy.toFixed(2)}" r="${r.toFixed(2)}" fill="currentColor"/>`
+      : `<rect x="${(cx-r).toFixed(2)}" y="${(cy-r).toFixed(2)}" width="${(r*2).toFixed(2)}" height="${(r*2).toFixed(2)}" fill="currentColor"/>`);
+  }
+  return svg(size, s.join(''));
+}
+
+/** the same ramp on a lattice turned 45 degrees, the way a print screen is */
+function screen45(size, { pitch = 9.2 } = {}) {
+  const s = [FRAME];
+  const a = Math.PI / 4, ux = Math.cos(a) * pitch, uy = Math.sin(a) * pitch;
+  const rMax = pitch / 2 - 0.35;
+  for (let i = -7; i <= 7; i++) for (let j = -7; j <= 7; j++) {
+    const cx = 32 + i * ux - j * uy, cy = 32 + i * uy + j * ux;
+    if (cx < 4.5 || cx > 59.5 || cy < 4.5 || cy > 59.5) continue;
+    const t = (cx + cy - 9) / 102;
+    const r = 0.4 + (1 - Math.max(0, Math.min(1, t))) * (rMax - 0.4);
+    s.push(`<circle cx="${cx.toFixed(2)}" cy="${cy.toFixed(2)}" r="${r.toFixed(2)}" fill="currentColor"/>`);
+  }
+  return svg(size, s.join(''));
+}
+
+const marks = [
+  ['original', 'the one you picked — unchanged', (s) => original(s), true],
+  ['denser', 'nine rows instead of seven', (s) => original(s, { n: 9 })],
+  ['coarser', 'five rows — biggest dots, best survival in a tab icon', (s) => original(s, { n: 5 })],
+  ['screen 45°', 'same ramp, lattice turned 45° the way a printing screen is set', (s) => screen45(s)],
+  ['closing', 'dots overlap at the dark end and shut into solid, as ink does on paper', (s) => original(s, { grow: 1.32 })],
+  ['deeper', 'steeper falloff — the dark half holds longer, the light half empties faster', (s) => original(s, { gain: 1.9 })],
+  ['squares', 'square dots: the same ramp, but pixels rather than ink', (s) => original(s, { shape: 'square' })],
+  ['top down', 'the ramp runs down instead of across the diagonal', (s) => original(s, { dir: 'vertical' })],
+  ['unframed', 'no border — the raster is the whole mark', (s) => original(s, { frame: false })],
+];
+
+document.getElementById('grid').innerHTML = marks.map(([name, note, make, pick]) => `
+  <div class="card${pick ? ' pick' : ''}">
+    <h2>${name}${pick ? ' <em>— original</em>' : ''}</h2>
+    <p>${note}</p>
+    <div class="row">${[104,48,24,16].map(s=>`<div class="size">${make(s)}<span>${s}</span></div>`).join('')}</div>
+    <div class="dark" style="color:#f1efe9">${[104,48,24,16].map(s=>`<div class="size">${make(s)}<span>${s}</span></div>`).join('')}</div>
+    <div class="lockup">${make(26)}<b>ground state</b></div>
+  </div>`).join('');
+</script>
+</body>
+</html>
