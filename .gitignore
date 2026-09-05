@@ -19,6 +19,9 @@ broadcast/
 .vscode/
 *.iml
 
+# working screenshots
+_*.png
+
 # os / logs
 .DS_Store
 Thumbs.db
