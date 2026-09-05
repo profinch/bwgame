@@ -3,6 +3,7 @@
   --fg: #0a0a0a;
   --mut: #8a877d;
   --line: #0a0a0a;
+  --panel: #fbfaf7;
 }
 
 * {
@@ -34,7 +35,7 @@ body {
 .bar {
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
+  align-items: center;
   gap: 8px 18px;
 }
 
@@ -52,6 +53,8 @@ h1 {
   color: var(--mut);
 }
 
+/* --- the map ------------------------------------------------------------ */
+
 .stage {
   display: grid;
   place-items: center;
@@ -59,6 +62,7 @@ h1 {
 }
 
 .frame {
+  position: relative;
   aspect-ratio: 1;
   height: 100%;
   max-height: 100%;
@@ -69,16 +73,191 @@ h1 {
   display: block;
   width: 100%;
   height: 100%;
-  cursor: crosshair;
+  cursor: grab;
+  touch-action: none;
 }
+
+.map:active {
+  cursor: grabbing;
+}
+
+.zoom {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: grid;
+  gap: 4px;
+}
+
+.zoom button {
+  width: 26px;
+  height: 26px;
+  border: 1px solid color-mix(in srgb, var(--line) 16%, transparent);
+  background: color-mix(in srgb, var(--panel) 70%, transparent);
+  color: var(--fg);
+  font: inherit;
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.zoom button:hover {
+  border-color: var(--fg);
+  background: var(--panel);
+}
+
+/* --- what is this place ------------------------------------------------- */
+
+.card,
+.drawer {
+  border: 1px solid color-mix(in srgb, var(--line) 14%, transparent);
+  background: var(--panel);
+  box-shadow: 0 6px 22px rgb(0 0 0 / 9%);
+}
+
+.card {
+  position: absolute;
+  z-index: 3;
+  min-width: 200px;
+  max-width: 320px;
+  padding: 10px 12px;
+  pointer-events: none;
+}
+
+.drawer {
+  position: fixed;
+  right: 24px;
+  bottom: 74px;
+  z-index: 4;
+  width: min(420px, calc(100vw - 48px));
+  padding: 14px 16px;
+}
+
+.name {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.addr,
+.mono {
+  font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 10.5px;
+  letter-spacing: 0.02em;
+  word-break: break-all;
+}
+
+.addr {
+  margin-top: 4px;
+  color: var(--mut);
+}
+
+.dim {
+  color: var(--mut);
+}
+
+.go {
+  margin-top: 6px;
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  color: var(--mut);
+}
+
+.card ul {
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.card li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.card li span {
+  font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 10px;
+  color: var(--mut);
+}
+
+.drawer dl {
+  display: grid;
+  grid-template-columns: 76px 1fr;
+  gap: 4px 12px;
+  margin-top: 10px;
+}
+
+/* the balance arrives late; hold its line so nothing below it moves */
+.drawer .balance {
+  min-height: 1.5em;
+}
+
+.drawer dt {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: lowercase;
+  color: var(--mut);
+}
+
+/* the key is a control, but it should read as the same line of type as the
+   address above it, so it takes its size from .mono rather than the button */
+.copy {
+  display: block;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  text-align: left;
+  text-decoration: underline dotted;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+  word-break: break-all;
+  cursor: pointer;
+}
+
+.copy:hover {
+  color: var(--fg);
+}
+
+.drawer .row {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.drawer .row button {
+  padding: 6px 12px;
+  border: 1px solid color-mix(in srgb, var(--line) 18%, transparent);
+  background: none;
+  color: var(--fg);
+  font: inherit;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: lowercase;
+  cursor: pointer;
+}
+
+.drawer .row button:hover {
+  border-color: var(--fg);
+}
+
+.drawer .go-there {
+  border-color: var(--fg) !important;
+  background: var(--fg) !important;
+  color: var(--bg) !important;
+}
+
+/* --- footer ------------------------------------------------------------- */
 
 .overview {
   width: 46px;
   height: 46px;
-  align-self: center;
 }
 
-.route {
+.where {
   display: flex;
   align-items: baseline;
   font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
@@ -86,38 +265,22 @@ h1 {
   letter-spacing: 0.06em;
 }
 
-.step {
-  padding: 2px 1px;
-  border: 0;
-  background: none;
-  color: var(--fg);
-  font: inherit;
-  cursor: pointer;
-}
-
-.step:hover {
-  background: color-mix(in srgb, var(--line) 12%, transparent);
-}
-
-.step.world {
-  padding-right: 2px;
-}
-
 .rest {
   color: var(--mut);
-  opacity: 0.5;
+  opacity: 0.45;
 }
 
 .jump {
+  display: flex;
+  gap: 8px;
   margin-left: auto;
 }
 
 .jump input {
-  width: 34ch;
+  width: 30ch;
   max-width: 100%;
   padding: 6px 9px;
   border: 1px solid color-mix(in srgb, var(--line) 18%, transparent);
-  border-radius: 0;
   background: transparent;
   color: var(--fg);
   font: inherit;
@@ -128,4 +291,21 @@ h1 {
 .jump input:focus {
   outline: none;
   border-color: var(--fg);
+}
+
+.key {
+  padding: 6px 12px;
+  border: 1px solid var(--fg);
+  background: var(--fg);
+  color: var(--bg);
+  font: inherit;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: lowercase;
+  cursor: pointer;
+}
+
+.key:disabled {
+  opacity: 0.45;
+  cursor: default;
 }
