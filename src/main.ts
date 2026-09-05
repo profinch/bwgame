@@ -14,7 +14,18 @@ import {
   worldFraction,
   zoomAt,
 } from './camera';
-import { type Cluster, addMark, createWorld, draw, drawOverview, hit, removeMark } from './map';
+import { looksLikeName, lookupName, resolveName } from './ens';
+import { favicon, mark } from './logo';
+import {
+  type Cluster,
+  addMark,
+  createWorld,
+  draw,
+  drawOverview,
+  hit,
+  removeMark,
+  renameMark,
+} from './map';
 import { balanceOf, formatEther, generate } from './wallet';
 
 const app = document.querySelector<HTMLElement>('#app');
@@ -22,7 +33,7 @@ if (!app) throw new Error('no #app');
 
 app.innerHTML = `
   <header class="bar">
-    <h1>ground state</h1>
+    <h1><span class="mark">${mark({ size: 24, rows: 7 })}</span>ground state</h1>
     <p class="hint">the ethereum address space — drag to move, wheel to zoom</p>
   </header>
 
@@ -43,7 +54,7 @@ app.innerHTML = `
     <p class="where"><span class="prefix"></span><span class="rest"></span></p>
     <p class="scale"></p>
     <form class="jump">
-      <input name="address" placeholder="0x… find an address" spellcheck="false" autocomplete="off" />
+      <input name="address" placeholder="0x… or a name.eth" spellcheck="false" autocomplete="off" />
       <button type="button" class="key">generate a key</button>
     </form>
   </footer>
@@ -62,6 +73,12 @@ const jump = app.querySelector<HTMLFormElement>('.jump')!;
 const field = jump.querySelector<HTMLInputElement>('input')!;
 const keyButton = app.querySelector<HTMLButtonElement>('.key')!;
 const drawer = app.querySelector<HTMLElement>('.drawer')!;
+
+const icon = document.createElement('link');
+icon.rel = 'icon';
+icon.type = 'image/svg+xml';
+icon.href = favicon();
+document.head.append(icon);
 
 const world = createWorld();
 let camera: Camera = wholeWorld();
@@ -257,21 +274,57 @@ window.addEventListener('keydown', (event) => {
 
 // --- putting things on the map ------------------------------------------
 
-jump.addEventListener('submit', (event) => {
+/**
+ * Forty hex characters, or a name that stands for them. A name is the only
+ * form of an address anybody says out loud, so the field takes both.
+ */
+jump.addEventListener('submit', async (event) => {
   event.preventDefault();
-  let address: string;
-  try {
-    address = normalizeAddress(field.value);
-  } catch {
-    field.setCustomValidity('that is not an address');
+  const typed = field.value.trim();
+  if (!typed) return;
+
+  const complain = (why: string) => {
+    field.setCustomValidity(why);
     field.reportValidity();
-    return;
+  };
+
+  let address: string;
+  let label: string | undefined;
+
+  if (looksLikeName(typed)) {
+    field.disabled = true;
+    const resolved = await resolveName(typed);
+    field.disabled = false;
+    field.focus();
+    if (!resolved) {
+      complain(`${typed} does not point at an address`);
+      return;
+    }
+    address = normalizeAddress(resolved);
+    label = typed.toLowerCase();
+  } else {
+    try {
+      address = normalizeAddress(typed);
+    } catch {
+      complain('that is neither an address nor a name');
+      return;
+    }
   }
+
   // the address goes on the map and stays put; going there is a click away
-  addMark(world, address);
+  addMark(world, address, label);
   field.value = '';
   field.setCustomValidity('');
   render();
+
+  // an address may name itself; if it does, the map should use that name
+  if (!label) {
+    const found = await lookupName(address);
+    if (found) {
+      renameMark(world, address, found);
+      render();
+    }
+  }
 });
 
 field.addEventListener('input', () => field.setCustomValidity(''));

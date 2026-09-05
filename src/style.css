@@ -26,9 +26,10 @@ body {
 
 #app {
   display: grid;
-  grid-template-rows: auto 1fr auto;
+  grid-template-rows: auto minmax(0, 1fr) auto;
   gap: 14px;
   height: 100%;
+  min-height: 0;
   padding: 20px 24px 22px;
 }
 
@@ -40,10 +41,18 @@ body {
 }
 
 h1 {
+  display: flex;
+  align-items: center;
+  gap: 9px;
   font-size: 13px;
   font-weight: 700;
   letter-spacing: 0.22em;
   text-transform: lowercase;
+}
+
+.mark {
+  display: block;
+  line-height: 0;
 }
 
 .hint,
@@ -55,18 +64,22 @@ h1 {
 
 /* --- the map ------------------------------------------------------------ */
 
+/* the map is square and has to stay inside whatever room is left, at any page
+   zoom — container units measure that room directly, where a percentage height
+   plus an aspect ratio ends up fighting itself */
 .stage {
+  container-type: size;
   display: grid;
   place-items: center;
+  min-width: 0;
   min-height: 0;
+  overflow: hidden;
 }
 
 .frame {
   position: relative;
-  aspect-ratio: 1;
-  height: 100%;
-  max-height: 100%;
-  max-width: 100%;
+  width: min(100cqw, 100cqh);
+  height: min(100cqw, 100cqh);
 }
 
 .map {
@@ -253,12 +266,16 @@ h1 {
 /* --- footer ------------------------------------------------------------- */
 
 .overview {
+  flex: none;
   width: 46px;
   height: 46px;
 }
 
 .where {
   display: flex;
+  flex-shrink: 1;
+  min-width: 0;
+  overflow: hidden;
   align-items: baseline;
   font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
   font-size: 12px;
@@ -272,13 +289,17 @@ h1 {
 
 .jump {
   display: flex;
+  flex: 1 1 auto;
   gap: 8px;
+  justify-content: flex-end;
+  min-width: 0;
   margin-left: auto;
 }
 
 .jump input {
-  width: 30ch;
-  max-width: 100%;
+  flex: 1 1 20ch;
+  min-width: 0;
+  max-width: 30ch;
   padding: 6px 9px;
   border: 1px solid color-mix(in srgb, var(--line) 18%, transparent);
   background: transparent;
@@ -293,7 +314,14 @@ h1 {
   border-color: var(--fg);
 }
 
+/* while a name is being resolved */
+.jump input:disabled {
+  opacity: 0.5;
+  cursor: progress;
+}
+
 .key {
+  flex: none;
   padding: 6px 12px;
   border: 1px solid var(--fg);
   background: var(--fg);
