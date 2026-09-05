@@ -2,6 +2,7 @@
   --bg: #f1efe9;
   --fg: #0a0a0a;
   --mut: #8a877d;
+  --line: #0a0a0a;
 }
 
 * {
@@ -24,6 +25,82 @@ body {
 
 #app {
   display: grid;
-  place-items: center;
+  grid-template-rows: auto 1fr auto;
+  gap: 14px;
   height: 100%;
+  padding: 20px 24px 22px;
+}
+
+.bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px 18px;
+}
+
+h1 {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: lowercase;
+}
+
+.hint,
+.scale {
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--mut);
+}
+
+.stage {
+  display: grid;
+  place-items: center;
+  min-height: 0;
+}
+
+.frame {
+  aspect-ratio: 1;
+  height: 100%;
+  max-height: 100%;
+  max-width: 100%;
+}
+
+.map {
+  display: block;
+  width: 100%;
+  height: 100%;
+  cursor: crosshair;
+}
+
+.route {
+  font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+}
+
+.rest {
+  color: var(--mut);
+  opacity: 0.5;
+}
+
+.jump {
+  margin-left: auto;
+}
+
+.jump input {
+  width: 34ch;
+  max-width: 100%;
+  padding: 6px 9px;
+  border: 1px solid color-mix(in srgb, var(--line) 18%, transparent);
+  border-radius: 0;
+  background: transparent;
+  color: var(--fg);
+  font: inherit;
+  font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 12px;
+}
+
+.jump input:focus {
+  outline: none;
+  border-color: var(--fg);
 }
