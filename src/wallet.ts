@@ -1,15 +1,13 @@
 /**
- * A key, an address, and whatever the chain says about it.
+ * A key, an address, and what the chain says about it.
  *
  * Generating a key is the cheapest way to feel how large the address space is:
  * thirty-two random bytes put you somewhere nobody has ever stood, and the
- * balance lookup is the proof — it comes back empty every single time.
+ * balance lookup is the proof.
  */
 import { keccak_256 } from '@noble/hashes/sha3';
 import { getPublicKey, utils } from '@noble/secp256k1';
-
-/** Public gateways: no key, no signup, CORS open. Tried in order. */
-const RPCS = ['https://ethereum-rpc.publicnode.com', 'https://eth.drpc.org'];
+import { rpc } from './chain';
 
 export interface Key {
   privateKey: string;
@@ -33,27 +31,8 @@ export function generate(): Key {
 
 /** Balance in wei, or null if no gateway answered. */
 export async function balanceOf(address: string): Promise<bigint | null> {
-  const body = JSON.stringify({
-    jsonrpc: '2.0',
-    id: 1,
-    method: 'eth_getBalance',
-    params: [`0x${address.replace(/^0x/, '')}`, 'latest'],
-  });
-
-  for (const rpc of RPCS) {
-    try {
-      const response = await fetch(rpc, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body,
-      });
-      const answer = (await response.json()) as { result?: string };
-      if (answer.result) return BigInt(answer.result);
-    } catch {
-      // try the next one
-    }
-  }
-  return null;
+  const result = await rpc<string>('eth_getBalance', [`0x${address.replace(/^0x/, '')}`, 'latest']);
+  return result ? BigInt(result) : null;
 }
 
 /** Wei as ether, short enough to read at a glance. */
