@@ -32,4 +32,7 @@ export const LANDMARKS: readonly Landmark[] = [
   { name: 'aave v3 pool', address: '0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2' },
   { name: 'cryptopunks', address: '0xb47e3cd837dDF8e4c57F05d70Ab865de6e193BBB' },
   { name: 'bayc', address: '0xBC4CA0EdA7647A8aB7C2061c2E118A18a936f13D' },
+
+  // someone who lives here rather than something that runs here
+  { name: 'vitalik.eth', address: '0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045' },
 ];
