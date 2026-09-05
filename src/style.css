@@ -1,0 +1,29 @@
+:root {
+  --bg: #f1efe9;
+  --fg: #0a0a0a;
+  --mut: #8a877d;
+}
+
+* {
+  margin: 0;
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+
+#app {
+  display: grid;
+  place-items: center;
+  height: 100%;
+}
