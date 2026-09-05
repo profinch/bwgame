@@ -13,6 +13,7 @@ import {
   localPosition,
   normalizeAddress,
   normalizePrefix,
+  prefixRect,
 } from './coord';
 import { LANDMARKS, type Landmark } from './landmarks';
 
@@ -30,6 +31,8 @@ export interface MapView {
   canvas: HTMLCanvasElement;
   prefix: string;
   marks: Landmark[];
+  /** The address last brought onto the map, drawn with a ring around it. */
+  pinned?: string;
 }
 
 export function createMap(host: HTMLElement): MapView {
@@ -37,6 +40,31 @@ export function createMap(host: HTMLElement): MapView {
   canvas.className = 'map';
   host.append(canvas);
   return { canvas, prefix: '', marks: [...LANDMARKS] };
+}
+
+/**
+ * Put an address on the map without going anywhere. Pasting a wallet should
+ * show it standing among the rest, not teleport past everything else.
+ */
+export function addMark(view: MapView, address: string, name?: string): Landmark {
+  const hex = normalizeAddress(address);
+  const existing = view.marks.find((mark) => normalizeAddress(mark.address) === hex);
+  const mark = existing ?? { name: name ?? `0x${hex.slice(0, 4)}…${hex.slice(-4)}`, address: hex };
+  if (!existing) view.marks = [...view.marks, mark];
+  view.pinned = hex;
+  return mark;
+}
+
+/** How many places sit inside each of the sixteen cells ahead. */
+export function countsByCell(view: MapView): number[] {
+  const counts = new Array<number>(16).fill(0);
+  const depth = view.prefix.length;
+  if (depth >= DEPTH) return counts;
+  for (const mark of visible(view)) {
+    const digit = parseInt(normalizeAddress(mark.address)[depth]!, 16);
+    counts[digit] = (counts[digit] ?? 0) + 1;
+  }
+  return counts;
 }
 
 /** Everything standing inside the cell the view is showing. */
@@ -52,15 +80,6 @@ export function descend(view: MapView, cellX: number, cellY: number): void {
 
 export function ascend(view: MapView): void {
   view.prefix = view.prefix.slice(0, -1);
-}
-
-/** Drop into an address, deep enough that its neighbourhood is worth looking at. */
-export function goTo(view: MapView, address: string, depth = 4): void {
-  const hex = normalizeAddress(address);
-  if (!view.marks.some((mark) => normalizeAddress(mark.address) === hex)) {
-    view.marks = [...view.marks, { name: `0x${hex.slice(0, 4)}…${hex.slice(-4)}`, address: hex }];
-  }
-  view.prefix = hex.slice(0, Math.min(depth, DEPTH));
 }
 
 export function draw(view: MapView): void {
@@ -96,13 +115,22 @@ export function draw(view: MapView): void {
   context.strokeStyle = ink;
   context.strokeRect(0.5, 0.5, size - 1, size - 1);
 
-  // the digit each cell stands for
-  context.fillStyle = muted;
-  context.font = '10px "Helvetica Neue", Helvetica, Arial, sans-serif';
+  // the digit each cell stands for, and how many places wait inside it
+  const counts = countsByCell(view);
   context.textBaseline = 'top';
   for (let digit = 0; digit < 16; digit++) {
     const cell = digitToCell(digit);
-    context.fillText(digit.toString(16), cell.x * step + 5, cell.y * step + 4);
+    const left = cell.x * step + 5;
+    const top = cell.y * step + 4;
+    context.fillStyle = muted;
+    context.font = '10px "Helvetica Neue", Helvetica, Arial, sans-serif';
+    context.fillText(digit.toString(16), left, top);
+
+    const count = counts[digit] ?? 0;
+    if (count === 0) continue;
+    context.fillStyle = ink;
+    context.font = '10px "Helvetica Neue", Helvetica, Arial, sans-serif';
+    context.fillText(`· ${count}`, left + 9, top);
   }
 
   // whatever stands inside this cell
@@ -114,6 +142,12 @@ export function draw(view: MapView): void {
     context.beginPath();
     context.arc(group.x, group.y, group.marks.length === 1 ? DOT : DOT + 1.5, 0, Math.PI * 2);
     context.fill();
+
+    if (view.pinned && group.marks.some((mark) => normalizeAddress(mark.address) === view.pinned)) {
+      context.beginPath();
+      context.arc(group.x, group.y, DOT + 5, 0, Math.PI * 2);
+      context.stroke();
+    }
 
     // dots stay exactly where the address puts them; only the label is nudged
     // back into view, or a corner cluster would write itself off the canvas
@@ -161,4 +195,46 @@ export function cellAt(view: MapView, offsetX: number, offsetY: number): { x: nu
 export function prefixLabel(prefix: string): { shown: string; rest: string } {
   const hex = normalizePrefix(prefix);
   return { shown: `0x${hex}`, rest: '·'.repeat(DEPTH - hex.length) };
+}
+
+/**
+ * The whole world in a thumbnail, with the cell being shown marked on it.
+ * Descending hides almost everything, so this is the answer to "where am I".
+ */
+export function drawOverview(canvas: HTMLCanvasElement, view: MapView): void {
+  const context = canvas.getContext('2d');
+  if (!context) return;
+
+  const ratio = window.devicePixelRatio || 1;
+  const size = Math.floor(canvas.clientWidth);
+  canvas.width = size * ratio;
+  canvas.height = size * ratio;
+  context.setTransform(ratio, 0, 0, ratio, 0, 0);
+  context.clearRect(0, 0, size, size);
+
+  const style = getComputedStyle(document.documentElement);
+  const ink = style.getPropertyValue('--fg').trim() || '#0a0a0a';
+  const muted = style.getPropertyValue('--mut').trim() || '#8a877d';
+
+  context.strokeStyle = muted;
+  context.globalAlpha = 0.5;
+  context.strokeRect(0.5, 0.5, size - 1, size - 1);
+  context.globalAlpha = 1;
+
+  context.fillStyle = muted;
+  for (const mark of view.marks) {
+    const at = localPosition(mark.address, '');
+    context.fillRect(at.x * size - 0.5, at.y * size - 0.5, 1.5, 1.5);
+  }
+
+  const here = prefixRect(view.prefix);
+  const box = Math.max(here.size * size, 3);
+  context.strokeStyle = ink;
+  context.lineWidth = 1;
+  context.strokeRect(
+    Math.min(here.x * size, size - box) + 0.5,
+    Math.min(here.y * size, size - box) + 0.5,
+    box,
+    box,
+  );
 }

@@ -1,7 +1,16 @@
 import './style.css';
-import { DEPTH, GRID } from './coord';
-import { normalizePrefix } from './coord';
-import { ascend, cellAt, createMap, descend, draw, goTo, prefixLabel, visible } from './map';
+import { DEPTH, GRID, isWithin, normalizeAddress, normalizePrefix } from './coord';
+import {
+  addMark,
+  ascend,
+  cellAt,
+  createMap,
+  descend,
+  draw,
+  drawOverview,
+  prefixLabel,
+  visible,
+} from './map';
 
 const app = document.querySelector<HTMLElement>('#app');
 if (!app) throw new Error('no #app');
@@ -13,17 +22,18 @@ app.innerHTML = `
   </header>
   <section class="stage"><div class="frame"></div></section>
   <footer class="bar">
-    <p class="route"><span class="shown"></span><span class="rest"></span></p>
+    <canvas class="overview" title="the whole world"></canvas>
+    <nav class="route"></nav>
     <p class="scale"></p>
     <form class="jump">
-      <input name="address" placeholder="0x… go to an address" spellcheck="false" autocomplete="off" />
+      <input name="address" placeholder="0x… put an address on the map" spellcheck="false" autocomplete="off" />
     </form>
   </footer>
 `;
 
 const frame = app.querySelector<HTMLElement>('.frame')!;
-const shown = app.querySelector<HTMLElement>('.shown')!;
-const rest = app.querySelector<HTMLElement>('.rest')!;
+const overview = app.querySelector<HTMLCanvasElement>('.overview')!;
+const route = app.querySelector<HTMLElement>('.route')!;
 const scale = app.querySelector<HTMLElement>('.scale')!;
 const jump = app.querySelector<HTMLFormElement>('.jump')!;
 const field = jump.querySelector<HTMLInputElement>('input')!;
@@ -47,12 +57,46 @@ function writeHash(): void {
   if (location.hash !== hash) history.replaceState(null, '', hash);
 }
 
+/** The route so far, every step of it clickable, so you can back out anywhere. */
+function drawRoute(): void {
+  const label = prefixLabel(view.prefix);
+  route.replaceChildren();
+
+  const world = document.createElement('button');
+  world.type = 'button';
+  world.className = 'step world';
+  world.textContent = '0x';
+  world.title = 'back to the whole world';
+  world.addEventListener('click', () => {
+    view.prefix = '';
+    render();
+  });
+  route.append(world);
+
+  [...view.prefix].forEach((digit, index) => {
+    const step = document.createElement('button');
+    step.type = 'button';
+    step.className = 'step';
+    step.textContent = digit;
+    step.title = `back to depth ${index + 1}`;
+    step.addEventListener('click', () => {
+      view.prefix = view.prefix.slice(0, index + 1);
+      render();
+    });
+    route.append(step);
+  });
+
+  const rest = document.createElement('span');
+  rest.className = 'rest';
+  rest.textContent = label.rest;
+  route.append(rest);
+}
+
 function render(): void {
   writeHash();
   draw(view);
-  const label = prefixLabel(view.prefix);
-  shown.textContent = label.shown;
-  rest.textContent = label.rest;
+  drawOverview(overview, view);
+  drawRoute();
 
   const depth = view.prefix.length;
   const here = visible(view).length;
@@ -84,14 +128,22 @@ window.addEventListener('keydown', (event) => {
 
 jump.addEventListener('submit', (event) => {
   event.preventDefault();
+  let address: string;
   try {
-    goTo(view, field.value);
-    field.value = '';
-    field.setCustomValidity('');
+    address = normalizeAddress(field.value);
   } catch {
     field.setCustomValidity('that is not an address');
     field.reportValidity();
+    return;
   }
+
+  addMark(view, address);
+  field.value = '';
+  field.setCustomValidity('');
+
+  // stay where you are if the address is already in sight; otherwise pull back
+  // far enough to show it standing among everything else, rather than alone
+  if (!isWithin(view.prefix, address)) view.prefix = '';
   render();
 });
 

@@ -72,10 +72,35 @@ h1 {
   cursor: crosshair;
 }
 
+.overview {
+  width: 46px;
+  height: 46px;
+  align-self: center;
+}
+
 .route {
+  display: flex;
+  align-items: baseline;
   font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
   font-size: 12px;
   letter-spacing: 0.06em;
+}
+
+.step {
+  padding: 2px 1px;
+  border: 0;
+  background: none;
+  color: var(--fg);
+  font: inherit;
+  cursor: pointer;
+}
+
+.step:hover {
+  background: color-mix(in srgb, var(--line) 12%, transparent);
+}
+
+.step.world {
+  padding-right: 2px;
 }
 
 .rest {
