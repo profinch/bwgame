@@ -62,6 +62,14 @@ export function addMark(world: World, address: string, name?: string): Landmark 
   return mark;
 }
 
+/** Give a place its name once something finds one for it. */
+export function renameMark(world: World, address: string, name: string): void {
+  const hex = normalizeAddress(address);
+  world.marks = world.marks.map((mark) =>
+    normalizeAddress(mark.address) === hex ? { ...mark, name } : mark,
+  );
+}
+
 /** Take an address back off the map. */
 export function removeMark(world: World, address: string): void {
   const hex = normalizeAddress(address);
@@ -95,11 +103,17 @@ export function cluster(placed: readonly Placed[]): Cluster[] {
 function prepare(canvas: HTMLCanvasElement): { context: CanvasRenderingContext2D; size: number } | null {
   const context = canvas.getContext('2d');
   if (!context) return null;
+
+  // the backing store must be a whole number of pixels, and the transform has
+  // to match it exactly — a fractional device ratio otherwise leaves half a
+  // pixel off the right and bottom, which is precisely where the edges are
   const ratio = window.devicePixelRatio || 1;
   const size = Math.floor(canvas.clientWidth);
-  canvas.width = size * ratio;
-  canvas.height = size * ratio;
-  context.setTransform(ratio, 0, 0, ratio, 0, 0);
+  const pixels = Math.max(1, Math.round(size * ratio));
+  canvas.width = pixels;
+  canvas.height = pixels;
+  const scale = pixels / size;
+  context.setTransform(scale, 0, 0, scale, 0, 0);
   context.clearRect(0, 0, size, size);
   return { context, size };
 }
@@ -313,16 +327,12 @@ export function drawOverview(canvas: HTMLCanvasElement, world: World, camera: Ca
     context.fillRect(Number(point.x) * scale - 0.5, Number(point.y) * scale - 0.5, 1.5, 1.5);
   }
 
-  const box = Math.max(camera.span * scale, 3);
-  const left = Number(camera.x) * scale - box / 2;
-  const top = Number(camera.y) * scale - box / 2;
+  // the viewport box, kept whole inside the thumbnail: zoomed all the way out
+  // it is the thumbnail, and a rect drawn on the boundary loses two of its sides
+  const box = Math.min(Math.max(camera.span * scale, 3), size - 1);
+  const place = (value: number) => Math.min(Math.max(value - box / 2, 0.5), size - 0.5 - box);
   context.strokeStyle = ink;
-  context.strokeRect(
-    Math.min(Math.max(left, 0), size - box) + 0.5,
-    Math.min(Math.max(top, 0), size - box) + 0.5,
-    box,
-    box,
-  );
+  context.strokeRect(place(Number(camera.x) * scale), place(Number(camera.y) * scale), box, box);
 }
 
 export { worldFraction };
