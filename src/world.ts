@@ -18,7 +18,8 @@ import { lookAt, multiply, orthographic, perspective, type Mat4 } from './engine
 import { loop } from './engine/loop';
 import { Coverage } from './engine/coverage';
 import { Renderer, once, type Sky } from './engine/renderer';
-import { HOME, addressUnder, box, figure, terrain } from './engine/shapes';
+import { HOME, addressUnder } from './engine/land';
+import { box, figure, terrain } from './engine/shapes';
 import { mark } from './logo';
 import { massCount, patch } from './scene';
 
@@ -65,7 +66,10 @@ world.obstacles.push({
 });
 
 const walker = renderer.add(figure(), new Float32Array(9), true);
-const coverage = new Coverage(renderer.gl, GROUND);
+/** Feet in world height, not height above the ground: you can be on a roof. */
+const player = { x: 0, z: 150, y: 0, yaw: 0, pitch: -0.03, rise: 0 };
+
+const coverage = new Coverage(renderer.gl, { x: player.x, z: player.z });
 
 const sky: Sky = {
   // low and to the side: long shading is where the shape of a thing shows
@@ -79,8 +83,6 @@ const WALK = 16;
 const RUN = 42;
 
 // you start on the edge of the field, looking into it
-/** Feet in world height, not height above the ground: you can be on a roof. */
-const player = { x: 0, z: 150, y: 0, yaw: 0, pitch: -0.03, rise: 0 };
 
 /** Metres a second, and what pulls it back down. About a metre and a half up. */
 const JUMP = 7.4;
@@ -163,6 +165,7 @@ function uncover(seconds: number): void {
   if (!VEILED) return;
   // one rate, always: running through leaves a faint trail, standing fills it
   coverage.paint(player.x, player.z, OPENS_WITHIN, 1 / OPENS_IN, seconds);
+  coverage.follow(player.x, player.z, seconds);
 }
 
 // you arrive somewhere you have already been: the spot you start on is open
@@ -192,6 +195,9 @@ window.addEventListener('keyup', (event) => {
   if (!event.shiftKey) held.delete('Shift');
 });
 window.addEventListener('blur', () => held.clear());
+
+// whatever was uncovered should still be uncovered tomorrow
+window.addEventListener('pagehide', () => coverage.save());
 
 let looking: { x: number; y: number } | null = null;
 
@@ -322,7 +328,8 @@ loop({
       frames = 0;
       since = 0;
       stat.textContent =
-        `${masses} masses · ${fps} fps · wasd to walk, shift to run, space to jump, ` +
+        `${masses} masses · ${fps} fps · ${coverage.known} tiles known · ` +
+        `wasd to walk, shift to run, space to jump, ` +
         `v for ${overShoulder ? 'first person' : 'third person'}, drag to look`;
       const away = Math.round(Math.hypot(player.x, player.z));
       place.textContent =

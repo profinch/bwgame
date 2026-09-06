@@ -66,7 +66,8 @@ uniform float shadowRange;   // how deep the sun's view is, near to far
 uniform bool shadowsOn;
 
 uniform sampler2D coverage;   // what has been uncovered, one byte a texel
-uniform float coverageMetres; // how much ground that map covers
+uniform vec2 coverageOrigin;  // the near corner of the window, in world metres
+uniform float coverageSpan;   // and how far it reaches
 uniform bool veiled;
 
 out vec4 colour;
@@ -133,7 +134,9 @@ float sunlight(vec3 world, vec3 n, float ndotl) {
  */
 float uncovered(vec3 world) {
   if (!veiled) return 1.0;
-  vec2 uv = world.xz / coverageMetres + 0.5;
+  // the window slides with the viewer; beyond its edge nothing is known anyway
+  vec2 uv = (world.xz - coverageOrigin) / coverageSpan;
+  if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) return 0.0;
   return texture(coverage, uv).r;
 }
 

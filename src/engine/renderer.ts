@@ -202,7 +202,8 @@ export class Renderer {
       gl.activeTexture(gl.TEXTURE1);
       gl.bindTexture(gl.TEXTURE_2D, coverage.texture);
       gl.uniform1i(set.get('coverage')!, 1);
-      gl.uniform1f(set.get('coverageMetres')!, coverage.metres);
+      gl.uniform2f(set.get('coverageOrigin')!, coverage.origin.x, coverage.origin.z);
+      gl.uniform1f(set.get('coverageSpan')!, coverage.span);
     }
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, this.shadowMap);
