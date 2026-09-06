@@ -337,3 +337,55 @@ h1 {
   opacity: 0.45;
   cursor: default;
 }
+
+/* --- the engine prototype ----------------------------------------------- */
+
+body.world {
+  overflow: hidden;
+}
+
+#view {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  cursor: grab;
+  touch-action: none;
+}
+
+#view:active {
+  cursor: grabbing;
+}
+
+.hud {
+  position: fixed;
+  z-index: 2;
+  top: 20px;
+  left: 24px;
+  display: flex;
+  align-items: center;
+  gap: 8px 16px;
+  pointer-events: none;
+}
+
+.hud.bottom {
+  top: auto;
+  bottom: 18px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.hud .place {
+  font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  color: #2a2a28;
+}
+
+.hud .stat {
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: #4a4a48;
+}
