@@ -48,10 +48,16 @@ plot *is* the contract's address, and two addresses cannot collide.
 
 ## Made of nothing
 
-No textures, no models, no asset pipeline. Two colours, ordered dithering instead of light,
-and geometry generated from what an account already is: the address places it, the code hash
-shapes it, the balance sizes it. Clones deployed from the same factory look identical, because
-they are.
+No textures, no models, no asset pipeline. Geometry is generated from what an account already
+is: the address places it, the code hash shapes it, the balance sizes it. Clones deployed from
+the same factory look identical, because they are.
+
+There is no colour, so everything has to be said with light — one low sun, a sky and a ground
+bouncing back different amounts, a narrow highlight to separate hard from soft, and distance
+thinning into the air. The picture is tone mapped like film rather than clipped, because clipped
+white loses exactly the top end this world lives in. Ordered dithering is still here, not
+standing in for light but keeping smooth greys from banding: there are few enough shades between
+black and white that a gradient shows its steps without it.
 
 ---
 
