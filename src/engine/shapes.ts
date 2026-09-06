@@ -1,0 +1,407 @@
+/**
+ * The shapes the world is made of.
+ *
+ * Nothing here is modelled. The ground is a height field and the masses on it
+ * are spheres pushed out of shape by noise — both come out of a function, so
+ * they cost nothing to store and are the same on every machine.
+ */
+import { keccak_256 } from '@noble/hashes/sha3';
+import { fbm3 } from './noise';
+import { addressToPoint, pointToAddress } from '../coord';
+
+export interface Geometry {
+  positions: Float32Array;
+  normals: Float32Array;
+  indices: Uint32Array;
+}
+
+/**
+ * The land is the address space, hashed.
+ *
+ * Ordinary terrain stacks octaves of noise: broad shapes first, finer ones on
+ * top. The address space is already built that way — the first digit cuts the
+ * world in quarters, the second cuts those in quarters, forty times over — so
+ * the octaves are not invented, they are the depths of the tree. The height of
+ * an octave is the keccak hash of the prefix its cell falls in.
+ *
+ * Nothing is stored and nothing is authored: anybody can work out the height of
+ * a hill from the address underneath it, and it comes out the same everywhere,
+ * for ever.
+ */
+
+/**
+ * Where this patch of world sits in the address space, and how big a metre is.
+ *
+ * One metre of ground is one leaf cell of the map, the finest a full address
+ * can name. The middle of the patch is a real address, so walking here is
+ * walking somewhere in particular rather than in the abstract — and the ground
+ * under your feet can be read back out as forty hex digits at any step.
+ */
+export const HOME = '0x1F98431c8aD98523631AE4a59f267346ea31F984'; // uniswap v3 factory
+const home = addressToPoint(HOME);
+
+/** Depths whose cells are 4096, 1024, 256, 64 and 16 metres across. */
+const OCTAVES: readonly { depth: number; metres: number; height: number }[] = [
+  { depth: 34, metres: 4096, height: 58 },
+  { depth: 35, metres: 1024, height: 27 },
+  { depth: 36, metres: 256, height: 12 },
+  { depth: 37, metres: 64, height: 5 },
+  { depth: 38, metres: 16, height: 2 },
+];
+
+const encoder = new TextEncoder();
+const heights = new Map<string, number>();
+
+/**
+ * The cell an octave's grid starts from. Constant per octave, and a bigint, so
+ * the lookup key can be the small offset from it rather than the huge number
+ * itself — building map keys out of bigints was costing more than the hashing.
+ */
+const BASES = OCTAVES.map((octave) => ({
+  x: home.x / BigInt(octave.metres),
+  z: home.y / BigInt(octave.metres),
+}));
+
+/** The address prefix a cell stands for: its coordinates, read as digits. */
+function prefixOf(depth: number, cx: bigint, cz: bigint): string {
+  let hex = '';
+  for (let i = depth - 1; i >= 0; i--) {
+    const scale = 4n ** BigInt(i);
+    const x = Number(((cx % (scale * 4n)) + scale * 4n) / scale % 4n);
+    const z = Number(((cz % (scale * 4n)) + scale * 4n) / scale % 4n);
+    hex += ((x << 2) | z).toString(16);
+  }
+  return hex;
+}
+
+/** Hash of one cell's prefix, in [0, 1). Cached: the same cells come up often. */
+function cellHeight(octave: number, rx: number, rz: number): number {
+  const key = `${octave}:${rx}:${rz}`;
+  const known = heights.get(key);
+  if (known !== undefined) return known;
+  const base = BASES[octave]!;
+  const prefix = prefixOf(OCTAVES[octave]!.depth, base.x + BigInt(rx), base.z + BigInt(rz));
+  const digest = keccak_256(encoder.encode(prefix));
+  const value = ((digest[0]! << 16) | (digest[1]! << 8) | digest[2]!) / 0x1000000;
+  heights.set(key, value);
+  return value;
+}
+
+function ease(t: number): number {
+  return t * t * (3 - 2 * t);
+}
+
+/** How high the ground stands at a point. The scene needs this too, to sit things on it. */
+export function heightAt(x: number, z: number): number {
+  let sum = 0;
+  for (let i = 0; i < OCTAVES.length; i++) {
+    const octave = OCTAVES[i]!;
+    const rx = Math.floor(x / octave.metres);
+    const rz = Math.floor(z / octave.metres);
+    const fx = ease(x / octave.metres - rx);
+    const fz = ease(z / octave.metres - rz);
+
+    const a = cellHeight(i, rx, rz);
+    const b = cellHeight(i, rx + 1, rz);
+    const c = cellHeight(i, rx, rz + 1);
+    const d = cellHeight(i, rx + 1, rz + 1);
+    const top = a + (b - a) * fx;
+    const bottom = c + (d - c) * fx;
+    sum += (top + (bottom - top) * fz - 0.5) * octave.height;
+  }
+  return sum;
+}
+
+/**
+ * The lowest ground a footprint covers.
+ *
+ * A block set on the height of its middle hangs over the downhill side, which
+ * on a slope is exactly where the eye looks. Sampling the corners and taking
+ * the lowest costs five lookups and removes the problem.
+ */
+export function groundUnder(
+  at: (x: number, z: number) => number,
+  x: number,
+  z: number,
+  reach: number,
+  turn = 0,
+): number {
+  const c = Math.cos(turn) * reach;
+  const s = Math.sin(turn) * reach;
+  return Math.min(
+    at(x, z),
+    at(x + c - s, z + s + c),
+    at(x - c - s, z - s + c),
+    at(x + c + s, z + s - c),
+    at(x - c + s, z - s - c),
+  );
+}
+
+/** The address of the ground under a point — one metre is one address across. */
+export function addressUnder(x: number, z: number): string {
+  return pointToAddress({
+    x: home.x + BigInt(Math.floor(x)),
+    y: home.y + BigInt(Math.floor(z)),
+  });
+}
+
+export interface Terrain {
+  geometry: Geometry;
+  /**
+   * The height of the ground as it is actually drawn.
+   *
+   * Not the same as heightAt: the mesh is flat triangles between grid points,
+   * and a triangle cuts the corner off a hilltop. Anything set on the true
+   * curve therefore floats where the ground is convex. This reads the drawn
+   * surface instead, by the same triangle split the mesh uses.
+   */
+  surfaceAt(x: number, z: number): number;
+}
+
+/** A height field, `size` across, `segments` squares to a side. */
+export function terrain(size: number, segments: number): Terrain {
+  const positions = new Float32Array((segments + 1) ** 2 * 3);
+  const normals = new Float32Array((segments + 1) ** 2 * 3);
+  const indices = new Uint32Array(segments * segments * 6);
+  const step = size / segments;
+  const half = size / 2;
+
+  // heights first, then slopes read off the grid: asking the hash again for
+  // every neighbour costs five times as much and says the same thing
+  const field = new Float32Array((segments + 1) ** 2);
+  for (let row = 0; row <= segments; row++) {
+    for (let col = 0; col <= segments; col++) {
+      field[row * (segments + 1) + col] = heightAt(-half + col * step, -half + row * step);
+    }
+  }
+
+  const at = (col: number, row: number) =>
+    field[Math.min(segments, Math.max(0, row)) * (segments + 1) + Math.min(segments, Math.max(0, col))]!;
+
+  let p = 0;
+  for (let row = 0; row <= segments; row++) {
+    for (let col = 0; col <= segments; col++) {
+      const dx = at(col + 1, row) - at(col - 1, row);
+      const dz = at(col, row + 1) - at(col, row - 1);
+      const length = Math.hypot(dx, 2 * step, dz);
+      positions[p] = -half + col * step;
+      positions[p + 1] = at(col, row);
+      positions[p + 2] = -half + row * step;
+      normals[p] = -dx / length;
+      normals[p + 1] = (2 * step) / length;
+      normals[p + 2] = -dz / length;
+      p += 3;
+    }
+  }
+
+  let i = 0;
+  for (let row = 0; row < segments; row++) {
+    for (let col = 0; col < segments; col++) {
+      const a = row * (segments + 1) + col;
+      const b = a + segments + 1;
+      indices[i] = a;
+      indices[i + 1] = b;
+      indices[i + 2] = b + 1;
+      indices[i + 3] = a;
+      indices[i + 4] = b + 1;
+      indices[i + 5] = a + 1;
+      i += 6;
+    }
+  }
+
+  const surfaceAt = (x: number, z: number): number => {
+    const col = (x + half) / step;
+    const row = (z + half) / step;
+    const c0 = Math.max(0, Math.min(segments - 1, Math.floor(col)));
+    const r0 = Math.max(0, Math.min(segments - 1, Math.floor(row)));
+    const u = Math.max(0, Math.min(1, col - c0));
+    const v = Math.max(0, Math.min(1, row - r0));
+    const h = (dc: number, dr: number) => field[(r0 + dr) * (segments + 1) + (c0 + dc)]!;
+    const h00 = h(0, 0);
+    // the same split the triangles use, so the reading is the surface itself
+    return u <= v
+      ? h00 + (v - u) * (h(0, 1) - h00) + u * (h(1, 1) - h00)
+      : h00 + v * (h(1, 1) - h00) + (u - v) * (h(1, 0) - h00);
+  };
+
+  return { geometry: { positions, normals, indices }, surfaceAt };
+}
+
+/**
+ * A plain block, sitting on y = 0.
+ *
+ * A placeholder, deliberately: what stands on this land should be worked out
+ * from what an account is, and until those rules exist a box says nothing,
+ * which is more honest than a boulder saying the wrong thing.
+ */
+export function box(): Geometry {
+  const faces: [number[], number[]][] = [
+    [[-0.5, 0, 0.5, 0.5, 0, 0.5, 0.5, 1, 0.5, -0.5, 1, 0.5], [0, 0, 1]],
+    [[0.5, 0, -0.5, -0.5, 0, -0.5, -0.5, 1, -0.5, 0.5, 1, -0.5], [0, 0, -1]],
+    [[0.5, 0, 0.5, 0.5, 0, -0.5, 0.5, 1, -0.5, 0.5, 1, 0.5], [1, 0, 0]],
+    [[-0.5, 0, -0.5, -0.5, 0, 0.5, -0.5, 1, 0.5, -0.5, 1, -0.5], [-1, 0, 0]],
+    [[-0.5, 1, 0.5, 0.5, 1, 0.5, 0.5, 1, -0.5, -0.5, 1, -0.5], [0, 1, 0]],
+    [[-0.5, 0, -0.5, 0.5, 0, -0.5, 0.5, 0, 0.5, -0.5, 0, 0.5], [0, -1, 0]],
+  ];
+  const positions: number[] = [];
+  const normals: number[] = [];
+  const indices: number[] = [];
+  faces.forEach(([corners, normal], face) => {
+    positions.push(...corners);
+    for (let i = 0; i < 4; i++) normals.push(...normal);
+    const base = face * 4;
+    indices.push(base, base + 1, base + 2, base, base + 2, base + 3);
+  });
+  return {
+    positions: new Float32Array(positions),
+    normals: new Float32Array(normals),
+    indices: new Uint32Array(indices),
+  };
+}
+
+/** Append one axis-aligned box, given its two corners, to a growing mesh. */
+function addBox(
+  into: { positions: number[]; normals: number[]; indices: number[] },
+  min: [number, number, number],
+  max: [number, number, number],
+): void {
+  const [x0, y0, z0] = min;
+  const [x1, y1, z1] = max;
+  const faces: [number[], number[]][] = [
+    [[x0, y0, z1, x1, y0, z1, x1, y1, z1, x0, y1, z1], [0, 0, 1]],
+    [[x1, y0, z0, x0, y0, z0, x0, y1, z0, x1, y1, z0], [0, 0, -1]],
+    [[x1, y0, z1, x1, y0, z0, x1, y1, z0, x1, y1, z1], [1, 0, 0]],
+    [[x0, y0, z0, x0, y0, z1, x0, y1, z1, x0, y1, z0], [-1, 0, 0]],
+    [[x0, y1, z1, x1, y1, z1, x1, y1, z0, x0, y1, z0], [0, 1, 0]],
+    [[x0, y0, z0, x1, y0, z0, x1, y0, z1, x0, y0, z1], [0, -1, 0]],
+  ];
+  for (const [corners, normal] of faces) {
+    const base = into.positions.length / 3;
+    into.positions.push(...corners);
+    for (let i = 0; i < 4; i++) into.normals.push(...normal);
+    into.indices.push(base, base + 1, base + 2, base, base + 2, base + 3);
+  }
+}
+
+/**
+ * The walker: a body and a head, standing on y = 0, facing -z.
+ *
+ * Deliberately plain. Whoever is walking here is a person, not a thing this
+ * world is made of, and the difference should be obvious at a glance.
+ */
+export function figure(): Geometry {
+  const parts = { positions: [] as number[], normals: [] as number[], indices: [] as number[] };
+  addBox(parts, [-0.27, 0, -0.17], [0.27, 1.42, 0.17]);
+  addBox(parts, [-0.18, 1.46, -0.16], [0.18, 1.8, 0.16]);
+  return {
+    positions: new Float32Array(parts.positions),
+    normals: new Float32Array(parts.normals),
+    indices: new Uint32Array(parts.indices),
+  };
+}
+
+const GOLDEN = (1 + Math.sqrt(5)) / 2;
+
+/** An icosahedron, the roundest thing you can start from with twenty faces. */
+function icosahedron(): { points: number[][]; faces: number[][] } {
+  const points = [
+    [-1, GOLDEN, 0], [1, GOLDEN, 0], [-1, -GOLDEN, 0], [1, -GOLDEN, 0],
+    [0, -1, GOLDEN], [0, 1, GOLDEN], [0, -1, -GOLDEN], [0, 1, -GOLDEN],
+    [GOLDEN, 0, -1], [GOLDEN, 0, 1], [-GOLDEN, 0, -1], [-GOLDEN, 0, 1],
+  ].map((p) => {
+    const length = Math.hypot(p[0]!, p[1]!, p[2]!);
+    return [p[0]! / length, p[1]! / length, p[2]! / length];
+  });
+  const faces = [
+    [0, 11, 5], [0, 5, 1], [0, 1, 7], [0, 7, 10], [0, 10, 11],
+    [1, 5, 9], [5, 11, 4], [11, 10, 2], [10, 7, 6], [7, 1, 8],
+    [3, 9, 4], [3, 4, 2], [3, 2, 6], [3, 6, 8], [3, 8, 9],
+    [4, 9, 5], [2, 4, 11], [6, 2, 10], [8, 6, 7], [9, 8, 1],
+  ];
+  return { points, faces };
+}
+
+/**
+ * A boulder: a subdivided sphere pushed in and out by noise, resting on y = 0.
+ *
+ * Normals are averaged across the faces that meet at each vertex, so the light
+ * runs over it instead of breaking on every edge — which is the whole
+ * difference between a rock and a die.
+ */
+export function boulder(subdivisions = 2, seed = 1, roughness = 0.34): Geometry {
+  let { points, faces } = icosahedron();
+  const middles = new Map<string, number>();
+
+  const middle = (a: number, b: number): number => {
+    const key = a < b ? `${a}:${b}` : `${b}:${a}`;
+    const found = middles.get(key);
+    if (found !== undefined) return found;
+    const p = points[a]!;
+    const q = points[b]!;
+    const m = [p[0]! + q[0]!, p[1]! + q[1]!, p[2]! + q[2]!];
+    const length = Math.hypot(m[0]!, m[1]!, m[2]!);
+    points.push([m[0]! / length, m[1]! / length, m[2]! / length]);
+    const index = points.length - 1;
+    middles.set(key, index);
+    return index;
+  };
+
+  for (let step = 0; step < subdivisions; step++) {
+    const next: number[][] = [];
+    for (const [a, b, c] of faces) {
+      const ab = middle(a!, b!);
+      const bc = middle(b!, c!);
+      const ca = middle(c!, a!);
+      next.push([a!, ab, ca], [b!, bc, ab], [c!, ca, bc], [ab, bc, ca]);
+    }
+    faces = next;
+    middles.clear();
+  }
+
+  // push each point along its own direction, then squash and sit it on the floor
+  const displaced = points.map(([x, y, z]) => {
+    const push = 1 + (fbm3(x! * 1.7 + 5, y! * 1.7 + 5, z! * 1.7 + 5, 3, seed) - 0.5) * roughness * 2;
+    return [x! * push, y! * push * 0.78, z! * push];
+  });
+  const lowest = Math.min(...displaced.map((p) => p[1]!));
+
+  const positions = new Float32Array(displaced.length * 3);
+  const normals = new Float32Array(displaced.length * 3);
+  displaced.forEach((p, index) => {
+    positions[index * 3] = p[0]!;
+    positions[index * 3 + 1] = p[1]! - lowest;
+    positions[index * 3 + 2] = p[2]!;
+  });
+
+  // area-weighted vertex normals: sum the face normals that touch each point
+  for (const [a, b, c] of faces) {
+    const pa = displaced[a!]!;
+    const pb = displaced[b!]!;
+    const pc = displaced[c!]!;
+    const ux = pb[0]! - pa[0]!, uy = pb[1]! - pa[1]!, uz = pb[2]! - pa[2]!;
+    const vx = pc[0]! - pa[0]!, vy = pc[1]! - pa[1]!, vz = pc[2]! - pa[2]!;
+    const nx = uy * vz - uz * vy;
+    const ny = uz * vx - ux * vz;
+    const nz = ux * vy - uy * vx;
+    for (const index of [a!, b!, c!]) {
+      normals[index * 3] = (normals[index * 3] ?? 0) + nx;
+      normals[index * 3 + 1] = (normals[index * 3 + 1] ?? 0) + ny;
+      normals[index * 3 + 2] = (normals[index * 3 + 2] ?? 0) + nz;
+    }
+  }
+  for (let index = 0; index < normals.length; index += 3) {
+    const length = Math.hypot(normals[index]!, normals[index + 1]!, normals[index + 2]!) || 1;
+    normals[index] = normals[index]! / length;
+    normals[index + 1] = normals[index + 1]! / length;
+    normals[index + 2] = normals[index + 2]! / length;
+  }
+
+  const indices = new Uint32Array(faces.length * 3);
+  faces.forEach((face, index) => {
+    indices[index * 3] = face[0]!;
+    indices[index * 3 + 1] = face[1]!;
+    indices[index * 3 + 2] = face[2]!;
+  });
+
+  return { positions, normals, indices };
+}
