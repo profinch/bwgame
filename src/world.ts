@@ -20,6 +20,8 @@ import { Coverage } from './engine/coverage';
 import { Renderer, once, type Sky } from './engine/renderer';
 import { HOME, addressUnder } from './engine/land';
 import { box, figure, terrain } from './engine/shapes';
+import { Traffic, pollBlocks } from './engine/traffic';
+import { LANDMARKS } from './landmarks';
 import { mark } from './logo';
 import { massCount, patch } from './scene';
 
@@ -71,6 +73,51 @@ const player = { x: 0, z: 150, y: 0, yaw: 0, pitch: -0.03, rise: 0 };
 
 const coverage = new Coverage(renderer.gl, { x: player.x, z: player.z });
 
+/**
+ * The chain overhead. The source is behind an interface on purpose: polling a
+ * gateway is right for one player and wrong for a hundred, since the head of the
+ * chain is the same for everybody. Swapping it for a socket changes nothing here.
+ */
+const traffic = new Traffic();
+
+/**
+ * A made-up sky, for showing what this will look like once traces exist.
+ *
+ * The live view can only ever be one-sided: the sender of a transaction is
+ * always a wallet and the receiver almost always a contract, and contracts send
+ * nothing of their own — they appear only inside other calls. So standing
+ * anywhere, everything flies one way. This mode fakes the other half, and a
+ * share of failures large enough to see, to show the shape of the thing.
+ *
+ * It is invented, it says so on the screen, and it is behind a flag.
+ */
+const MADE_UP = location.search.includes('traffic=demo');
+
+if (MADE_UP) {
+  const elsewhere = LANDMARKS.map((mark) => mark.address);
+  let counter = 0;
+
+  const invent = () => {
+    const passing = Array.from({ length: 90 }, () => {
+      const n = counter++;
+      const other = elsewhere[(n * 7 + 3) % elsewhere.length]!;
+      const kind = n % 10;
+      const from = kind < 4 ? other : kind < 7 ? HOME : elsewhere[(n * 13) % elsewhere.length]!;
+      const to = kind < 4 ? HOME : kind < 7 ? other : elsewhere[(n * 5 + 1) % elsewhere.length]!;
+      return { from, to, ok: n % 8 !== 0 };
+    });
+    traffic.arrive({ number: 0, passing });
+  };
+
+  invent();
+  setInterval(invent, 12000);
+} else if (!location.search.includes('traffic=off')) {
+
+  pollBlocks(['https://ethereum-rpc.publicnode.com', 'https://eth.drpc.org']).start((block) =>
+    traffic.arrive(block),
+  );
+}
+
 const sky: Sky = {
   // low and to the side: long shading is where the shape of a thing shows
   sun: [0.62, 0.36, 0.28],
@@ -111,6 +158,17 @@ function over(block: (typeof world.obstacles)[number], x: number, z: number, mar
   const lx = dx * c - dz * s;
   const lz = dx * s + dz * c;
   return Math.abs(lx) <= block.halfWide + margin && Math.abs(lz) <= block.halfDeep + margin;
+}
+
+/**
+ * The top of whatever stands at a point, for traffic to come down onto.
+ * Nothing there means the ground itself.
+ */
+function landingAt(x: number, z: number): number {
+  for (const block of world.obstacles) {
+    if (over(block, x, z)) return block.top;
+  }
+  return ground.surfaceAt(x, z);
 }
 
 /** The highest thing underfoot: the ground, or the roof of whatever you are on. */
@@ -319,6 +377,7 @@ loop({
   step(seconds) {
     walk(seconds);
     fall(seconds);
+    traffic.step(seconds);
     // stepping onto a low roof rather than through it
     player.y = Math.max(player.y, supportAt(player.x, player.z, player.y + STEP_UP));
     uncover(seconds);
@@ -329,11 +388,13 @@ loop({
       since = 0;
       stat.textContent =
         `${masses} masses · ${fps} fps · ${coverage.known} tiles known · ` +
+        `${MADE_UP ? 'invented traffic' : `block ${traffic.block || '…'}`}, ` +
+        `${traffic.flying} passing, ${traffic.queued} to come · ` +
         `wasd to walk, shift to run, space to jump, ` +
         `v for ${overShoulder ? 'first person' : 'third person'}, drag to look`;
       const away = Math.round(Math.hypot(player.x, player.z));
       place.textContent =
-        `0x${addressUnder(player.x, player.z)} · ${away} m from ${HOME.slice(0, 8)}… (uniswap v3 factory)`;
+        `0x${addressUnder(player.x, player.z)} · ${away} m from ${HOME.slice(0, 8)}… ${HOME === '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48' ? ' (usdc)' : ''}`;
     }
   },
   draw() {
@@ -380,6 +441,9 @@ loop({
     const near = 1;
     const far = reach * 2.2;
     const light: Mat4 = multiply(orthographic(SHADOW_HALF, near, far), lookAt(from, focus));
+
+    const ribbons = traffic.build(player.x, player.y, player.z, landingAt);
+    renderer.traffic(ribbons.vertices, ribbons.count);
 
     renderer.draw(
       camera,
