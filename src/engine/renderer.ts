@@ -7,7 +7,14 @@
  */
 import { Coverage } from './coverage';
 import { context, program, resize, uniforms } from './gl';
-import { DEPTH_FRAGMENT, DEPTH_VERTEX, FRAGMENT, VERTEX } from './shaders';
+import {
+  DEPTH_FRAGMENT,
+  DEPTH_VERTEX,
+  FRAGMENT,
+  STREAK_FRAGMENT,
+  STREAK_VERTEX,
+  VERTEX,
+} from './shaders';
 import type { Geometry } from './shapes';
 import type { Mat4 } from './mat4';
 
@@ -48,6 +55,14 @@ export class Renderer {
   private readonly shadowBuffer: WebGLFramebuffer;
   private readonly batches: Batch[] = [];
 
+  /** Traffic is rebuilt every frame, so it gets a buffer rather than a batch. */
+  private readonly streakProgram: WebGLProgram;
+  private readonly streakWhere: Map<string, WebGLUniformLocation>;
+  private readonly streakVao: WebGLVertexArrayObject;
+  private readonly streakBuffer: WebGLBuffer;
+  private streakRoom = 0;
+  private streakCount = 0;
+
   constructor(canvas: HTMLCanvasElement) {
     const gl = context(canvas);
     this.gl = gl;
@@ -84,6 +99,35 @@ export class Renderer {
     gl.enable(gl.DEPTH_TEST);
     gl.enable(gl.CULL_FACE);
     gl.clearColor(0.9, 0.9, 0.9, 1);
+
+    this.streakProgram = program(gl, STREAK_VERTEX, STREAK_FRAGMENT);
+    this.streakWhere = uniforms(gl, this.streakProgram);
+    const streakVao = gl.createVertexArray();
+    const streakBuffer = gl.createBuffer();
+    if (!streakVao || !streakBuffer) throw new Error('no room for traffic');
+    this.streakVao = streakVao;
+    this.streakBuffer = streakBuffer;
+    gl.bindVertexArray(streakVao);
+    gl.bindBuffer(gl.ARRAY_BUFFER, streakBuffer);
+    gl.enableVertexAttribArray(0);
+    gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 16, 0);
+    gl.enableVertexAttribArray(1);
+    gl.vertexAttribPointer(1, 1, gl.FLOAT, false, 16, 12);
+    gl.bindVertexArray(null);
+  }
+
+  /** Hand over this frame's ribbons: position and alpha, four floats a vertex. */
+  traffic(vertices: Float32Array, count: number): void {
+    const gl = this.gl;
+    this.streakCount = count;
+    if (count === 0) return;
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.streakBuffer);
+    if (vertices.length > this.streakRoom) {
+      // grow in steps, so a busy block does not reallocate every frame after
+      this.streakRoom = Math.max(vertices.length * 2, 1 << 14);
+      gl.bufferData(gl.ARRAY_BUFFER, this.streakRoom * 4, gl.DYNAMIC_DRAW);
+    }
+    gl.bufferSubData(gl.ARRAY_BUFFER, 0, vertices);
   }
 
   /** Adds a batch and returns its number, for the ones that move. */
@@ -210,5 +254,24 @@ export class Renderer {
     gl.uniform1i(set.get('shadowMap')!, 0);
 
     this.drawBatches();
+
+    // traffic last: it is see-through, so it reads what is already there and
+    // does not write depth of its own
+    if (this.streakCount > 0) {
+      gl.useProgram(this.streakProgram);
+      gl.uniformMatrix4fv(this.streakWhere.get('viewProjection')!, false, viewProjection);
+      gl.uniform3fv(this.streakWhere.get('eye')!, eye);
+      gl.uniform1f(this.streakWhere.get('fogDensity')!, sky.fogDensity);
+      gl.enable(gl.BLEND);
+      gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+      gl.depthMask(false);
+      gl.disable(gl.CULL_FACE);
+      gl.bindVertexArray(this.streakVao);
+      gl.drawArrays(gl.TRIANGLES, 0, this.streakCount);
+      gl.bindVertexArray(null);
+      gl.enable(gl.CULL_FACE);
+      gl.depthMask(true);
+      gl.disable(gl.BLEND);
+    }
   }
 }

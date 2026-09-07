@@ -202,3 +202,39 @@ void main() {
 export const DEPTH_FRAGMENT = `#version 300 es
 precision highp float;
 void main() {}`;
+
+/**
+ * Traffic: flat ribbons laid across the sky, dark against it.
+ *
+ * The sky here is nearly white and the unlit ground nearly black, so a streak
+ * that glowed would vanish upward. Ink reads against both.
+ */
+export const STREAK_VERTEX = `#version 300 es
+precision highp float;
+
+layout(location = 0) in vec3 position;
+layout(location = 1) in float alpha;
+
+uniform mat4 viewProjection;
+uniform vec3 eye;
+uniform float fogDensity;
+
+out float vAlpha;
+
+void main() {
+  // the same air that thins the land thins these, or they would hang in it
+  float fog = 1.0 - exp(-length(eye - position) * fogDensity);
+  vAlpha = alpha * (1.0 - fog * 0.85);
+  gl_Position = viewProjection * vec4(position, 1.0);
+}`;
+
+export const STREAK_FRAGMENT = `#version 300 es
+precision highp float;
+
+in float vAlpha;
+out vec4 colour;
+
+void main() {
+  if (vAlpha <= 0.004) discard;
+  colour = vec4(vec3(0.06), vAlpha);
+}`;
