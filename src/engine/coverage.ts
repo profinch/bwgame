@@ -28,6 +28,8 @@ const STORE_PREFIX = 'gs:cover:';
 const SAVE_EVERY = 4;
 
 interface Tile {
+  /** The address prefix it is filed under. */
+  name: string;
   /** What the card is shown. */
   bytes: Uint8Array;
   /**
@@ -81,9 +83,21 @@ export class Coverage {
 
   private readonly gl: WebGL2RenderingContext;
   private readonly tiles = new Map<string, Tile>();
+  /**
+   * The same tiles under their grid position.
+   *
+   * Naming a tile means walking thirty-six digits of an address prefix in
+   * bigints, and painting asks for a tile once a texel — which was ten
+   * milliseconds a frame spent working out names already known.
+   */
+  private readonly byPlace = new Map<string, Tile>();
   private readonly window = new Uint8Array(WINDOW_TEXELS * WINDOW_TEXELS);
   private corner = { tx: 0, tz: 0 };
-  private windowStale = true;
+  /** The part of the window that changed, in window texels. Sending the whole
+   *  thing every frame is half a megabyte sixty times a second, which costs
+   *  more than everything else on screen put together. */
+  private low = { x: Infinity, y: Infinity };
+  private high = { x: -Infinity, y: -Infinity };
   private sinceSave = 0;
 
   constructor(gl: WebGL2RenderingContext, at: { x: number; z: number }) {
@@ -104,11 +118,19 @@ export class Coverage {
 
   /** The tile a point falls in, read back from storage the first time it is asked for. */
   private tileAt(tx: number, tz: number): Tile {
+    const place = `${tx},${tz}`;
+    const seen = this.byPlace.get(place);
+    if (seen) return seen;
+
     const name = tileName(tx, tz);
     const known = this.tiles.get(name);
-    if (known) return known;
+    if (known) {
+      this.byPlace.set(place, known);
+      return known;
+    }
 
     const tile: Tile = {
+      name,
       bytes: new Uint8Array(TILE_TEXELS * TILE_TEXELS),
       level: new Float32Array(TILE_TEXELS * TILE_TEXELS),
       dirty: false,
@@ -124,6 +146,7 @@ export class Coverage {
       // no storage, or it is full: the world is simply new again
     }
     this.tiles.set(name, tile);
+    this.byPlace.set(place, tile);
     return tile;
   }
 
@@ -145,7 +168,8 @@ export class Coverage {
         }
       }
     }
-    this.windowStale = true;
+    this.low = { x: 0, y: 0 };
+    this.high = { x: WINDOW_TEXELS - 1, y: WINDOW_TEXELS - 1 };
   }
 
   /**
@@ -193,8 +217,13 @@ export class Coverage {
         const col = tx - this.corner.tx;
         const row = tz - this.corner.tz;
         if (col < 0 || row < 0 || col >= WINDOW_TILES || row >= WINDOW_TILES) continue;
-        this.window[(row * TILE_TEXELS + inZ) * WINDOW_TEXELS + col * TILE_TEXELS + inX] = value;
-        this.windowStale = true;
+        const winX = col * TILE_TEXELS + inX;
+        const winY = row * TILE_TEXELS + inZ;
+        this.window[winY * WINDOW_TEXELS + winX] = value;
+        if (winX < this.low.x) this.low.x = winX;
+        if (winY < this.low.y) this.low.y = winY;
+        if (winX > this.high.x) this.high.x = winX;
+        if (winY > this.high.y) this.high.y = winY;
       }
     }
   }
@@ -216,11 +245,11 @@ export class Coverage {
 
   /** Write down every tile that changed since the last time. */
   save(): void {
-    for (const [name, tile] of this.tiles) {
+    for (const tile of this.tiles.values()) {
       if (!tile.dirty || !tile.touched) continue;
       tile.dirty = false;
       try {
-        localStorage.setItem(STORE_PREFIX + name, pack(tile.bytes));
+        localStorage.setItem(STORE_PREFIX + tile.name, pack(tile.bytes));
       } catch {
         // storage full or refused: the world stays, it just will not be there
         // tomorrow. Not worth interrupting anybody over.
@@ -236,15 +265,26 @@ export class Coverage {
     return count;
   }
 
-  /** Send the window, if it moved or was painted on. */
+  /** Send only the part that changed. */
   upload(): void {
-    if (!this.windowStale) return;
+    if (this.high.x < this.low.x) return;
     const gl = this.gl;
+    const width = this.high.x - this.low.x + 1;
+    const height = this.high.y - this.low.y + 1;
+
+    const patch = new Uint8Array(width * height);
+    for (let y = 0; y < height; y++) {
+      const from = (this.low.y + y) * WINDOW_TEXELS + this.low.x;
+      patch.set(this.window.subarray(from, from + width), y * width);
+    }
+
     gl.bindTexture(gl.TEXTURE_2D, this.texture);
     gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
     gl.texSubImage2D(
-      gl.TEXTURE_2D, 0, 0, 0, WINDOW_TEXELS, WINDOW_TEXELS, gl.RED, gl.UNSIGNED_BYTE, this.window,
+      gl.TEXTURE_2D, 0, this.low.x, this.low.y, width, height, gl.RED, gl.UNSIGNED_BYTE, patch,
     );
-    this.windowStale = false;
+
+    this.low = { x: Infinity, y: Infinity };
+    this.high = { x: -Infinity, y: -Infinity };
   }
 }
