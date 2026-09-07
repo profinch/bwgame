@@ -10,7 +10,35 @@
 import { keccak_256 } from '@noble/hashes/sha3';
 import { addressToPoint, pointToAddress } from '../coord';
 
-export const HOME = '0x1F98431c8aD98523631AE4a59f267346ea31F984'; // uniswap v3 factory
+/**
+ * The address this patch is built around, and `?home=0x…` to stand somewhere
+ * else. A different address is a different place: the ground is hashed from it,
+ * so choosing it rebuilds the hills as well as the view.
+ *
+ * USDC by default, because it is where traffic actually lands — counting a
+ * block's top-level recipients gives it some forty transactions, more than
+ * anything else on the chain.
+ *
+ * Worth knowing before choosing: at the top level a place only ever has one
+ * side. The sender of a transaction is always a wallet and the receiver is
+ * almost always a contract, and contracts send nothing of their own — they
+ * appear only inside other calls. So standing on a contract, everything flies
+ * in; standing on a busy wallet, everything flies out. Both at once needs
+ * traces, which is a different source of data.
+ */
+const DEFAULT_HOME = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48';
+
+function chosenHome(): string {
+  try {
+    const asked = new URLSearchParams(location.search).get('home');
+    if (asked && /^0x[0-9a-fA-F]{40}$/.test(asked)) return asked;
+  } catch {
+    // no location: a test, or somewhere without a page
+  }
+  return DEFAULT_HOME;
+}
+
+export const HOME = chosenHome();
 const home = addressToPoint(HOME);
 
 /**
@@ -102,6 +130,19 @@ export function addressUnder(x: number, z: number): string {
     x: home.x + BigInt(Math.floor(x)),
     y: home.y + BigInt(Math.floor(z)),
   });
+}
+
+/**
+ * Where an address lies relative to home, in metres.
+ *
+ * Two unrelated addresses are some 2^80 metres apart, so these numbers are
+ * enormous and only their difference and direction mean anything. A double
+ * carries them well enough for that: the error is vast in absolute terms and
+ * nothing at all as a bearing.
+ */
+export function offsetOf(address: string): { x: number; z: number } {
+  const point = addressToPoint(address);
+  return { x: Number(point.x - home.x), z: Number(point.y - home.y) };
 }
 
 // --- tiles ----------------------------------------------------------------
