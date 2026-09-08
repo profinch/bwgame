@@ -39,6 +39,28 @@ function chosenHome(): string {
 }
 
 export const HOME = chosenHome();
+
+/**
+ * How deep the walkable world sits in the address tree.
+ *
+ * One metre of ground is one cell at this depth, so the position of your feet
+ * fixes this many digits of an address and leaves the rest open. It is the one
+ * number that decides what kind of place this is:
+ *
+ *   depth 13 — the world is 67 000 km across, a metre holds 2·10^16 addresses,
+ *              and mining a spot within a kilometre of a chosen one costs about
+ *              ten minutes on eight threads.
+ *   depth 12 — four times smaller, sixteen times cheaper to mine into.
+ *   depth 40 — one metre is one address. Nothing can be mined at that scale
+ *              (it would take longer than the universe has run) but the fine
+ *              structure is visible: the precompiles stand a metre apart.
+ *
+ * Change it here. Everything below is written in terms of it.
+ */
+export const DEPTH = 13;
+
+/** Leaf cells to a metre at this depth. A metre is a whole cell of its own. */
+const PER_METRE = 4n ** BigInt(40 - DEPTH);
 const home = addressToPoint(HOME);
 
 /**
@@ -54,21 +76,22 @@ const home = addressToPoint(HOME);
  * a hill from the address underneath it, and it comes out the same everywhere.
  */
 const OCTAVES: readonly { depth: number; metres: number; height: number }[] = [
-  { depth: 34, metres: 4096, height: 58 },
-  { depth: 35, metres: 1024, height: 27 },
-  { depth: 36, metres: 256, height: 12 },
-  { depth: 37, metres: 64, height: 5 },
-  { depth: 38, metres: 16, height: 2 },
-];
+  { depth: DEPTH - 6, metres: 4096, height: 58 },
+  { depth: DEPTH - 5, metres: 1024, height: 27 },
+  { depth: DEPTH - 4, metres: 256, height: 12 },
+  { depth: DEPTH - 3, metres: 64, height: 5 },
+  { depth: DEPTH - 2, metres: 16, height: 2 },
+].filter((octave) => octave.depth >= 1);
 
 /**
  * The cell an octave's grid starts from. Constant per octave, and a bigint, so
  * a lookup key can be the small offset from it rather than the huge number
  * itself — building map keys out of bigints costs more than the hashing does.
  */
+/** Where each octave's grid starts, in its own cells, counted from home. */
 const BASES = OCTAVES.map((octave) => ({
-  x: home.x / BigInt(octave.metres),
-  z: home.y / BigInt(octave.metres),
+  x: home.x / (PER_METRE * BigInt(octave.metres)),
+  z: home.y / (PER_METRE * BigInt(octave.metres)),
 }));
 
 const encoder = new TextEncoder();
@@ -124,26 +147,37 @@ export function heightAt(x: number, z: number): number {
   return sum;
 }
 
-/** The address of the ground under a point — one metre is one address across. */
+/**
+ * The ground under a point, as far as it is pinned down.
+ *
+ * A metre fixes the first DEPTH digits of an address and says nothing about the
+ * rest — there are 4^(40 - DEPTH) addresses under your feet. So this is a
+ * prefix, not an address, and it is the honest thing to show.
+ */
 export function addressUnder(x: number, z: number): string {
-  return pointToAddress({
-    x: home.x + BigInt(Math.floor(x)),
-    y: home.y + BigInt(Math.floor(z)),
+  const full = pointToAddress({
+    x: home.x + BigInt(Math.floor(x)) * PER_METRE,
+    y: home.y + BigInt(Math.floor(z)) * PER_METRE,
   });
+  return full.slice(0, DEPTH);
 }
 
 /**
  * Where an address lies relative to home, in metres.
  *
- * Two unrelated addresses are some 2^80 metres apart, so these numbers are
- * enormous and only their difference and direction mean anything. A double
- * carries them well enough for that: the error is vast in absolute terms and
- * nothing at all as a bearing.
+ * Still enormous — the world is 4^DEPTH metres across — so only differences and
+ * directions mean anything, which a double carries well enough.
  */
 export function offsetOf(address: string): { x: number; z: number } {
   const point = addressToPoint(address);
-  return { x: Number(point.x - home.x), z: Number(point.y - home.y) };
+  return {
+    x: Number(point.x - home.x) / Number(PER_METRE),
+    z: Number(point.y - home.y) / Number(PER_METRE),
+  };
 }
+
+/** How wide the whole world is, in metres. */
+export const WORLD = 4 ** DEPTH;
 
 // --- tiles ----------------------------------------------------------------
 
@@ -154,8 +188,8 @@ export function offsetOf(address: string): { x: number; z: number } {
  * storing it, so that an endless world can be kept in pieces and only the
  * pieces near somebody need to be in hand.
  */
-export const TILE_DEPTH = 36;
-export const TILE_METRES = 256; // 4 ** (40 - TILE_DEPTH)
+export const TILE_METRES = 256;
+export const TILE_DEPTH = DEPTH - 4; // 256 metres is 4^4 cells across
 export const TILE_TEXELS = 64; // four metres to a texel
 
 /** Which tile a point falls in, counted from home rather than from the corner of the world. */
@@ -172,4 +206,9 @@ export function tileOrigin(tx: number, tz: number): { x: number; z: number } {
 export function tileName(tx: number, tz: number): string {
   const base = BASES[2]!; // the 256-metre octave is the tile grid
   return prefixOf(TILE_DEPTH, base.x + BigInt(tx), base.z + BigInt(tz));
+}
+
+/** Metres to leaf cells, for anything that has to speak to the map. */
+export function metresToCells(metres: number): bigint {
+  return BigInt(Math.round(metres)) * PER_METRE;
 }
