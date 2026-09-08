@@ -18,16 +18,15 @@ import { lookAt, multiply, orthographic, perspective, type Mat4 } from './engine
 import { loop } from './engine/loop';
 import { Coverage } from './engine/coverage';
 import { Renderer, once, type Sky } from './engine/renderer';
-import { HOME, addressUnder, offsetOf } from './engine/land';
+import { HOME, addressUnder, levelOff, offsetOf, rawHeightAt } from './engine/land';
 import { box, figure, groundUnder, terrain } from './engine/shapes';
 import { Traffic, pollBlocks } from './engine/traffic';
 import { chain } from './chains';
-import { accountAt } from './chain';
+import { type Account, accountAt, holdingsOf } from './chain';
 import { normalizeAddress } from './coord';
 import { looksLikeName, resolveName } from './ens';
-import { type Structure, instancesOf, stands, structureOf } from './places';
+import { type Structure, instancesOf, standingOn, stands, structureOf } from './places';
 import type { Obstacle } from './obstacles';
-import { LANDMARKS } from './landmarks';
 import { mark } from './logo';
 
 
@@ -73,20 +72,90 @@ const built = renderer.add(box(), new Float32Array(0), true);
 
 /** Where a structure's floor sits: the lowest ground its footprint covers. */
 function baseOf(structure: Structure): number {
+  const x = structure.x - origin.x;
+  const z = structure.z - origin.z;
   const reach = Math.max(structure.wide, structure.deep) / 2;
-  return groundUnder(
-    ground.surfaceAt,
-    structure.x - origin.x,
-    structure.z - origin.z,
-    reach,
-    structure.turn,
-  ) - structure.tall * 0.04;
+  if (structure.kind === 'written') {
+    // a plate is wide and thin, so it is set above the highest ground it
+    // covers rather than the lowest: a hill coming up through the writing
+    // would be the ground showing through a stone. What it has to reach down
+    // to meet is the drop across it, and no more, or a stone on a slope turns
+    // into a wall.
+    const hill = reliefUnder(structure);
+    structure.sink = hill.high - hill.low + 0.1;
+    return hill.high + 0.02;
+  }
+  return groundUnder(ground.surfaceAt, x, z, reach, structure.turn) - structure.tall * 0.04;
+}
+
+/** The highest and lowest ground a plate covers. */
+function reliefUnder(structure: Structure): { high: number; low: number } {
+  const x = structure.x - origin.x;
+  const z = structure.z - origin.z;
+  let high = -Infinity;
+  let low = Infinity;
+  for (let ix = -1; ix <= 1; ix++) {
+    for (let iz = -1; iz <= 1; iz++) {
+      const at = ground.surfaceAt(x + (ix * structure.wide) / 2, z + (iz * structure.deep) / 2);
+      high = Math.max(high, at);
+      low = Math.min(low, at);
+    }
+  }
+  return { high, low };
+}
+
+/**
+ * What an account leaves on the ground, asked for in full.
+ *
+ * A wallet's stone says what it holds, and what it holds takes one call a
+ * token, so a stone costs a few more reads than a building does.
+ */
+async function standing(account: Account): Promise<Structure> {
+  const holdings = account.codeSize === 0 ? await holdingsOf(account.address) : [];
+  return structureOf(account, holdings, chain.coin);
 }
 
 function raise(structure: Structure): void {
   if (structures.some((standing) => standing.address === structure.address)) return;
   structures.push(structure);
+  // a stone is laid on levelled ground, so it does not stand on a wall of its
+  // own foundation on the low side — which is what stopped you walking up to it
+  if (structure.kind === 'written' && level(structure)) rebuild();
   settle();
+}
+
+/**
+ * Level the ground under a stone, if it is not level already.
+ *
+ * The pad is the mean of the hill under the plate, which is the level that
+ * moves the least earth. Nothing is levelled under a building: a contract is
+ * a thing dropped on the land, and the land keeps its shape.
+ */
+function level(structure: Structure): boolean {
+  const at = { x: structure.x, z: structure.z };
+  let sum = 0;
+  let taken = 0;
+  for (let ix = -1; ix <= 1; ix++) {
+    for (let iz = -1; iz <= 1; iz++) {
+      sum += rawHeightAt(at.x + (ix * structure.wide) / 2, at.z + (iz * structure.deep) / 2);
+      taken++;
+    }
+  }
+  levelOff({
+    x: at.x,
+    z: at.z,
+    halfWide: structure.wide / 2 + 0.6,
+    halfDeep: structure.deep / 2 + 0.6,
+    level: sum / taken,
+  });
+  return true;
+}
+
+/** Build the ground again, after the shape of it changed. */
+function rebuild(): void {
+  ground = terrain(GROUND, 340, origin);
+  renderer.reshape(floor, ground.geometry);
+  player.y = Math.max(player.y, ground.surfaceAt(player.x, player.z));
 }
 
 /** Sit everything on the ground as it is here, and let a walker feel it. */
@@ -102,6 +171,9 @@ function settle(): void {
       turn: structure.turn,
       top: base + structure.tall,
     });
+    // and its posts, which are stones you can walk into and a transaction can
+    // come down onto
+    for (const post of standingOn(structure, base, origin)) obstacles.push(post);
   }
   renderer.update(built, instancesOf(structures, baseOf, origin));
 }
@@ -115,7 +187,7 @@ function settle(): void {
  * asked for over and over, so most of the work is a cache lookup.
  */
 /** How far off an address you are set down, so you can see what is on it. */
-const ALIGHT = 90;
+const ALIGHT = 14;
 
 function arriveAt(x: number, z: number): void {
   origin.x = x;
@@ -125,7 +197,7 @@ function arriveAt(x: number, z: number): void {
   player.x = 0;
   player.z = ALIGHT;
   player.yaw = 0;
-  player.pitch = -0.03;
+  player.pitch = -0.2;
   ground = terrain(GROUND, 340, origin);
   renderer.reshape(floor, ground.geometry);
   player.y = ground.surfaceAt(player.x, player.z);
@@ -146,8 +218,12 @@ async function travelTo(address: string): Promise<Structure | null> {
   arriveAt(at.x, at.z);
   const account = await accountAt(address);
   if (!account) return null;
-  const structure = structureOf(account);
+  const structure = await standing(account);
   if (stands(account)) raise(structure);
+  // a stone with forty posts on it is ten metres across, so stand off far
+  // enough to see the whole of it rather than inside the first row
+  player.z = Math.max(ALIGHT, structure.deep / 2 + ALIGHT * 0.8);
+  player.y = ground.surfaceAt(player.x, player.z);
   settle();
   return structure;
 }
@@ -163,8 +239,8 @@ const coverage = new Coverage(renderer.gl, { x: player.x, z: player.z });
  * it carries, what that code hashes to, what it holds. It arrives a moment
  * after the page does, because it has to be asked for.
  */
-void accountAt(HOME).then((account) => {
-  if (account && stands(account)) raise(structureOf(account));
+void accountAt(HOME).then(async (account) => {
+  if (account && stands(account)) raise(await standing(account));
 });
 
 /**
@@ -174,39 +250,7 @@ void accountAt(HOME).then((account) => {
  */
 const traffic = new Traffic();
 
-/**
- * A made-up sky, for showing what this will look like once traces exist.
- *
- * The live view can only ever be one-sided: the sender of a transaction is
- * always a wallet and the receiver almost always a contract, and contracts send
- * nothing of their own — they appear only inside other calls. So standing
- * anywhere, everything flies one way. This mode fakes the other half, and a
- * share of failures large enough to see, to show the shape of the thing.
- *
- * It is invented, it says so on the screen, and it is behind a flag.
- */
-const MADE_UP = location.search.includes('traffic=demo');
-
-if (MADE_UP) {
-  const elsewhere = LANDMARKS.map((mark) => mark.address);
-  let counter = 0;
-
-  const invent = () => {
-    const passing = Array.from({ length: 90 }, () => {
-      const n = counter++;
-      const other = elsewhere[(n * 7 + 3) % elsewhere.length]!;
-      const kind = n % 10;
-      const from = kind < 4 ? other : kind < 7 ? HOME : elsewhere[(n * 13) % elsewhere.length]!;
-      const to = kind < 4 ? HOME : kind < 7 ? other : elsewhere[(n * 5 + 1) % elsewhere.length]!;
-      return { from, to, ok: n % 8 !== 0 };
-    });
-    traffic.arrive({ number: 0, passing });
-  };
-
-  invent();
-  setInterval(invent, 12000);
-} else if (!location.search.includes('traffic=off')) {
-
+if (!location.search.includes('traffic=off')) {
   pollBlocks(chain.rpcs).start((block) => traffic.arrive(block));
 }
 
@@ -379,7 +423,7 @@ canvas.addEventListener('pointerup', release);
 canvas.addEventListener('pointercancel', release);
 
 /** How wide the walker is, for the purpose of not being inside things. */
-const GIRTH = 0.9;
+const GIRTH = 0.45;
 
 /** Passes over the whole set: leaving one block can put you inside the next. */
 const SETTLE = 4;
@@ -488,7 +532,7 @@ loop({
       since = 0;
       stat.textContent =
         `${structures.length} standing · ${fps} fps · ${coverage.known} tiles known · ` +
-        `${MADE_UP ? 'invented traffic' : `block ${traffic.block || '…'}`}, ` +
+        `block ${traffic.block || '…'}, ` +
         `${traffic.flying} passing, ${traffic.queued} to come · ` +
         `${arrived ? `at ${arrived} · ` : ''}` +
         `wasd to walk, shift to run, space to jump, home to go back, ` +
@@ -515,12 +559,38 @@ loop({
       -Math.cos(player.yaw) * Math.cos(player.pitch),
     ];
 
-    // over the shoulder: step back along the look and up a little
+    /**
+     * Over the shoulder: step back along the look and up a little — but never
+     * under the ground.
+     *
+     * Dragging the look down used to swing the camera below the surface, and
+     * from underneath the world is inside out: the ground is a one-sided sheet,
+     * so it disappears and you see the backs of everything through it. The
+     * ground stops the camera instead, the way it stops a walker. The boom is
+     * shortened until it clears, and only then is what is left of it lifted, so
+     * the view slides along the surface rather than jumping up off it.
+     */
     const BEHIND = 5.2;
-    const at: [number, number, number] = overShoulder
-      ? [eyes[0] - look[0] * BEHIND, eyes[1] - look[1] * BEHIND + 1.1, eyes[2] - look[2] * BEHIND]
-      : eyes;
-    const ahead: [number, number, number] = [at[0] + look[0], at[1] + look[1], at[2] + look[2]];
+    const CLEAR = 0.55;
+    let at: [number, number, number] = eyes;
+    if (overShoulder) {
+      let boom = BEHIND;
+      for (let tries = 0; tries < 6; tries++) {
+        const x = eyes[0] - look[0] * boom;
+        const z = eyes[2] - look[2] * boom;
+        const y = eyes[1] - look[1] * boom + 1.1;
+        const floor = supportAt(x, z, y) + CLEAR;
+        if (y >= floor || boom <= 0.9) {
+          at = [x, Math.max(y, floor), z];
+          break;
+        }
+        boom *= 0.7;
+      }
+    }
+    // and it keeps the walker in front of it, however far it had to give way
+    const ahead: [number, number, number] = overShoulder
+      ? eyes
+      : [at[0] + look[0], at[1] + look[1], at[2] + look[2]];
     const aspect = canvas.clientWidth / Math.max(1, canvas.clientHeight);
     const camera: Mat4 = multiply(perspective(1.15, aspect, 0.2, 2600), lookAt(at, ahead));
 

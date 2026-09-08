@@ -66,6 +66,26 @@ black and white that a gradient shows its steps without it.
 Started at **ETHOnline 2026** (September 4–13, 2026) and continued after it. The hackathon is
 where this begins, not what it is for. Work in progress, in the open.
 
+## Left to settle
+
+- **Where a wallet's own address is written.** A wallet's plate is plain stone: the runes are on
+  the posts, one to a token, because that is what a post is for. The address itself is therefore
+  nowhere on the ground yet — only in the readout. A narrow band cut along the edge of the plate
+  is the likely home for it, but it has not been tried.
+- **Ground under a plot.** A plate is set above the highest ground it covers and reaches down to
+  the lowest, which on a slope shows as a thick edge. Flattening the terrain under a claimed
+  address would be the honest fix, and that means the terrain generator has to know about plots.
+
+- **What a transaction was in.** A streak comes down onto the plate — the address — and not onto
+  the post of the token that moved. Aiming at the post was tried and put back: it is a finer
+  claim than a block can support, since a block says which contract was called and not which
+  token moved inside it, and the sky should not be more specific than the data.
+
+- **Tokens that are not amounts.** A post stands for a share of a supply, which is what a
+  fungible holding is. An NFT is not that: one of nine thousand is not a millionth of anything
+  you can stand a stone to. Wallets hold them, the indexer already returns them, and they get
+  nothing on the plate for now — they need a shape of their own, decided rather than borrowed.
+
 ## Prior work
 
 Disclosed per ETHGlobal rules: the concept and written plan predate the event — they were
