@@ -68,12 +68,17 @@ export function structureOf(account: Account): Structure {
   };
 }
 
-/** One structure as the renderer wants it, sitting on the ground given. */
-export function instanceOf(structure: Structure, base: number): Float32Array {
+/**
+ * One structure as the renderer wants it, in the patch's own coordinates.
+ *
+ * Never in the world's: a float loses whole metres out at seventeen million,
+ * and anything drawn there comes out torn.
+ */
+export function instanceOf(structure: Structure, base: number, origin = { x: 0, z: 0 }): Float32Array {
   return new Float32Array([
-    structure.x,
+    structure.x - origin.x,
     base,
-    structure.z,
+    structure.z - origin.z,
     structure.wide,
     structure.tall,
     structure.deep,
@@ -83,10 +88,14 @@ export function instanceOf(structure: Structure, base: number): Float32Array {
   ]);
 }
 
-export function instancesOf(structures: readonly Structure[], baseOf: (s: Structure) => number): Float32Array {
+export function instancesOf(
+  structures: readonly Structure[],
+  baseOf: (s: Structure) => number,
+  origin = { x: 0, z: 0 },
+): Float32Array {
   const out = new Float32Array(structures.length * INSTANCE_FLOATS);
   structures.forEach((structure, index) => {
-    out.set(instanceOf(structure, baseOf(structure)), index * INSTANCE_FLOATS);
+    out.set(instanceOf(structure, baseOf(structure), origin), index * INSTANCE_FLOATS);
   });
   return out;
 }

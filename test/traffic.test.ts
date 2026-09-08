@@ -2,6 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { HOME } from '../src/engine/land';
 import { HORIZON, Traffic } from '../src/engine/traffic';
 
+/** The patch these tests are standing in: the middle of the world's own grid. */
+const ORIGIN = { x: 0, z: 0 };
+
 const USDC = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48';
 const WETH = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2';
 
@@ -64,7 +67,7 @@ describe('traffic', () => {
     // each segment writes six vertices, so every sixth is one point of the path;
     // a waveform turns up and down many times, a flight climbs and descends once
     const turns = (traffic: Traffic) => {
-      const points = vertices(traffic.build(0, 0, 0));
+      const points = vertices(traffic.build(0, 0, 0, ORIGIN));
       const heights: number[] = [];
       for (let i = 0; i < points.length; i += 6) heights.push(points[i]!.y);
 
@@ -91,7 +94,7 @@ describe('traffic', () => {
 
     // how far the drawn part reaches, end to end
     const reach = () => {
-      const points = vertices(bad.build(0, 0, 0)).filter((p) => p.a > 0.01);
+      const points = vertices(bad.build(0, 0, 0, ORIGIN)).filter((p) => p.a > 0.01);
       let most = 0;
       for (const a of points) {
         for (const b of points) most = Math.max(most, Math.hypot(a.x - b.x, a.z - b.z));
@@ -116,7 +119,7 @@ describe('traffic', () => {
     traffic.step(1);
     traffic.step(3);
 
-    const points = vertices(traffic.build(0, 0, 0));
+    const points = vertices(traffic.build(0, 0, 0, ORIGIN));
     expect(points.length).toBeGreaterThan(0);
     // both ends lie some 2^80 metres off; nothing may be drawn further than the sky
     for (const point of points) {
@@ -135,7 +138,7 @@ describe('traffic', () => {
     traffic.step(1);
     traffic.step(3);
 
-    const points = vertices(traffic.build(0, 0, 0));
+    const points = vertices(traffic.build(0, 0, 0, ORIGIN));
     const nearest = Math.min(...points.map((p) => Math.hypot(p.x, p.z)));
     expect(nearest).toBeLessThan(50);
   });
@@ -143,6 +146,6 @@ describe('traffic', () => {
   it('draws nothing before anything has been let out', () => {
     const traffic = new Traffic();
     traffic.arrive(block([{ from: USDC, to: WETH, ok: true }]));
-    expect(traffic.build(0, 0, 0).count).toBe(0);
+    expect(traffic.build(0, 0, 0, ORIGIN).count).toBe(0);
   });
 });

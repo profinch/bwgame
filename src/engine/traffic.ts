@@ -199,6 +199,12 @@ export class Traffic {
     vy: number,
     vz: number,
     /**
+     * The middle of the patch, in world metres. Streaks are kept in world
+     * coordinates and drawn in the patch's, because a card cannot hold the
+     * former: everything it is given must be near zero or it comes out torn.
+     */
+    origin: { x: number; z: number },
+    /**
      * How high to come down to at a point — the middle of whatever stands
      * there, not the dirt at its foot. A transaction is for the thing, so it
      * goes into it; landing at the base makes it look like it missed.
@@ -230,8 +236,8 @@ export class Traffic {
       const sky = ALTITUDE * (0.35 + Traffic.wobble(streak.seed, 0) * 1.5);
       const reach = HORIZON * (0.5 + Traffic.wobble(streak.seed, 1) * 0.5);
 
-      const a = this.fold(streak.ax, streak.az, vx, vz, reach);
-      const b = this.fold(streak.bx, streak.bz, vx, vz, reach);
+      const a = this.fold(streak.ax - origin.x, streak.az - origin.z, vx, vz, reach);
+      const b = this.fold(streak.bx - origin.x, streak.bz - origin.z, vx, vz, reach);
       const runX = b.x - a.x;
       const runZ = b.z - a.z;
       const run = Math.hypot(runX, runZ);

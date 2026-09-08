@@ -228,6 +228,11 @@ export class Coverage {
     }
   }
 
+  /** Put the window somewhere else outright, for when somebody travels. */
+  recentreOn(x: number, z: number): void {
+    this.recentre(x, z);
+  }
+
   /** Follow whoever is looking, and keep what they uncovered. */
   follow(x: number, z: number, seconds: number): void {
     const here = tileIndex(x, z);

@@ -389,3 +389,31 @@ body.world {
   letter-spacing: 0.06em;
   color: #4a4a48;
 }
+
+/* going somewhere, from inside the world */
+
+.hud .go {
+  pointer-events: auto;
+  margin-top: 4px;
+}
+
+.hud .go input {
+  width: 34ch;
+  max-width: 100%;
+  padding: 6px 9px;
+  border: 1px solid color-mix(in srgb, var(--line) 22%, transparent);
+  background: color-mix(in srgb, var(--panel) 70%, transparent);
+  color: var(--fg);
+  font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 12px;
+}
+
+.hud .go input:focus {
+  outline: none;
+  border-color: var(--fg);
+}
+
+.hud .go input:disabled {
+  opacity: 0.5;
+  cursor: progress;
+}

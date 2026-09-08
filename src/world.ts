@@ -18,11 +18,13 @@ import { lookAt, multiply, orthographic, perspective, type Mat4 } from './engine
 import { loop } from './engine/loop';
 import { Coverage } from './engine/coverage';
 import { Renderer, once, type Sky } from './engine/renderer';
-import { HOME, addressUnder } from './engine/land';
+import { HOME, addressUnder, offsetOf } from './engine/land';
 import { box, figure, groundUnder, terrain } from './engine/shapes';
 import { Traffic, pollBlocks } from './engine/traffic';
 import { chain } from './chains';
 import { accountAt } from './chain';
+import { normalizeAddress } from './coord';
+import { looksLikeName, resolveName } from './ens';
 import { type Structure, instancesOf, structureOf } from './places';
 import type { Obstacle } from './obstacles';
 import { LANDMARKS } from './landmarks';
@@ -33,13 +35,27 @@ const canvas = document.querySelector<HTMLCanvasElement>('#view');
 const stat = document.querySelector<HTMLElement>('.stat');
 const place = document.querySelector<HTMLElement>('.place');
 const badge = document.querySelector<HTMLElement>('.mark');
-if (!canvas || !stat || !place || !badge) throw new Error('the page is missing its parts');
+const going = document.querySelector<HTMLFormElement>('.go');
+if (!canvas || !stat || !place || !badge || !going) throw new Error('the page is missing its parts');
 badge.innerHTML = mark({ size: 20, rows: 7 });
 
 const GROUND = 1700;
-const ground = terrain(GROUND, 340);
+
+/**
+ * The middle of the patch, in metres from home.
+ *
+ * The world is sixty-seven thousand kilometres across and a card draws in
+ * single precision, which has about a metre and a half of resolution out at
+ * seventeen million. So the world's coordinates are kept here, and everything
+ * drawn — ground, structures, traffic, the walker — is placed relative to this
+ * point. Positions in the rest of this file are the patch's, not the world's;
+ * only addresses are worked out from the sum of the two.
+ */
+const origin = { x: 0, z: 0 };
+
+let ground = terrain(GROUND, 340, origin);
 const renderer = new Renderer(canvas);
-renderer.add(ground.geometry, once(0.34, 1));
+const floor = renderer.add(ground.geometry, once(0.34, 1));
 
 /**
  * What stands in the world, and nothing else does.
@@ -56,22 +72,82 @@ const built = renderer.add(box(), new Float32Array(0), true);
 /** Where a structure's floor sits: the lowest ground its footprint covers. */
 function baseOf(structure: Structure): number {
   const reach = Math.max(structure.wide, structure.deep) / 2;
-  return groundUnder(ground.surfaceAt, structure.x, structure.z, reach, structure.turn)
-    - structure.tall * 0.04;
+  return groundUnder(
+    ground.surfaceAt,
+    structure.x - origin.x,
+    structure.z - origin.z,
+    reach,
+    structure.turn,
+  ) - structure.tall * 0.04;
 }
 
 function raise(structure: Structure): void {
+  if (structures.some((standing) => standing.address === structure.address)) return;
   structures.push(structure);
-  const base = baseOf(structure);
-  obstacles.push({
-    x: structure.x,
-    z: structure.z,
-    halfWide: structure.wide / 2,
-    halfDeep: structure.deep / 2,
-    turn: structure.turn,
-    top: base + structure.tall,
-  });
-  renderer.update(built, instancesOf(structures, baseOf));
+  settle();
+}
+
+/** Sit everything on the ground as it is here, and let a walker feel it. */
+function settle(): void {
+  obstacles.length = 0;
+  for (const structure of structures) {
+    const base = baseOf(structure);
+    obstacles.push({
+      x: structure.x - origin.x,
+      z: structure.z - origin.z,
+      halfWide: structure.wide / 2,
+      halfDeep: structure.deep / 2,
+      turn: structure.turn,
+      top: base + structure.tall,
+    });
+  }
+  renderer.update(built, instancesOf(structures, baseOf, origin));
+}
+
+/**
+ * Go to an address.
+ *
+ * The mesh underfoot is a couple of kilometres of a world sixty-seven thousand
+ * kilometres wide, so arriving somewhere means building the ground there. Which
+ * is cheap: the hills come out of hashed prefixes, and the same prefixes are
+ * asked for over and over, so most of the work is a cache lookup.
+ */
+/** How far off an address you are set down, so you can see what is on it. */
+const ALIGHT = 90;
+
+function arriveAt(x: number, z: number): void {
+  origin.x = x;
+  origin.z = z;
+  // beside the address rather than on it: arriving dead on one puts you inside
+  // whatever stands there, and the inside of a building is not drawn
+  player.x = 0;
+  player.z = ALIGHT;
+  player.yaw = 0;
+  player.pitch = -0.03;
+  ground = terrain(GROUND, 340, origin);
+  renderer.reshape(floor, ground.geometry);
+  player.y = ground.surfaceAt(player.x, player.z);
+  player.rise = 0;
+  settle();
+  coverage.recentreOn(x, z);
+  coverage.paint(x, z, OPENS_WITHIN, 1, OPENS_IN);
+}
+
+/** Where the walker is in the world, rather than in this patch. */
+function afoot(): { x: number; z: number } {
+  return { x: origin.x + player.x, z: origin.z + player.z };
+}
+
+/** And go to whatever an address holds, raising it if it is a thing. */
+async function travelTo(address: string): Promise<Structure | null> {
+  const at = offsetOf(address);
+  arriveAt(at.x, at.z);
+  const account = await accountAt(address);
+  if (!account) return null;
+  const structure = structureOf(account);
+  if (account.codeSize > 0) raise(structure);
+  settle();
+  return structure;
 }
 
 const walker = renderer.add(figure(), new Float32Array(9), true);
@@ -153,7 +229,10 @@ const GRAVITY = 21;
 const STEP_UP = 0.65;
 
 /** Whether the eye sits in the walker's head or behind their shoulder. */
-let overShoulder = false;
+let overShoulder = true;
+
+/** What you last travelled to, for the line along the bottom. */
+let arrived = '';
 
 function feet(): number {
   return player.y;
@@ -235,9 +314,10 @@ const OPENS_IN = 6;
 
 function uncover(seconds: number): void {
   if (!VEILED) return;
-  // one rate, always: running through leaves a faint trail, standing fills it
-  coverage.paint(player.x, player.z, OPENS_WITHIN, 1 / OPENS_IN, seconds);
-  coverage.follow(player.x, player.z, seconds);
+  // painted in the world's coordinates, so it is still there when you come back
+  const on = afoot();
+  coverage.paint(on.x, on.z, OPENS_WITHIN, 1 / OPENS_IN, seconds);
+  coverage.follow(on.x, on.z, seconds);
 }
 
 // you arrive somewhere you have already been: the spot you start on is open
@@ -257,7 +337,11 @@ const WALKING = new Set([
 ]);
 
 window.addEventListener('keydown', (event) => {
-  if (event.code === 'KeyV' && !event.repeat) overShoulder = !overShoulder;
+  // Ctrl+V to paste arrives as KeyV, and used to flip the camera mid-paste
+  const typing = document.activeElement instanceof HTMLInputElement;
+  const plain = !event.ctrlKey && !event.metaKey && !event.altKey && !typing;
+  if (event.code === 'KeyV' && plain && !event.repeat) overShoulder = !overShoulder;
+  if (typing) return;
   held.add(event.code);
   if (event.shiftKey) held.add('Shift');
   if (WALKING.has(event.code)) event.preventDefault();
@@ -404,11 +488,13 @@ loop({
         `${structures.length} standing · ${fps} fps · ${coverage.known} tiles known · ` +
         `${MADE_UP ? 'invented traffic' : `block ${traffic.block || '…'}`}, ` +
         `${traffic.flying} passing, ${traffic.queued} to come · ` +
-        `wasd to walk, shift to run, space to jump, ` +
+        `${arrived ? `at ${arrived} · ` : ''}` +
+        `wasd to walk, shift to run, space to jump, home to go back, ` +
         `v for ${overShoulder ? 'first person' : 'third person'}, drag to look`;
-      const away = Math.round(Math.hypot(player.x, player.z));
+      const on = afoot();
+      const away = Math.round(Math.hypot(on.x, on.z));
       place.textContent =
-        `${chain.name} · 0x${addressUnder(player.x, player.z)} · ${away} m from ${HOME.slice(0, 8)}… ${HOME === '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48' ? ' (usdc)' : ''}`;
+        `${chain.name} · 0x${addressUnder(on.x, on.z)} · ${away} m from ${HOME.slice(0, 8)}… ${HOME === '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48' ? ' (usdc)' : ''}`;
     }
   },
   draw() {
@@ -456,7 +542,7 @@ loop({
     const far = reach * 2.2;
     const light: Mat4 = multiply(orthographic(SHADOW_HALF, near, far), lookAt(from, focus));
 
-    const ribbons = traffic.build(player.x, player.y, player.z, landingAt);
+    const ribbons = traffic.build(player.x, player.y, player.z, origin, landingAt);
     renderer.traffic(ribbons.vertices, ribbons.count);
 
     renderer.draw(
@@ -466,6 +552,85 @@ loop({
       light,
       SHADOWED ? { metres: SHADOW_HALF * 2, range: far - near } : null,
       VEILED ? coverage : null,
+      origin,
     );
   },
 });
+
+
+/**
+ * Going somewhere.
+ *
+ * Walking is for the couple of kilometres around you. Everything else is a long
+ * way off — the plots mined so far landed thirty thousand kilometres from home
+ * — so an address is how you travel, exactly as it is on the map.
+ */
+const where = going.querySelector<HTMLInputElement>('input')!;
+
+going.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const typed = where.value.trim();
+  if (!typed) return;
+
+  const complain = (why: string) => {
+    where.setCustomValidity(why);
+    where.reportValidity();
+  };
+
+  let address: string;
+  where.disabled = true;
+  try {
+    if (looksLikeName(typed)) {
+      const resolved = await resolveName(typed);
+      if (!resolved) {
+        complain(`${typed} does not point at an address`);
+        return;
+      }
+      address = resolved;
+    } else {
+      try {
+        address = normalizeAddress(typed);
+      } catch {
+        complain('that is neither an address nor a name');
+        return;
+      }
+    }
+  } finally {
+    where.disabled = false;
+  }
+
+  where.value = '';
+  where.setCustomValidity('');
+  where.blur();
+  const found = await travelTo(address);
+  arrived = found ? `${address.slice(0, 10)}…` : `${address.slice(0, 10)}… (empty ground)`;
+});
+
+window.addEventListener('keydown', (event) => {
+  if (event.code !== 'Home' || document.activeElement === where) return;
+  event.preventDefault();
+  void travelTo(HOME);
+  arrived = '';
+});
+
+
+/**
+ * Arriving by link.
+ *
+ * A place is a link here as much as on the map — `?at=0x…` puts you on that
+ * ground, which is the only way to show anybody a plot thirty thousand
+ * kilometres from home.
+ */
+const asked = new URLSearchParams(location.search).get('at');
+if (asked) {
+  void (async () => {
+    try {
+      const address = looksLikeName(asked) ? await resolveName(asked) : normalizeAddress(asked);
+      if (!address) return;
+      const found = await travelTo(address);
+      arrived = found ? `${address.slice(0, 10)}…` : `${address.slice(0, 10)}… (empty ground)`;
+    } catch {
+      // a link with nonsense in it just leaves you at home
+    }
+  })();
+}

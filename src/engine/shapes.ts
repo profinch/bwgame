@@ -52,20 +52,35 @@ export interface Terrain {
   surfaceAt(x: number, z: number): number;
 }
 
-/** A height field, `size` across, `segments` squares to a side. */
-export function terrain(size: number, segments: number): Terrain {
+/**
+ * A height field, `size` across, `segments` squares to a side.
+ *
+ * The world is 67,000 km wide and this mesh is a couple of kilometres, so it is
+ * not the world — it is the piece of it you are standing on, and it has to be
+ * built again when you go somewhere else.
+ *
+ * Its vertices are laid out around zero and the heights are sampled at
+ * `around` plus that. Everything drawn is therefore near the origin, whatever
+ * corner of the world it came from — a single-precision float has about a metre
+ * and a half of resolution at seventeen million, and a mesh whose steps are five
+ * metres tears itself to pieces at that scale. Ask a card to draw far from zero
+ * and it does not draw far, it draws wrong.
+ */
+export function terrain(size: number, segments: number, around = { x: 0, z: 0 }): Terrain {
   const positions = new Float32Array((segments + 1) ** 2 * 3);
   const normals = new Float32Array((segments + 1) ** 2 * 3);
   const indices = new Uint32Array(segments * segments * 6);
   const step = size / segments;
   const half = size / 2;
+  const originX = around.x;
+  const originZ = around.z;
 
   // heights first, then slopes read off the grid: asking the hash again for
   // every neighbour costs five times as much and says the same thing
   const field = new Float32Array((segments + 1) ** 2);
   for (let row = 0; row <= segments; row++) {
     for (let col = 0; col <= segments; col++) {
-      field[row * (segments + 1) + col] = heightAt(-half + col * step, -half + row * step);
+      field[row * (segments + 1) + col] = heightAt(originX - half + col * step, originZ - half + row * step);
     }
   }
 
@@ -103,6 +118,7 @@ export function terrain(size: number, segments: number): Terrain {
     }
   }
 
+  /** Takes a point in the patch's own coordinates, not the world's. */
   const surfaceAt = (x: number, z: number): number => {
     const col = (x + half) / step;
     const row = (z + half) / step;

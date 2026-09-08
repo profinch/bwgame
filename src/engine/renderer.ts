@@ -33,6 +33,8 @@ export interface Sky {
 interface Batch {
   vao: WebGLVertexArrayObject;
   buffer: WebGLBuffer;
+  /** The shape's own buffers, kept so the ground can be rebuilt elsewhere. */
+  shape?: { positions: WebGLBuffer; normals: WebGLBuffer; elements: WebGLBuffer };
   /** Floats the instance buffer has room for, which may be more than are used. */
   room: number;
   count: number;
@@ -141,13 +143,15 @@ export class Renderer {
 
     const attribute = (index: number, data: Float32Array, size: number) => {
       const buffer = gl.createBuffer();
+      if (!buffer) throw new Error('no attribute buffer');
       gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
       gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW);
       gl.enableVertexAttribArray(index);
       gl.vertexAttribPointer(index, size, gl.FLOAT, false, 0, 0);
+      return buffer;
     };
-    attribute(0, geometry.positions, 3);
-    attribute(1, geometry.normals, 3);
+    const positions = attribute(0, geometry.positions, 3);
+    const normals = attribute(1, geometry.normals, 3);
 
     const perInstance = gl.createBuffer();
     if (!perInstance) throw new Error('no instance buffer');
@@ -164,6 +168,7 @@ export class Renderer {
     slot(4, 3, 24); // turn, albedo, roughness
 
     const elements = gl.createBuffer();
+    if (!elements) throw new Error('no element buffer');
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, elements);
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, geometry.indices, gl.STATIC_DRAW);
     gl.bindVertexArray(null);
@@ -171,11 +176,29 @@ export class Renderer {
     this.batches.push({
       vao,
       buffer: perInstance,
+      shape: { positions, normals, elements },
       room: instances.length,
       count: geometry.indices.length,
       instances: instances.length / INSTANCE_FLOATS,
     });
     return this.batches.length - 1;
+  }
+
+  /**
+   * Rewrite a batch's shape — for the ground, which is only ever the piece you
+   * are standing on and has to be built again when you go somewhere else.
+   */
+  reshape(batch: number, geometry: Geometry): void {
+    const gl = this.gl;
+    const found = this.batches[batch];
+    if (!found?.shape) return;
+    gl.bindBuffer(gl.ARRAY_BUFFER, found.shape.positions);
+    gl.bufferData(gl.ARRAY_BUFFER, geometry.positions, gl.STATIC_DRAW);
+    gl.bindBuffer(gl.ARRAY_BUFFER, found.shape.normals);
+    gl.bufferData(gl.ARRAY_BUFFER, geometry.normals, gl.STATIC_DRAW);
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, found.shape.elements);
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, geometry.indices, gl.STATIC_DRAW);
+    found.count = geometry.indices.length;
   }
 
   /**
@@ -217,6 +240,8 @@ export class Renderer {
     lightSpan: { metres: number; range: number } | null,
     /** The map of what has been uncovered, or null while the veil is off. */
     coverage: Coverage | null = null,
+    /** The middle of the patch, in world metres; everything drawn is relative to it. */
+    origin: { x: number; z: number } = { x: 0, z: 0 },
   ): void {
     const gl = this.gl;
 
@@ -260,7 +285,13 @@ export class Renderer {
       gl.activeTexture(gl.TEXTURE1);
       gl.bindTexture(gl.TEXTURE_2D, coverage.texture);
       gl.uniform1i(set.get('coverage')!, 1);
-      gl.uniform2f(set.get('coverageOrigin')!, coverage.origin.x, coverage.origin.z);
+      // the coverage map is kept in the world's coordinates and sampled in the
+      // patch's, so its corner has to be brought across
+      gl.uniform2f(
+        set.get('coverageOrigin')!,
+        coverage.origin.x - origin.x,
+        coverage.origin.z - origin.z,
+      );
       gl.uniform1f(set.get('coverageSpan')!, coverage.span);
     }
     gl.activeTexture(gl.TEXTURE0);
