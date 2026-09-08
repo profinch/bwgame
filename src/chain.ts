@@ -6,6 +6,7 @@
  * lookups and nowhere near enough for a crowd — that is what an indexer is for.
  */
 import { chain } from './chains';
+import type { Holding } from './places';
 
 /** A JSON-RPC call against the first gateway that answers, or null. */
 export async function rpc<T>(method: string, params: unknown[]): Promise<T | null> {
@@ -64,6 +65,93 @@ export async function accountAt(address: string): Promise<Account | null> {
     balance: balance ? BigInt(balance) : 0n,
     nonce: nonce ? Number(BigInt(nonce)) : 0,
   };
+}
+
+/**
+ * What an account holds.
+ *
+ * From the chain's indexer if it has one, which knows every token that ever
+ * moved; otherwise one `balanceOf` and one `totalSupply` a token off the
+ * chain's short list, which knows the few that most balances are in. The
+ * supply is asked for either way, because a number of tokens on its own says
+ * nothing: a million is a fortune or a rounding error depending on how many
+ * were ever minted.
+ *
+ * Whatever cannot be found is not guessed at. A stone says what was answered.
+ */
+export async function holdingsOf(address: string): Promise<Holding[]> {
+  const indexed = chain.indexer ? await fromIndexer(address) : null;
+  return indexed ?? (await fromTokenList(address));
+}
+
+/** How many tokens one wallet is asked about at once. */
+const AT_MOST = 600;
+
+/** What an indexer says a wallet holds: every token, not a chosen few. */
+async function fromIndexer(address: string): Promise<Holding[] | null> {
+  try {
+    const response = await fetch(
+      `${chain.indexer}/api/v2/addresses/${address}/token-balances`,
+      { headers: { accept: 'application/json' } },
+    );
+    if (!response.ok) return null;
+    const rows = (await response.json()) as {
+      value?: string;
+      token?: { type?: string; symbol?: string; decimals?: string; total_supply?: string };
+    }[];
+    if (!Array.isArray(rows)) return null;
+
+    const held: Holding[] = [];
+    for (const row of rows.slice(0, AT_MOST)) {
+      const token = row.token;
+      // only what a post can stand for: a fungible amount of something
+      if (!token || token.type !== 'ERC-20' || !token.symbol || !row.value) continue;
+      const amount = BigInt(row.value);
+      if (amount <= 0n) continue;
+      held.push({
+        symbol: token.symbol,
+        amount,
+        decimals: Number(token.decimals ?? 18),
+        supply: token.total_supply ? BigInt(token.total_supply) : undefined,
+      });
+    }
+    return held;
+  } catch {
+    // no indexer answering: the short list, then
+    return null;
+  }
+}
+
+/** The few tokens the chain keeps a list of, asked one at a time. */
+async function fromTokenList(address: string): Promise<Holding[]> {
+  const tokens = chain.tokens ?? [];
+  const word = address.replace(/^0x/, '').toLowerCase().padStart(64, '0');
+  const answers = await Promise.all(
+    tokens.flatMap((token) => [call(token.at, `0x70a08231${word}`), call(token.at, '0x18160ddd')]),
+  );
+  const held: Holding[] = [];
+  for (let i = 0; i < tokens.length; i++) {
+    const amount = readNumber(answers[i * 2]);
+    if (amount === null || amount === 0n) continue;
+    const supply = readNumber(answers[i * 2 + 1]);
+    held.push({
+      symbol: tokens[i]!.symbol,
+      amount,
+      decimals: tokens[i]!.decimals,
+      supply: supply ?? undefined,
+    });
+  }
+  return held;
+}
+
+/** A returned word as a number, or null if nothing came back. */
+export function readNumber(result: string | null | undefined): bigint | null {
+  if (!result || result.length < 66) return null;
+  try {
+    return BigInt(result.slice(0, 66));
+  } catch {
+    return null;
+  }
 }
 
 /** The last twenty bytes of a returned word, as an address. */
