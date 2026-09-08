@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { HOME } from '../src/engine/land';
+import { HOME, offsetOf } from '../src/engine/land';
 import { HORIZON, Traffic } from '../src/engine/traffic';
 
 /** The patch these tests are standing in: the middle of the world's own grid. */
@@ -27,6 +27,31 @@ function vertices(built: { vertices: Float32Array; count: number }) {
 }
 
 describe('traffic', () => {
+  /**
+   * The ends are folded around the viewer and drawn in the patch, and the two
+   * are a walk apart. Left unconverted, every streak came down as far from the
+   * address as the viewer was from the middle of the patch — which is exactly
+   * how far you stand off an address when you arrive at one.
+   */
+  it('lands on the address, wherever the viewer is standing in the patch', () => {
+    const here = offsetOf(WETH);
+    for (const stand of [
+      { x: 0, z: 0 },
+      { x: 14, z: -30 },
+      { x: -45, z: 60 },
+    ]) {
+      const traffic = new Traffic();
+      traffic.arrive(block([{ from: USDC, to: WETH, ok: true }]));
+      for (let i = 0; i < 14; i++) traffic.step(0.25);
+      const built = traffic.build(stand.x, 1.7, stand.z, here, () => 2);
+      const last = vertices(built).at(-1)!;
+      // the far end of the run is the address itself, at the top of what stands
+      // on it rather than at the dirt beside it
+      expect(Math.hypot(last.x, last.z)).toBeLessThan(1.5);
+      expect(last.y).toBeCloseTo(2, 1);
+    }
+  });
+
   it('queues a block rather than tipping it into the sky at once', () => {
     const traffic = new Traffic();
     traffic.arrive(block([{ from: USDC, to: WETH, ok: true }]));

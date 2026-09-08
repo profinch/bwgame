@@ -43,7 +43,14 @@ export interface Passing {
 
 export interface BlockTraffic {
   number: number;
-  passing: { from: string; to: string; ok: boolean }[];
+  passing: Moved[];
+}
+
+/** One movement between two addresses. */
+export interface Moved {
+  from: string;
+  to: string;
+  ok: boolean;
 }
 
 /** How long a good streak lives, and how long its head takes to cross. */
@@ -104,7 +111,7 @@ const SLOT = 12;
 
 export class Traffic {
   private streaks: Passing[] = [];
-  private waiting: { from: string; to: string; ok: boolean }[] = [];
+  private waiting: Moved[] = [];
   private pace = 0;
   private owed = 0;
   private lastBlock = 0;
@@ -134,7 +141,7 @@ export class Traffic {
     this.owed = 0;
   }
 
-  private launch(one: { from: string; to: string; ok: boolean }): void {
+  private launch(one: Moved): void {
     const a = offsetOf(one.from);
     const b = offsetOf(one.to);
     let seed = 0;
@@ -236,6 +243,7 @@ export class Traffic {
       const sky = ALTITUDE * (0.35 + Traffic.wobble(streak.seed, 0) * 1.5);
       const reach = HORIZON * (0.5 + Traffic.wobble(streak.seed, 1) * 0.5);
 
+      // both ends in the patch's metres, then folded around the viewer
       const a = this.fold(streak.ax - origin.x, streak.az - origin.z, vx, vz, reach);
       const b = this.fold(streak.bx - origin.x, streak.bz - origin.z, vx, vz, reach);
       const runX = b.x - a.x;
@@ -300,8 +308,11 @@ export class Traffic {
         // enough either way that no part of it is drawn in straight pieces.
         const crowded = 0.5 - 0.5 * Math.cos(Math.PI * even);
         const t = (even * 0.45 + crowded * 0.55) * head;
-        let x = a.x + runX * t;
-        let z = a.z + runZ * t;
+        // folded around the viewer, drawn in the patch: the two are a walk
+        // apart, and left unconverted every streak lands that far off the
+        // address it belongs to
+        let x = vx + a.x + runX * t;
+        let z = vz + a.z + runZ * t;
         let y = rise(t);
 
         // Bright at the head, lighter behind it, and the whole thing fading out.
