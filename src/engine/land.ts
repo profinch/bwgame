@@ -126,8 +126,51 @@ function ease(t: number): number {
   return t * t * (3 - 2 * t);
 }
 
-/** How high the ground stands at a point. */
-export function heightAt(x: number, z: number): number {
+/**
+ * Ground somebody levelled.
+ *
+ * Land here is hashed out of address prefixes and is therefore never flat, and
+ * a stone laid on a slope either has the hill coming up through it or stands on
+ * a wall of its own foundation — which you then cannot walk up to. Real ground
+ * gets levelled before anything is built on it, so this world levels it too:
+ * a claimed address is a flat pad with the hill ramped down to it over a few
+ * metres. The hash still decides where the hills are; this only says that
+ * somebody took a shovel to one spot.
+ */
+export interface Flat {
+  x: number;
+  z: number;
+  halfWide: number;
+  halfDeep: number;
+  level: number;
+}
+
+/** How far out the ground ramps to meet a levelled pad. */
+const RAMP = 5;
+
+const flats: Flat[] = [];
+
+/** Level the ground over a pad. Nothing happens twice in the same place. */
+export function levelOff(flat: Flat): void {
+  const already = flats.findIndex(
+    (was) => Math.abs(was.x - flat.x) < 0.5 && Math.abs(was.z - flat.z) < 0.5,
+  );
+  if (already >= 0) flats[already] = flat;
+  else flats.push(flat);
+}
+
+/** Whether anything has been levelled at all, which is usually not the case. */
+export function levelled(): number {
+  return flats.length;
+}
+
+/** Forget every pad. For tests, and for starting a world over. */
+export function unlevel(): void {
+  flats.length = 0;
+}
+
+/** How high the ground stands at a point, before anybody levelled it. */
+export function rawHeightAt(x: number, z: number): number {
   let sum = 0;
   for (let i = 0; i < OCTAVES.length; i++) {
     const octave = OCTAVES[i]!;
@@ -145,6 +188,27 @@ export function heightAt(x: number, z: number): number {
     sum += (top + (bottom - top) * fz - 0.5) * octave.height;
   }
   return sum;
+}
+
+/**
+ * How high the ground stands at a point.
+ *
+ * The hashed land, and then any pad somebody levelled: flat over the pad, and
+ * eased from the hill to it over the ramp, so you can walk on from any side.
+ */
+export function heightAt(x: number, z: number): number {
+  const raw = rawHeightAt(x, z);
+  if (flats.length === 0) return raw;
+  let height = raw;
+  for (const flat of flats) {
+    const outX = Math.max(0, Math.abs(x - flat.x) - flat.halfWide);
+    const outZ = Math.max(0, Math.abs(z - flat.z) - flat.halfDeep);
+    const out = Math.hypot(outX, outZ);
+    if (out >= RAMP) continue;
+    const pull = ease(1 - out / RAMP);
+    height = height + (flat.level - height) * pull;
+  }
+  return height;
 }
 
 /**
