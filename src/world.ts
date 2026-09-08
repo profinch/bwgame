@@ -19,11 +19,14 @@ import { loop } from './engine/loop';
 import { Coverage } from './engine/coverage';
 import { Renderer, once, type Sky } from './engine/renderer';
 import { HOME, addressUnder } from './engine/land';
-import { box, figure, terrain } from './engine/shapes';
+import { box, figure, groundUnder, terrain } from './engine/shapes';
 import { Traffic, pollBlocks } from './engine/traffic';
+import { accountAt } from './chain';
+import { type Structure, instancesOf, structureOf } from './places';
+import type { Obstacle } from './obstacles';
 import { LANDMARKS } from './landmarks';
 import { mark } from './logo';
-import { massCount, patch } from './scene';
+
 
 const canvas = document.querySelector<HTMLCanvasElement>('#view');
 const stat = document.querySelector<HTMLElement>('.stat');
@@ -34,44 +37,56 @@ badge.innerHTML = mark({ size: 20, rows: 7 });
 
 const GROUND = 1700;
 const ground = terrain(GROUND, 340);
-const world = patch(ground.surfaceAt, GROUND / 5);
 const renderer = new Renderer(canvas);
 renderer.add(ground.geometry, once(0.34, 1));
-// blocks for now: what stands here should be worked out from what an account is
-for (let shape = 0; shape < world.shapes; shape++) {
-  renderer.add(box(), world.masses[shape]!);
+
+/**
+ * What stands in the world, and nothing else does.
+ *
+ * There is no scenery. Every structure is an account, read off the chain, so an
+ * empty stretch of ground is genuinely empty — which is what nearly all of the
+ * address space is. What fills it later is people: ground somebody mined a place
+ * for and put a contract on.
+ */
+const structures: Structure[] = [];
+const obstacles: Obstacle[] = [];
+const built = renderer.add(box(), new Float32Array(0), true);
+
+/** Where a structure's floor sits: the lowest ground its footprint covers. */
+function baseOf(structure: Structure): number {
+  const reach = Math.max(structure.wide, structure.deep) / 2;
+  return groundUnder(ground.surfaceAt, structure.x, structure.z, reach, structure.turn)
+    - structure.tall * 0.04;
 }
 
-// the address this patch is built around, standing at its own coordinates
-const HOME_SIZE = 22;
-renderer.add(
-  box(),
-  new Float32Array([
-    0,
-    ground.surfaceAt(0, 0) - 1.5,
-    0,
-    HOME_SIZE,
-    HOME_SIZE * 2.6,
-    HOME_SIZE,
-    0,
-    0.78,
-    0.35,
-  ]),
-);
-world.obstacles.push({
-  x: 0,
-  z: 0,
-  halfWide: HOME_SIZE / 2,
-  halfDeep: HOME_SIZE / 2,
-  turn: 0,
-  top: ground.surfaceAt(0, 0) - 1.5 + HOME_SIZE * 2.6,
-});
+function raise(structure: Structure): void {
+  structures.push(structure);
+  const base = baseOf(structure);
+  obstacles.push({
+    x: structure.x,
+    z: structure.z,
+    halfWide: structure.wide / 2,
+    halfDeep: structure.deep / 2,
+    turn: structure.turn,
+    top: base + structure.tall,
+  });
+  renderer.update(built, instancesOf(structures, baseOf));
+}
 
 const walker = renderer.add(figure(), new Float32Array(9), true);
 /** Feet in world height, not height above the ground: you can be on a roof. */
 const player = { x: 0, z: 150, y: 0, yaw: 0, pitch: -0.03, rise: 0 };
 
 const coverage = new Coverage(renderer.gl, { x: player.x, z: player.z });
+
+/**
+ * The address this patch is named after, built from what it is: how much code
+ * it carries, what that code hashes to, what it holds. It arrives a moment
+ * after the page does, because it has to be asked for.
+ */
+void accountAt(HOME).then((account) => {
+  if (account) raise(structureOf(account));
+});
 
 /**
  * The chain overhead. The source is behind an interface on purpose: polling a
@@ -150,7 +165,7 @@ function head(): [number, number, number] {
 }
 
 /** Whether a point is over a block's footprint, in that block's own frame. */
-function over(block: (typeof world.obstacles)[number], x: number, z: number, margin = 0): boolean {
+function over(block: (typeof obstacles)[number], x: number, z: number, margin = 0): boolean {
   const c = Math.cos(block.turn);
   const s = Math.sin(block.turn);
   const dx = x - block.x;
@@ -165,7 +180,7 @@ function over(block: (typeof world.obstacles)[number], x: number, z: number, mar
  * Nothing there means the ground itself.
  */
 function landingAt(x: number, z: number): number {
-  for (const block of world.obstacles) {
+  for (const block of obstacles) {
     if (over(block, x, z)) return block.top;
   }
   return ground.surfaceAt(x, z);
@@ -174,7 +189,7 @@ function landingAt(x: number, z: number): number {
 /** The highest thing underfoot: the ground, or the roof of whatever you are on. */
 function supportAt(x: number, z: number, from: number): number {
   let floor = ground.surfaceAt(x, z);
-  for (const block of world.obstacles) {
+  for (const block of obstacles) {
     if (block.top <= floor || block.top > from + STEP_UP) continue;
     if (over(block, x, z)) floor = Math.max(floor, block.top);
   }
@@ -303,7 +318,7 @@ function clearOf(startX: number, startZ: number): { x: number; z: number } {
   for (let pass = 0; pass < SETTLE; pass++) {
     let moved = false;
 
-    for (const block of world.obstacles) {
+    for (const block of obstacles) {
       // anything you are level with the top of is a step, not a wall
       if (block.top <= player.y + STEP_UP) continue;
       const c = Math.cos(block.turn);
@@ -371,7 +386,7 @@ function walk(seconds: number): void {
 
 let frames = 0;
 let since = 0;
-const masses = massCount(world);
+
 
 loop({
   step(seconds) {
@@ -387,7 +402,7 @@ loop({
       frames = 0;
       since = 0;
       stat.textContent =
-        `${masses} masses · ${fps} fps · ${coverage.known} tiles known · ` +
+        `${structures.length} standing · ${fps} fps · ${coverage.known} tiles known · ` +
         `${MADE_UP ? 'invented traffic' : `block ${traffic.block || '…'}`}, ` +
         `${traffic.flying} passing, ${traffic.queued} to come · ` +
         `wasd to walk, shift to run, space to jump, ` +

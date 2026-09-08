@@ -34,6 +34,34 @@ export async function call(to: string, data: string): Promise<string | null> {
 
 export const ZERO = `0x${'0'.repeat(40)}`;
 
+/** What an account is, as far as a couple of reads can say. */
+export interface Account {
+  address: string;
+  /** Bytes of code. Zero means a wallet rather than a contract. */
+  codeSize: number;
+  /** The code itself, which is what gives a thing its shape. */
+  code: string;
+  /** In wei. */
+  balance: bigint;
+}
+
+/** Ask the chain what stands at an address. Null if nothing answered. */
+export async function accountAt(address: string): Promise<Account | null> {
+  const at = `0x${address.replace(/^0x/, '')}`;
+  const [code, balance] = await Promise.all([
+    rpc<string>('eth_getCode', [at, 'latest']),
+    rpc<string>('eth_getBalance', [at, 'latest']),
+  ]);
+  if (code === null) return null;
+  const body = code.replace(/^0x/, '');
+  return {
+    address: at,
+    codeSize: body.length / 2,
+    code: body,
+    balance: balance ? BigInt(balance) : 0n,
+  };
+}
+
 /** The last twenty bytes of a returned word, as an address. */
 export function readAddress(result: string | null): string | null {
   if (!result || result.length < 66) return null;

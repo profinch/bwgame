@@ -33,6 +33,8 @@ export interface Sky {
 interface Batch {
   vao: WebGLVertexArrayObject;
   buffer: WebGLBuffer;
+  /** Floats the instance buffer has room for, which may be more than are used. */
+  room: number;
   count: number;
   instances: number;
 }
@@ -169,19 +171,31 @@ export class Renderer {
     this.batches.push({
       vao,
       buffer: perInstance,
+      room: instances.length,
       count: geometry.indices.length,
       instances: instances.length / INSTANCE_FLOATS,
     });
     return this.batches.length - 1;
   }
 
-  /** Rewrite a batch's instances — for the walker, which is somewhere new every frame. */
+  /**
+   * Rewrite a batch's instances — for the walker, who is somewhere new every
+   * frame, and for the structures, which arrive as the chain answers.
+   *
+   * The buffer is grown when it has to be. Writing into one that was allocated
+   * empty writes nowhere at all, silently, which looks exactly like a building
+   * that was read from the chain and then failed to appear.
+   */
   update(batch: number, instances: Float32Array): void {
     const gl = this.gl;
     const found = this.batches[batch];
     if (!found) return;
     gl.bindBuffer(gl.ARRAY_BUFFER, found.buffer);
-    gl.bufferSubData(gl.ARRAY_BUFFER, 0, instances);
+    if (instances.length > found.room) {
+      found.room = Math.max(instances.length * 2, INSTANCE_FLOATS * 8);
+      gl.bufferData(gl.ARRAY_BUFFER, found.room * 4, gl.DYNAMIC_DRAW);
+    }
+    if (instances.length > 0) gl.bufferSubData(gl.ARRAY_BUFFER, 0, instances);
     found.instances = instances.length / INSTANCE_FLOATS;
   }
 
