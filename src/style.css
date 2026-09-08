@@ -417,3 +417,52 @@ body.world {
   opacity: 0.5;
   cursor: progress;
 }
+
+/* taking ground, from inside the world */
+
+.hud.claim {
+  top: auto;
+  left: auto;
+  right: 18px;
+  bottom: 18px;
+  pointer-events: auto;
+  max-width: 34ch;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--line) 22%, transparent);
+  background: color-mix(in srgb, var(--panel) 82%, transparent);
+  display: grid;
+  gap: 6px;
+}
+
+.hud.claim p {
+  margin: 0;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: #2a2a28;
+}
+
+.hud.claim .claim-count {
+  font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  color: #4a4a48;
+  white-space: pre-line;
+}
+
+.hud.claim button {
+  padding: 5px 10px;
+  border: 1px solid color-mix(in srgb, var(--line) 30%, transparent);
+  background: transparent;
+  color: var(--fg);
+  font: inherit;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+}
+
+.hud.claim button:hover {
+  border-color: var(--fg);
+}
+
+.hud.claim button:disabled {
+  opacity: 0.45;
+  cursor: progress;
+}

@@ -26,6 +26,7 @@ import { type Account, accountAt, holdingsOf } from './chain';
 import { normalizeAddress } from './coord';
 import { looksLikeName, resolveName } from './ens';
 import { type Structure, instancesOf, standingOn, stands, structureOf } from './places';
+import { takeGround } from './taking';
 import type { Obstacle } from './obstacles';
 import { mark } from './logo';
 
@@ -35,7 +36,9 @@ const stat = document.querySelector<HTMLElement>('.stat');
 const place = document.querySelector<HTMLElement>('.place');
 const badge = document.querySelector<HTMLElement>('.mark');
 const going = document.querySelector<HTMLFormElement>('.go');
-if (!canvas || !stat || !place || !badge || !going) throw new Error('the page is missing its parts');
+const claiming = document.querySelector<HTMLElement>('.claim');
+if (!canvas || !stat || !place || !badge || !going || !claiming)
+  throw new Error('the page is missing its parts');
 badge.innerHTML = mark({ size: 20, rows: 7 });
 
 const GROUND = 1700;
@@ -212,8 +215,20 @@ function afoot(): { x: number; z: number } {
   return { x: origin.x + player.x, z: origin.z + player.z };
 }
 
+/**
+ * Taking the ground you are standing on.
+ *
+ * Aimed wherever the walker is when the digging starts, and stopped whenever
+ * the walker leaves — a search aimed at a place you are no longer standing in
+ * is work spent on somebody else's view.
+ */
+const taking = takeGround(claiming, afoot, (plot) => {
+  void travelTo(plot);
+});
+
 /** And go to whatever an address holds, raising it if it is a thing. */
 async function travelTo(address: string): Promise<Structure | null> {
+  taking.stop();
   const at = offsetOf(address);
   arriveAt(at.x, at.z);
   const account = await accountAt(address);

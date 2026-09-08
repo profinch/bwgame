@@ -15,6 +15,8 @@
 export interface Chain {
   key: string;
   name: string;
+  /** What a wallet calls this chain, for asking it to switch. */
+  id: number;
   /** Public gateways, tried in order. No keys, CORS open. */
   rpcs: string[];
   /** What the world is built around here, unless `?home=` says otherwise. */
@@ -60,6 +62,7 @@ export const CHAINS: Record<string, Chain> = {
   mainnet: {
     key: 'mainnet',
     name: 'ethereum',
+    id: 1,
     rpcs: ['https://ethereum-rpc.publicnode.com', 'https://eth.drpc.org'],
     // where the traffic actually lands: some forty transactions a block, more
     // than anything else on the chain
@@ -79,6 +82,7 @@ export const CHAINS: Record<string, Chain> = {
   sepolia: {
     key: 'sepolia',
     name: 'sepolia',
+    id: 11155111,
     rpcs: [
       'https://ethereum-sepolia-rpc.publicnode.com',
       'https://sepolia.gateway.tenderly.co',
@@ -101,6 +105,7 @@ export const CHAINS: Record<string, Chain> = {
   bsc: {
     key: 'bsc',
     name: 'bnb chain',
+    id: 56,
     rpcs: ['https://bsc-rpc.publicnode.com', 'https://binance.llamarpc.com'],
     // the busiest thing on the chain: the Pancake V2 router, which nearly
     // everything else on it goes through
