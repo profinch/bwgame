@@ -10,6 +10,12 @@
  * landing within a tenth of the distance costs a hundred times the attempts.
  * Nobody buys the good spots; they are computed.
  *
+ * So there is no threshold to reach and nothing to wait for. Every attempt is
+ * either better than the best so far or it is not, and whatever the best is
+ * when you stop is what you may claim: an hour buys a plot in sight of where
+ * you stood, a night buys one you can walk to in a minute. Work is not spent
+ * to unlock a place — it *is* the distance.
+ *
  * The first twenty bytes of a salt must be the owner's own address, which the
  * factory checks. That makes a found salt useless to anybody watching the
  * mempool, and it keeps the search to one hash per attempt.
@@ -64,8 +70,8 @@ export interface Dig {
   codeHash: string;
   /** Where you want to stand, in metres from home. */
   target: Ground;
-  /** How near is near enough. */
-  within: number;
+  /** Near enough to stop early. Left off, it digs until it is told to stop. */
+  within?: number;
   /** Attempts before handing control back, so a worker can be told to stop. */
   batch?: number;
 }
@@ -90,7 +96,7 @@ export function dig(
   /** Where to start counting from, so several workers can share the search. */
   from = 0n,
   step = 1n,
-): { found: Found | null; tries: number; next: bigint } {
+): { best: Found | null; close: boolean; tries: number; next: bigint } {
   const factory = bytesOf(spec.factory);
   const owner = bytesOf(spec.owner);
   const codeHash = bytesOf(spec.codeHash);
@@ -104,6 +110,7 @@ export function dig(
   const tail = new DataView(work.buffer, 41, 12); // the twelve bytes we vary
   const batch = spec.batch ?? 200_000;
   let counter = from;
+  let best: Found | null = null;
 
   for (let i = 0; i < batch; i++) {
     tail.setUint32(4, Number(counter >> 32n) >>> 0);
@@ -114,21 +121,21 @@ export function dig(
     const ground = groundOf(address);
     const away = Math.hypot(ground.x - spec.target.x, ground.z - spec.target.z);
 
-    if (away <= spec.within) {
-      return {
-        found: {
-          salt: hexOf(work.subarray(21, 53)),
-          address: hexOf(address),
-          ground,
-          away,
-          tries: i + 1,
-        },
+    if (best === null || away < best.away) {
+      best = {
+        salt: hexOf(work.subarray(21, 53)),
+        address: hexOf(address),
+        ground,
+        away,
         tries: i + 1,
-        next: counter + step,
       };
+      // near enough to stop for, if the caller said what near enough is
+      if (spec.within !== undefined && away <= spec.within) {
+        return { best, close: true, tries: i + 1, next: counter + step };
+      }
     }
     counter += step;
   }
 
-  return { found: null, tries: batch, next: counter };
+  return { best, close: false, tries: batch, next: counter };
 }

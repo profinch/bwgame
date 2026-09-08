@@ -107,7 +107,7 @@ async function main() {
       const round = dig(hash, { factory, owner: owners[n]!, codeHash, target, within }, from);
       tries += round.tries;
       from = round.next;
-      found = round.found;
+      if (round.close) found = round.best;
     }
 
     const seconds = (Date.now() - started) / 1000;
