@@ -13,6 +13,9 @@ build/
 out/
 cache/
 broadcast/
+contracts/out/
+contracts/cache/
+contracts/lib/
 
 # editors
 .idea/
