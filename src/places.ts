@@ -15,7 +15,22 @@ import type { Account } from './chain';
 import { INSTANCE_FLOATS } from './engine/renderer';
 import { offsetOf } from './engine/land';
 
+/**
+ * What kind of thing stands here.
+ *
+ * A contract is a thing: it has code, behaviour, bulk, and a building is the
+ * right shape for it. A wallet is not a thing but a key — no code, no behaviour
+ * — so it gets a stone instead: somebody's mark on the ground rather than
+ * something built on it. Built is angular, left behind is rounded, and the
+ * difference reads at a glance.
+ *
+ * An address nobody has ever touched gets neither, because there is nothing
+ * there. Most of them are like that.
+ */
+export type Kind = 'built' | 'stone';
+
 export interface Structure {
+  kind: Kind;
   address: string;
   /** Where it stands, in metres from home. */
   x: number;
@@ -48,12 +63,32 @@ export function structureOf(account: Account): Structure {
   const at = offsetOf(account.address);
   const seed = seedOf(account);
   const byte = (i: number) => seed[i % 32]! / 255;
+  const held = Number(account.balance / 10n ** 15n) / 1000; // in ether, roughly
+
+  if (account.codeSize === 0) {
+    // a wallet: how much it holds gives its size, how much it has done its wear
+    const weight = Math.log10(1 + held) / 3;
+    const worn = Math.min(1, Math.log10(1 + account.nonce) / 4);
+    const size = 2.5 + weight * 22;
+    return {
+      kind: 'stone',
+      address: account.address,
+      x: at.x,
+      z: at.z,
+      wide: size * (0.8 + byte(0) * 0.5),
+      deep: size * (0.8 + byte(1) * 0.5),
+      tall: size * (0.5 + byte(2) * 0.7),
+      turn: byte(3) * Math.PI * 2,
+      albedo: 0.62 - worn * 0.34,
+      roughness: 0.6 + byte(4) * 0.35,
+    };
+  }
 
   // code size runs from a few hundred bytes to about twenty five thousand
   const bulk = Math.log2(Math.max(64, account.codeSize)) / Math.log2(24576);
-  const held = Number(account.balance / 10n ** 15n) / 1000; // in ether, roughly
 
   return {
+    kind: 'built',
     address: account.address,
     x: at.x,
     z: at.z,
@@ -86,6 +121,11 @@ export function instanceOf(structure: Structure, base: number, origin = { x: 0, 
     structure.albedo,
     structure.roughness,
   ]);
+}
+
+/** Whether an account leaves anything on the ground at all. */
+export function stands(account: Account): boolean {
+  return account.codeSize > 0 || account.balance > 0n || account.nonce > 0;
 }
 
 export function instancesOf(

@@ -19,13 +19,13 @@ import { loop } from './engine/loop';
 import { Coverage } from './engine/coverage';
 import { Renderer, once, type Sky } from './engine/renderer';
 import { HOME, addressUnder, offsetOf } from './engine/land';
-import { box, figure, groundUnder, terrain } from './engine/shapes';
+import { boulder, box, figure, groundUnder, terrain } from './engine/shapes';
 import { Traffic, pollBlocks } from './engine/traffic';
 import { chain } from './chains';
 import { accountAt } from './chain';
 import { normalizeAddress } from './coord';
 import { looksLikeName, resolveName } from './ens';
-import { type Structure, instancesOf, structureOf } from './places';
+import { type Structure, instancesOf, stands, structureOf } from './places';
 import type { Obstacle } from './obstacles';
 import { LANDMARKS } from './landmarks';
 import { mark } from './logo';
@@ -67,7 +67,9 @@ const floor = renderer.add(ground.geometry, once(0.34, 1));
  */
 const structures: Structure[] = [];
 const obstacles: Obstacle[] = [];
+// built things are angular, what people leave behind is rounded
 const built = renderer.add(box(), new Float32Array(0), true);
+const stones = renderer.add(boulder(2, 11, 0.32), new Float32Array(0), true);
 
 /** Where a structure's floor sits: the lowest ground its footprint covers. */
 function baseOf(structure: Structure): number {
@@ -101,7 +103,8 @@ function settle(): void {
       top: base + structure.tall,
     });
   }
-  renderer.update(built, instancesOf(structures, baseOf, origin));
+  renderer.update(built, instancesOf(structures.filter((s) => s.kind === 'built'), baseOf, origin));
+  renderer.update(stones, instancesOf(structures.filter((s) => s.kind === 'stone'), baseOf, origin));
 }
 
 /**
@@ -145,7 +148,7 @@ async function travelTo(address: string): Promise<Structure | null> {
   const account = await accountAt(address);
   if (!account) return null;
   const structure = structureOf(account);
-  if (account.codeSize > 0) raise(structure);
+  if (stands(account)) raise(structure);
   settle();
   return structure;
 }
@@ -162,7 +165,7 @@ const coverage = new Coverage(renderer.gl, { x: player.x, z: player.z });
  * after the page does, because it has to be asked for.
  */
 void accountAt(HOME).then((account) => {
-  if (account) raise(structureOf(account));
+  if (account && stands(account)) raise(structureOf(account));
 });
 
 /**

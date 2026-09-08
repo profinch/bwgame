@@ -43,14 +43,17 @@ export interface Account {
   code: string;
   /** In wei. */
   balance: bigint;
+  /** For a wallet, how many transactions it has sent: how much it has done. */
+  nonce: number;
 }
 
 /** Ask the chain what stands at an address. Null if nothing answered. */
 export async function accountAt(address: string): Promise<Account | null> {
   const at = `0x${address.replace(/^0x/, '')}`;
-  const [code, balance] = await Promise.all([
+  const [code, balance, nonce] = await Promise.all([
     rpc<string>('eth_getCode', [at, 'latest']),
     rpc<string>('eth_getBalance', [at, 'latest']),
+    rpc<string>('eth_getTransactionCount', [at, 'latest']),
   ]);
   if (code === null) return null;
   const body = code.replace(/^0x/, '');
@@ -59,6 +62,7 @@ export async function accountAt(address: string): Promise<Account | null> {
     codeSize: body.length / 2,
     code: body,
     balance: balance ? BigInt(balance) : 0n,
+    nonce: nonce ? Number(BigInt(nonce)) : 0,
   };
 }
 
