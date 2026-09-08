@@ -320,6 +320,50 @@ function supportAt(x: number, z: number, from: number): number {
   return floor;
 }
 
+/**
+ * How far the camera is riding above where it would otherwise sit.
+ *
+ * Dragging the look down swings the camera into the hill behind you, and from
+ * under the ground the world is inside out — it is a one-sided sheet, so it
+ * vanishes and you see the backs of everything through it. The ground carries
+ * the camera instead.
+ */
+let lift = 0;
+
+/** How far behind the walker the camera sits, and how far clear of the ground. */
+const BEHIND = 5.2;
+const CLEAR = 0.6;
+
+/**
+ * Carry the camera over the ground behind the walker.
+ *
+ * Worked out along the whole boom rather than at its end, or a ridge halfway
+ * along cuts through the view. It is one number, it moves continuously with the
+ * land, and it is eased rather than applied — the ground under a boom is
+ * triangles, and following them exactly makes the view judder over every seam.
+ */
+function ride(seconds: number): void {
+  let wanted = 0;
+  if (overShoulder) {
+    const eyes = head();
+    const look: [number, number, number] = [
+      -Math.sin(player.yaw) * Math.cos(player.pitch),
+      Math.sin(player.pitch),
+      -Math.cos(player.yaw) * Math.cos(player.pitch),
+    ];
+    const SAMPLES = 6;
+    for (let i = 1; i <= SAMPLES; i++) {
+      const along = (i / SAMPLES) * BEHIND;
+      const x = eyes[0] - look[0] * along;
+      const z = eyes[2] - look[2] * along;
+      const y = eyes[1] - look[1] * along + 1.1;
+      wanted = Math.max(wanted, supportAt(x, z, y) + CLEAR - y);
+    }
+  }
+  // catches up in about a fifth of a second, whatever the frame rate
+  lift += (wanted - lift) * (1 - Math.exp(-seconds * 12));
+}
+
 function fall(seconds: number): void {
   const standing = player.rise === 0;
   const floor = supportAt(player.x, player.z, player.y + (standing ? STEP_UP : 0));
@@ -521,6 +565,7 @@ loop({
   step(seconds) {
     walk(seconds);
     fall(seconds);
+    ride(seconds);
     traffic.step(seconds);
     // stepping onto a low roof rather than through it
     player.y = Math.max(player.y, supportAt(player.x, player.z, player.y + STEP_UP));
@@ -559,35 +604,11 @@ loop({
       -Math.cos(player.yaw) * Math.cos(player.pitch),
     ];
 
-    /**
-     * Over the shoulder: step back along the look and up a little — but never
-     * under the ground.
-     *
-     * Dragging the look down used to swing the camera below the surface, and
-     * from underneath the world is inside out: the ground is a one-sided sheet,
-     * so it disappears and you see the backs of everything through it. The
-     * ground stops the camera instead, the way it stops a walker. The boom is
-     * shortened until it clears, and only then is what is left of it lifted, so
-     * the view slides along the surface rather than jumping up off it.
-     */
-    const BEHIND = 5.2;
-    const CLEAR = 0.55;
-    let at: [number, number, number] = eyes;
-    if (overShoulder) {
-      let boom = BEHIND;
-      for (let tries = 0; tries < 6; tries++) {
-        const x = eyes[0] - look[0] * boom;
-        const z = eyes[2] - look[2] * boom;
-        const y = eyes[1] - look[1] * boom + 1.1;
-        const floor = supportAt(x, z, y) + CLEAR;
-        if (y >= floor || boom <= 0.9) {
-          at = [x, Math.max(y, floor), z];
-          break;
-        }
-        boom *= 0.7;
-      }
-    }
-    // and it keeps the walker in front of it, however far it had to give way
+    // over the shoulder: step back along the look and up by whatever the
+    // ground behind you asked for, which `ride` works out and smooths
+    const at: [number, number, number] = overShoulder
+      ? [eyes[0] - look[0] * BEHIND, eyes[1] - look[1] * BEHIND + 1.1 + lift, eyes[2] - look[2] * BEHIND]
+      : eyes;
     const ahead: [number, number, number] = overShoulder
       ? eyes
       : [at[0] + look[0], at[1] + look[1], at[2] + look[2]];
