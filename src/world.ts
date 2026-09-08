@@ -19,7 +19,7 @@ import { loop } from './engine/loop';
 import { Coverage } from './engine/coverage';
 import { Renderer, once, type Sky } from './engine/renderer';
 import { HOME, addressUnder, offsetOf } from './engine/land';
-import { boulder, box, figure, groundUnder, terrain } from './engine/shapes';
+import { box, figure, groundUnder, terrain } from './engine/shapes';
 import { Traffic, pollBlocks } from './engine/traffic';
 import { chain } from './chains';
 import { accountAt } from './chain';
@@ -67,9 +67,9 @@ const floor = renderer.add(ground.geometry, once(0.34, 1));
  */
 const structures: Structure[] = [];
 const obstacles: Obstacle[] = [];
-// built things are angular, what people leave behind is rounded
+// everything is boxes: buildings, the plates people are written on, and the
+// raised squares that spell an address out across them
 const built = renderer.add(box(), new Float32Array(0), true);
-const stones = renderer.add(boulder(2, 11, 0.32), new Float32Array(0), true);
 
 /** Where a structure's floor sits: the lowest ground its footprint covers. */
 function baseOf(structure: Structure): number {
@@ -103,8 +103,7 @@ function settle(): void {
       top: base + structure.tall,
     });
   }
-  renderer.update(built, instancesOf(structures.filter((s) => s.kind === 'built'), baseOf, origin));
-  renderer.update(stones, instancesOf(structures.filter((s) => s.kind === 'stone'), baseOf, origin));
+  renderer.update(built, instancesOf(structures, baseOf, origin));
 }
 
 /**

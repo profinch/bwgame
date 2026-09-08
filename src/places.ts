@@ -12,22 +12,22 @@
  */
 import { keccak_256 } from '@noble/hashes/sha3';
 import type { Account } from './chain';
-import { INSTANCE_FLOATS } from './engine/renderer';
 import { offsetOf } from './engine/land';
 
 /**
  * What kind of thing stands here.
  *
  * A contract is a thing: it has code, behaviour, bulk, and a building is the
- * right shape for it. A wallet is not a thing but a key — no code, no behaviour
- * — so it gets a stone instead: somebody's mark on the ground rather than
- * something built on it. Built is angular, left behind is rounded, and the
- * difference reads at a glance.
+ * right shape for it. A wallet is not a thing but a key — no code, no
+ * behaviour, nothing to stand up. So it is not built but written: a plate set
+ * into the ground with its own address cut into it.
+ *
+ * Things are built upward; people are written into the earth.
  *
  * An address nobody has ever touched gets neither, because there is nothing
- * there. Most of them are like that.
+ * there. Almost all of them are like that.
  */
-export type Kind = 'built' | 'stone';
+export type Kind = 'built' | 'written';
 
 export interface Structure {
   kind: Kind;
@@ -44,6 +44,17 @@ export interface Structure {
 }
 
 const encoder = new TextEncoder();
+
+/**
+ * Forty hex digits laid out as cells, four bits to a cell.
+ *
+ * No alphabet had to be invented: the address is already written in sixteen
+ * signs, and sixteen is two by two raised or flat. So the marks on a plate are
+ * the address itself, in binary, and anybody can walk up and read it off the
+ * ground.
+ */
+const COLUMNS = 8;
+const ROWS = 5;
 
 /** Bytes of the code hash, or of the address for something with no code. */
 function seedOf(account: Account): Uint8Array {
@@ -66,21 +77,23 @@ export function structureOf(account: Account): Structure {
   const held = Number(account.balance / 10n ** 15n) / 1000; // in ether, roughly
 
   if (account.codeSize === 0) {
-    // a wallet: how much it holds gives its size, how much it has done its wear
+    // A plate, and it is not turned: this is writing, and writing has a way up.
+    // How much it holds sets how big it is, how much it has sent how deeply the
+    // marks are cut.
     const weight = Math.log10(1 + held) / 3;
     const worn = Math.min(1, Math.log10(1 + account.nonce) / 4);
-    const size = 2.5 + weight * 22;
+    const across = 9 + weight * 26;
     return {
-      kind: 'stone',
+      kind: 'written',
       address: account.address,
       x: at.x,
       z: at.z,
-      wide: size * (0.8 + byte(0) * 0.5),
-      deep: size * (0.8 + byte(1) * 0.5),
-      tall: size * (0.5 + byte(2) * 0.7),
-      turn: byte(3) * Math.PI * 2,
-      albedo: 0.62 - worn * 0.34,
-      roughness: 0.6 + byte(4) * 0.35,
+      wide: across,
+      deep: (across / COLUMNS) * ROWS,
+      tall: 0.2 + worn * 1.1,
+      turn: 0,
+      albedo: 0.55 - worn * 0.2,
+      roughness: 0.75,
     };
   }
 
@@ -123,19 +136,70 @@ export function instanceOf(structure: Structure, base: number, origin = { x: 0, 
   ]);
 }
 
+/**
+ * The pieces a structure is made of, as the renderer wants them.
+ *
+ * A building is one block. A plate is the slab plus up to a hundred and sixty
+ * small raised squares — each of them the same box the buildings are made of,
+ * so writing an address into the ground costs nothing but instances.
+ */
+export function piecesOf(structure: Structure, base: number, origin = { x: 0, z: 0 }): Float32Array {
+  const first = instanceOf(structure, base, origin);
+  if (structure.kind !== 'written') return first;
+
+  const digits = structure.address.replace(/^0x/, '').toLowerCase();
+  const cell = structure.wide / COLUMNS;
+  const sub = cell / 2;
+  const mark = sub * 0.74;
+  const top = base + structure.tall;
+
+  const marks: number[] = [];
+  for (let i = 0; i < digits.length && i < COLUMNS * ROWS; i++) {
+    const value = parseInt(digits[i]!, 16);
+    const col = i % COLUMNS;
+    const row = Math.floor(i / COLUMNS);
+    for (let bit = 0; bit < 4; bit++) {
+      if ((value & (1 << (3 - bit))) === 0) continue;
+      const sx = bit % 2;
+      const sz = bit < 2 ? 0 : 1;
+      marks.push(
+        structure.x - origin.x - structure.wide / 2 + col * cell + (sx + 0.5) * sub,
+        top,
+        structure.z - origin.z - structure.deep / 2 + row * cell + (sz + 0.5) * sub,
+        mark,
+        structure.tall * 0.85,
+        mark,
+        0,
+        Math.max(0.06, structure.albedo - 0.2),
+        structure.roughness,
+      );
+    }
+  }
+
+  const out = new Float32Array(first.length + marks.length);
+  out.set(first, 0);
+  out.set(marks, first.length);
+  return out;
+}
+
 /** Whether an account leaves anything on the ground at all. */
 export function stands(account: Account): boolean {
   return account.codeSize > 0 || account.balance > 0n || account.nonce > 0;
 }
+
 
 export function instancesOf(
   structures: readonly Structure[],
   baseOf: (s: Structure) => number,
   origin = { x: 0, z: 0 },
 ): Float32Array {
-  const out = new Float32Array(structures.length * INSTANCE_FLOATS);
-  structures.forEach((structure, index) => {
-    out.set(instanceOf(structure, baseOf(structure), origin), index * INSTANCE_FLOATS);
-  });
+  const parts = structures.map((structure) => piecesOf(structure, baseOf(structure), origin));
+  const out = new Float32Array(parts.reduce((sum, part) => sum + part.length, 0));
+  let at = 0;
+  for (const part of parts) {
+    out.set(part, at);
+    at += part.length;
+  }
   return out;
 }
+

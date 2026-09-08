@@ -5,6 +5,7 @@ build/
 *.tsbuildinfo
 
 # secrets
+deploy/*-key.json
 .env
 .env.*
 !.env.example
