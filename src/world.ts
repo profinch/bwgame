@@ -21,6 +21,7 @@ import { Renderer, once, type Sky } from './engine/renderer';
 import { HOME, addressUnder } from './engine/land';
 import { box, figure, groundUnder, terrain } from './engine/shapes';
 import { Traffic, pollBlocks } from './engine/traffic';
+import { chain } from './chains';
 import { accountAt } from './chain';
 import { type Structure, instancesOf, structureOf } from './places';
 import type { Obstacle } from './obstacles';
@@ -128,9 +129,7 @@ if (MADE_UP) {
   setInterval(invent, 12000);
 } else if (!location.search.includes('traffic=off')) {
 
-  pollBlocks(['https://ethereum-rpc.publicnode.com', 'https://eth.drpc.org']).start((block) =>
-    traffic.arrive(block),
-  );
+  pollBlocks(chain.rpcs).start((block) => traffic.arrive(block));
 }
 
 const sky: Sky = {
@@ -409,7 +408,7 @@ loop({
         `v for ${overShoulder ? 'first person' : 'third person'}, drag to look`;
       const away = Math.round(Math.hypot(player.x, player.z));
       place.textContent =
-        `0x${addressUnder(player.x, player.z)} · ${away} m from ${HOME.slice(0, 8)}… ${HOME === '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48' ? ' (usdc)' : ''}`;
+        `${chain.name} · 0x${addressUnder(player.x, player.z)} · ${away} m from ${HOME.slice(0, 8)}… ${HOME === '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48' ? ' (usdc)' : ''}`;
     }
   },
   draw() {

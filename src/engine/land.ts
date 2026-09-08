@@ -9,15 +9,15 @@
  */
 import { keccak_256 } from '@noble/hashes/sha3';
 import { addressToPoint, pointToAddress } from '../coord';
+import { chain } from '../chains';
 
 /**
  * The address this patch is built around, and `?home=0x…` to stand somewhere
  * else. A different address is a different place: the ground is hashed from it,
  * so choosing it rebuilds the hills as well as the view.
  *
- * USDC by default, because it is where traffic actually lands — counting a
- * block's top-level recipients gives it some forty transactions, more than
- * anything else on the chain.
+ * The default comes from the chain: on mainnet the address traffic actually
+ * lands on, on Sepolia one of the few things that stands there at all.
  *
  * Worth knowing before choosing: at the top level a place only ever has one
  * side. The sender of a transaction is always a wallet and the receiver is
@@ -26,7 +26,7 @@ import { addressToPoint, pointToAddress } from '../coord';
  * in; standing on a busy wallet, everything flies out. Both at once needs
  * traces, which is a different source of data.
  */
-const DEFAULT_HOME = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48';
+const DEFAULT_HOME = chain.home;
 
 function chosenHome(): string {
   try {

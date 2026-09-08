@@ -1,17 +1,17 @@
 /**
- * Talking to Ethereum, kept to what a map actually needs: a couple of reads.
+ * Talking to whichever chain this world is, kept to what a map needs: a couple
+ * of reads.
  *
- * Public gateways, no key, no signup, CORS open. They are enough for a handful
- * of lookups and nowhere near enough for a crowd — that is what an indexer will
- * be for.
+ * Public gateways, no key, no signup, CORS open. Enough for a handful of
+ * lookups and nowhere near enough for a crowd — that is what an indexer is for.
  */
-const RPCS = ['https://ethereum-rpc.publicnode.com', 'https://eth.drpc.org'];
+import { chain } from './chains';
 
 /** A JSON-RPC call against the first gateway that answers, or null. */
 export async function rpc<T>(method: string, params: unknown[]): Promise<T | null> {
   const body = JSON.stringify({ jsonrpc: '2.0', id: 1, method, params });
 
-  for (const url of RPCS) {
+  for (const url of chain.rpcs) {
     try {
       const response = await fetch(url, {
         method: 'POST',
