@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { randomStart } from '../src/claim';
 import { keccak_256 } from '@noble/hashes/sha3';
 import { describe, expect, it } from 'vitest';
 import {
@@ -107,5 +108,26 @@ describe('the search', () => {
     expect(near.run(0n, 1n).close).toBe(true);
     const exact = miner(await load(), { ...spec, within: 0 });
     expect(exact.run(0n, 1n).close).toBe(false);
+  });
+});
+
+describe('where a search begins', () => {
+  it('begins somewhere new every time, with room left in the counter', () => {
+    const starts = new Set<bigint>();
+    for (let i = 0; i < 20; i++) {
+      const start = randomStart();
+      expect(start).toBeGreaterThanOrEqual(0n);
+      expect(start).toBeLessThan(1n << 63n);
+      starts.add(start);
+    }
+    expect(starts.size).toBe(20);
+  });
+
+  it('makes different attempts from a different start, the same from the same', async () => {
+    const one = miner(await load(), spec).run(12345n, 1n).best!;
+    const same = miner(await load(), spec).run(12345n, 1n).best!;
+    const other = miner(await load(), spec).run(67890n, 1n).best!;
+    expect(same.address).toBe(one.address);
+    expect(other.address).not.toBe(one.address);
   });
 });

@@ -44,6 +44,26 @@ export function threadsAvailable(): number {
   return Math.max(1, Math.floor(cores / 2));
 }
 
+/**
+ * Where to start counting: anywhere at all.
+ *
+ * The search is deterministic from its start — the same counter against the
+ * same target makes the same attempt — and arriving at an address puts you on
+ * exactly the same spot every time. So a search that always began at zero
+ * would make exactly the same attempts as the last one from here, and find
+ * exactly the same best again, and again. Beginning somewhere random means the
+ * work is new work. The counter has sixty-three bits to grow into from there,
+ * which is more than any machine will use.
+ */
+export function randomStart(): bigint {
+  const bytes = new Uint8Array(8);
+  crypto.getRandomValues(bytes);
+  bytes[0]! &= 0x7f;
+  let start = 0n;
+  for (const byte of bytes) start = (start << 8n) | BigInt(byte);
+  return start;
+}
+
 export function search(
   spec: Dig,
   onProgress: (progress: Progress) => void,
@@ -56,6 +76,7 @@ export function search(
   let since = performance.now();
   let counted = 0;
   let stopped = false;
+  const start = randomStart();
 
   for (let lane = 0; lane < threads; lane++) {
     const worker = new Worker(new URL('./mine.worker.ts', import.meta.url), { type: 'module' });
@@ -83,8 +104,9 @@ export function search(
       }
       onProgress(progress);
     };
-    // each thread counts in its own lane: lane, lane + threads, lane + 2·threads…
-    const task: Task = { spec, from: String(lane), step: String(threads) };
+    // each thread counts in its own lane from the shared start: start + lane,
+    // start + lane + threads, start + lane + 2·threads…
+    const task: Task = { spec, from: String(start + BigInt(lane)), step: String(threads) };
     worker.postMessage(task);
     workers.push(worker);
   }
