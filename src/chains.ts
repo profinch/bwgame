@@ -96,9 +96,11 @@ export const CHAINS: Record<string, Chain> = {
     explorer: 'https://sepolia.etherscan.io/address/',
     indexer: 'https://eth-sepolia.blockscout.com',
     coin: { symbol: 'eth', supply: 120_500_000n * 10n ** 18n },
-    // deployed 08.09.2026; ground claimed here exists on this chain and nowhere else
-    plots: '0x9f76BcE99c0b997af2442FfD65A48fB58f1cA088',
-    plotsSince: 11_661_029,
+    // deployed 09.09.2026 (the second factory: plots that change hands, and
+    // taken ground that says so); ground claimed here exists on this chain and
+    // nowhere else
+    plots: '0x4bbfaE0A0BEe0F49F3ecbCCcC638a0235359eb73',
+    plotsSince: 11_669_423,
     tokens: [
       { at: '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238', symbol: 'usdc', decimals: 6 },
       { at: '0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14', symbol: 'weth', decimals: 18 },
