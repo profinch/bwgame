@@ -30,18 +30,41 @@ export interface Search {
 /** Told when a thread cannot work, because a silent search looks like a slow one. */
 export type OnTrouble = (what: string) => void;
 
+/** Threads the machine has to offer. */
+export function coresAvailable(): number {
+  return navigator.hardwareConcurrency || 4;
+}
+
+const CORES_KEY = 'gs:cores';
+
 /**
- * How many threads to set on it: half the machine.
+ * How many threads to set on it. The person's choice if they have made one;
+ * otherwise half the machine.
  *
- * Every one of them runs a hash loop flat out, so all-but-one turns a laptop
- * into a heater and the fans tell everyone about it. Half leaves the machine
- * usable and costs a factor of two in a search where a factor of two is
- * √2 in distance — hours of digging, not the difference between having a plot
- * and not.
+ * Every thread runs a hash loop flat out, so all of them turns a laptop into a
+ * heater and the fans tell everyone about it. Half leaves the machine usable
+ * and costs a factor of two in a search where a factor of two is √2 in
+ * distance — hours of digging, not the difference between having a plot and
+ * not. But it is their machine: the panel has a slider, and what it is set to
+ * is kept.
  */
-export function threadsAvailable(): number {
-  const cores = navigator.hardwareConcurrency || 4;
+export function threadsChosen(): number {
+  const cores = coresAvailable();
+  try {
+    const chosen = Number(localStorage.getItem(CORES_KEY));
+    if (chosen >= 1 && chosen <= cores) return Math.floor(chosen);
+  } catch {
+    // no storage: the default, then
+  }
   return Math.max(1, Math.floor(cores / 2));
+}
+
+export function chooseThreads(threads: number): void {
+  try {
+    localStorage.setItem(CORES_KEY, String(Math.max(1, Math.min(coresAvailable(), Math.floor(threads)))));
+  } catch {
+    // no storage: the choice holds for this page
+  }
 }
 
 /**
@@ -69,7 +92,7 @@ export function search(
   onProgress: (progress: Progress) => void,
   onTrouble: OnTrouble = () => {},
 ): Search {
-  const threads = threadsAvailable();
+  const threads = threadsChosen();
   const workers: Worker[] = [];
   const progress: Progress = { tries: 0, rate: 0, best: null, threads };
 
