@@ -18,7 +18,7 @@ import { lookAt, multiply, orthographic, perspective, type Mat4 } from './engine
 import { loop } from './engine/loop';
 import { Coverage } from './engine/coverage';
 import { Renderer, once, type Sky } from './engine/renderer';
-import { HOME, addressUnder, levelOff, offsetOf, rawHeightAt } from './engine/land';
+import { addressUnder, DEPTH, HOME, levelOff, offsetOf, rawHeightAt } from './engine/land';
 import { box, figure, groundUnder, terrain } from './engine/shapes';
 import { Traffic, pollBlocks } from './engine/traffic';
 import { chain } from './chains';
@@ -26,6 +26,10 @@ import { type Account, accountAt, holdingsOf } from './chain';
 import { normalizeAddress } from './coord';
 import { looksLikeName, resolveName } from './ens';
 import { type Structure, instancesOf, standingOn, stands, structureOf } from './places';
+import { POINT, auger } from './auger';
+import { glassOf, inkOf, strokesOf } from './blueprint';
+import { Chips } from './chips';
+import { claimedPlots, isPlot, noteOf } from './plot';
 import { takeGround } from './taking';
 import type { Obstacle } from './obstacles';
 import { mark } from './logo';
@@ -115,16 +119,47 @@ function reliefUnder(structure: Structure): { high: number; low: number } {
  */
 async function standing(account: Account): Promise<Structure> {
   const holdings = account.codeSize === 0 ? await holdingsOf(account.address) : [];
-  return structureOf(account, holdings, chain.coin);
+  // a plot is known by its code, and stands as a frame until something is written into it
+  const plot = isPlot(account.code) ? { note: await noteOf(account.address) } : null;
+  return structureOf(account, holdings, chain.coin, plot);
 }
 
 function raise(structure: Structure): void {
-  if (structures.some((standing) => standing.address === structure.address)) return;
+  if (standingAt(structure.address)) return;
   structures.push(structure);
   // a stone is laid on levelled ground, so it does not stand on a wall of its
   // own foundation on the low side — which is what stopped you walking up to it
   if (structure.kind === 'written' && level(structure)) rebuild();
   settle();
+}
+
+function standingAt(address: string): boolean {
+  const wanted = address.toLowerCase();
+  return structures.some((standing) => standing.address.toLowerCase() === wanted);
+}
+
+/**
+ * The plots round about, raised.
+ *
+ * The world is dark until somebody goes somewhere, and a place appears when it
+ * is named. A plot is the one kind of thing the world can know about without
+ * being told, because the factory that made it says so — so on arriving
+ * anywhere, every plot within the ground underfoot is asked for and put up.
+ * Abandoned if you have gone somewhere else before the answers are in.
+ */
+async function raiseNearby(): Promise<void> {
+  const here = { x: origin.x, z: origin.z };
+  const plots = await claimedPlots();
+  for (const { plot } of plots) {
+    if (origin.x !== here.x || origin.z !== here.z) return;
+    const at = offsetOf(plot);
+    if (Math.abs(at.x - here.x) > GROUND / 2 || Math.abs(at.z - here.z) > GROUND / 2) continue;
+    if (standingAt(plot)) continue;
+    const account = await accountAt(plot);
+    if (!account || !stands(account)) continue;
+    if (origin.x !== here.x || origin.z !== here.z) return;
+    raise(await standing(account));
+  }
 }
 
 /**
@@ -166,6 +201,8 @@ function settle(): void {
   obstacles.length = 0;
   for (const structure of structures) {
     const base = baseOf(structure);
+    // a frame has no walls, so there is nothing to walk into
+    if (structure.kind === 'framed') continue;
     obstacles.push({
       x: structure.x - origin.x,
       z: structure.z - origin.z,
@@ -223,14 +260,80 @@ function afoot(): { x: number; z: number } {
  * is work spent on somebody else's view.
  */
 const taking = takeGround(claiming, afoot, (plot) => {
-  void travelTo(plot);
+  void raiseClaimed(plot);
 });
+
+/** How long a plot just claimed takes to be drawn, in seconds. */
+const BUILDS_IN = 10;
+/** Plots on their way up, and when each began. */
+const rising: { structure: Structure; since: number }[] = [];
+
+/**
+ * A plot just claimed goes up where it is, not under your feet.
+ *
+ * You are not carried to it: it is over there, however far the digging got
+ * you, and it stands up out of the ground while you watch — you are turned to
+ * face it, so you see where. Walking over is yours to do.
+ */
+async function raiseClaimed(address: string): Promise<void> {
+  // the gateway that saw the receipt can be a moment behind on the code
+  let account: Account | null = null;
+  for (let tries = 0; tries < 10 && !(account && account.codeSize > 0); tries++) {
+    if (tries) await new Promise((wake) => setTimeout(wake, 1500));
+    account = await accountAt(address);
+  }
+  if (!account || !stands(account)) return;
+  const structure = await standing(account);
+  structure.grown = 0;
+  rising.push({ structure, since: performance.now() });
+  raise(structure);
+  // and turn, unhurried, to where it is going up — to the middle of its
+  // height, so a tall one is not looked at from under. Forward is -z at yaw
+  // zero, and yaw turns the way you face.
+  const here = afoot();
+  const dx = structure.x - here.x;
+  const dz = structure.z - here.z;
+  const up = baseOf(structure) + structure.tall / 2 - (player.y + EYE);
+  turning = {
+    yaw: Math.atan2(-dx, -dz),
+    pitch: Math.max(-1.2, Math.min(1.2, Math.atan2(up, Math.hypot(dx, dz)))),
+  };
+}
+
+/**
+ * Where the look is being carried to, if it is being carried anywhere.
+ *
+ * Only ever set by the world, and only to show something happening — a plot
+ * going up — and dropped the moment the person looks for themselves. It is
+ * a turn of the head, not a cut: the eye is eased there over a couple of
+ * seconds, arriving well before the drawing has got past its plan.
+ */
+let turning: { yaw: number; pitch: number } | null = null;
+/** How much of the remaining turn is taken each second. */
+const TURNS_AT = 3.2;
+
+function turn(seconds: number): void {
+  if (!turning) return;
+  // the short way round, whichever side it is
+  let dyaw = turning.yaw - player.yaw;
+  dyaw = Math.atan2(Math.sin(dyaw), Math.cos(dyaw));
+  const dpitch = turning.pitch - player.pitch;
+  const share = 1 - Math.exp(-TURNS_AT * seconds);
+  player.yaw += dyaw * share;
+  player.pitch += dpitch * share;
+  if (Math.abs(dyaw) < 0.003 && Math.abs(dpitch) < 0.003) {
+    player.yaw = turning.yaw;
+    player.pitch = turning.pitch;
+    turning = null;
+  }
+}
 
 /** And go to whatever an address holds, raising it if it is a thing. */
 async function travelTo(address: string): Promise<Structure | null> {
   taking.stop();
   const at = offsetOf(address);
   arriveAt(at.x, at.z);
+  void raiseNearby();
   const account = await accountAt(address);
   if (!account) return null;
   const structure = await standing(account);
@@ -244,6 +347,13 @@ async function travelTo(address: string): Promise<Structure | null> {
 }
 
 const walker = renderer.add(figure(), new Float32Array(9), true);
+/** What the walker turns into while digging. Only one of the two is ever drawn. */
+const drill = renderer.add(auger(), new Float32Array(9), true);
+/** How far the auger has turned. */
+let spin = 0;
+/** The ground it throws up. */
+const chips = new Chips();
+const spray = renderer.add(box(), new Float32Array(chips.instances.length), true);
 /** Feet in world height, not height above the ground: you can be on a roof. */
 const player = { x: 0, z: 150, y: 0, yaw: 0, pitch: -0.03, rise: 0 };
 
@@ -257,6 +367,7 @@ const coverage = new Coverage(renderer.gl, { x: player.x, z: player.z });
 void accountAt(HOME).then(async (account) => {
   if (account && stands(account)) raise(await standing(account));
 });
+void raiseNearby();
 
 /**
  * The chain overhead. The source is behind an interface on purpose: polling a
@@ -383,7 +494,7 @@ function fall(seconds: number): void {
   const standing = player.rise === 0;
   const floor = supportAt(player.x, player.z, player.y + (standing ? STEP_UP : 0));
 
-  if (held.has('Space') && standing && player.y <= floor + 0.01) {
+  if (held.has('Space') && standing && player.y <= floor + 0.01 && !taking.digging) {
     player.rise = JUMP;
   }
 
@@ -469,6 +580,8 @@ canvas.addEventListener('pointerdown', (event) => {
 
 canvas.addEventListener('pointermove', (event) => {
   if (!looking) return;
+  // looking for yourself ends any turn the world was making for you
+  turning = null;
   player.yaw -= (event.clientX - looking.x) * 0.004;
   player.pitch = Math.max(-1.2, Math.min(1.2, player.pitch - (event.clientY - looking.y) * 0.003));
   looking = { x: event.clientX, y: event.clientY };
@@ -551,6 +664,8 @@ function clearOf(startX: number, startZ: number): { x: number; z: number } {
 }
 
 function walk(seconds: number): void {
+  // digging is aimed at where you stand, so while it runs you stand there
+  if (taking.digging) return;
   const forward =
     (held.has('KeyW') || held.has('ArrowUp') ? 1 : 0) - (held.has('KeyS') || held.has('ArrowDown') ? 1 : 0);
   const side =
@@ -579,8 +694,28 @@ let since = 0;
 loop({
   step(seconds) {
     walk(seconds);
+    turn(seconds);
     fall(seconds);
     ride(seconds);
+    // whatever is going up, goes up a little more
+    if (rising.length) {
+      const now = performance.now();
+      for (let i = rising.length - 1; i >= 0; i--) {
+        const { structure, since } = rising[i]!;
+        structure.grown = Math.min(1, (now - since) / 1000 / BUILDS_IN);
+        if (structure.grown >= 1) rising.splice(i, 1);
+      }
+      renderer.update(built, instancesOf(structures, baseOf, origin));
+    }
+    // the auger turns with the work: a little on its own, more as the rate
+    // climbs — and the ground comes up round it in proportion
+    if (taking.digging) spin += seconds * 2 * Math.PI * (0.4 + Math.min(1, taking.rate / 4e7));
+    chips.step(
+      seconds,
+      taking.digging ? { x: player.x, y: feet(), z: player.z } : null,
+      taking.rate,
+      GRAVITY,
+    );
     traffic.step(seconds);
     // stepping onto a low roof rather than through it
     player.y = Math.max(player.y, supportAt(player.x, player.z, player.y + STEP_UP));
@@ -595,22 +730,31 @@ loop({
         `block ${traffic.block || '…'}, ` +
         `${traffic.flying} passing, ${traffic.queued} to come · ` +
         `${arrived ? `at ${arrived} · ` : ''}` +
-        `wasd to walk, shift to run, space to jump, home to go back, ` +
+        `${taking.digging ? 'digging: stop to walk · ' : 'wasd to walk, shift to run, space to jump, '}home to go back, ` +
         `v for ${overShoulder ? 'first person' : 'third person'}, drag to look`;
       const on = afoot();
       const away = Math.round(Math.hypot(on.x, on.z));
       place.textContent =
-        `${chain.name} · 0x${addressUnder(on.x, on.z)} · ${away} m from ${HOME.slice(0, 8)}… ${HOME === '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48' ? ' (usdc)' : ''}`;
+        `${chain.name} · depth ${DEPTH} · 0x${addressUnder(on.x, on.z)} · ${away} m from ${HOME.slice(0, 8)}… ${HOME === '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48' ? ' (usdc)' : ''}`;
     }
   },
   draw() {
     frames++;
 
-    // the walker stands where you are, facing where you look
+    // the walker stands where you are, facing where you look — unless they are
+    // digging, in which case the auger stands there and turns, and the walker
+    // is scaled away to nothing
+    const digging = taking.digging;
     renderer.update(
       walker,
-      new Float32Array([player.x, feet(), player.z, 1, 1, 1, player.yaw, 0.2, 0.6]),
+      new Float32Array([player.x, feet(), player.z, digging ? 0 : 1, digging ? 0 : 1, digging ? 0 : 1, player.yaw, 0.2, 0.6]),
     );
+    // the screw stands half sunk: the work is in the ground, not on it
+    renderer.update(
+      drill,
+      new Float32Array([player.x, feet() - POINT / 2, player.z, digging ? 1 : 0, digging ? 1 : 0, digging ? 1 : 0, spin, 0.2, 0.6]),
+    );
+    renderer.update(spray, chips.instances);
 
     const eyes = head();
     const look: [number, number, number] = [
@@ -651,7 +795,20 @@ loop({
     const light: Mat4 = multiply(orthographic(SHADOW_HALF, near, far), lookAt(from, focus));
 
     const ribbons = traffic.build(player.x, player.y, player.z, origin, landingAt);
-    renderer.traffic(ribbons.vertices, ribbons.count);
+    // the plots not yet written into are drawings, and go down in the same ink
+    const drawn: number[] = [];
+    for (const structure of structures) {
+      if (structure.kind !== 'framed') continue;
+      const base = baseOf(structure);
+      const grown = structure.grown ?? 1;
+      inkOf(strokesOf(structure, base, origin), grown, at, drawn);
+      glassOf(structure, base, origin, grown, drawn);
+    }
+    const inked = ribbons.count * 4;
+    const ink = new Float32Array(inked + drawn.length);
+    ink.set(ribbons.vertices.subarray(0, inked));
+    ink.set(drawn, inked);
+    renderer.traffic(ink, ribbons.count + drawn.length / 4);
 
     renderer.draw(
       camera,
