@@ -30,6 +30,7 @@ import { POINT, auger } from './auger';
 import { glassOf, inkOf, strokesOf } from './blueprint';
 import { Chips } from './chips';
 import { claimAt, claimedPlots, isPlot, noteOf } from './plot';
+import { Stick, coarse } from './stick';
 import { takeGround } from './taking';
 import type { Obstacle } from './obstacles';
 import { mark } from './logo';
@@ -496,7 +497,8 @@ function fall(seconds: number): void {
   const standing = player.rise === 0;
   const floor = supportAt(player.x, player.z, player.y + (standing ? STEP_UP : 0));
 
-  if (held.has('Space') && standing && player.y <= floor + 0.01 && !taking.digging) {
+  const asked = held.has('Space') || stick.takeJump();
+  if (asked && standing && player.y <= floor + 0.01 && !taking.digging) {
     player.rise = JUMP;
   }
 
@@ -563,6 +565,11 @@ window.addEventListener('keydown', (event) => {
   held.add(event.code);
   if (event.shiftKey) held.add('Shift');
   if (WALKING.has(event.code)) event.preventDefault();
+});
+// and the same, for a thumb
+document.querySelector<HTMLElement>('.touchpad-buttons .view')!.addEventListener('pointerdown', (event) => {
+  overShoulder = !overShoulder;
+  event.preventDefault();
 });
 window.addEventListener('keyup', (event) => {
   held.delete(event.code);
@@ -665,16 +672,34 @@ function clearOf(startX: number, startZ: number): { x: number; z: number } {
   return { x: px, z: pz };
 }
 
+/**
+ * A thumb on a pad, on devices that have one. The keys still work alongside:
+ * nothing here is either/or.
+ */
+const touch = coarse();
+if (touch) document.body.classList.add('touch');
+const stick = new Stick(
+  document.querySelector<HTMLElement>('.touchpad')!,
+  document.querySelector<HTMLElement>('.touchpad .knob')!,
+  document.querySelector<HTMLElement>('.touchpad-buttons .jump')!,
+);
+
 function walk(seconds: number): void {
   // digging is aimed at where you stand, so while it runs you stand there
   if (taking.digging) return;
   const forward =
-    (held.has('KeyW') || held.has('ArrowUp') ? 1 : 0) - (held.has('KeyS') || held.has('ArrowDown') ? 1 : 0);
+    (held.has('KeyW') || held.has('ArrowUp') ? 1 : 0) -
+    (held.has('KeyS') || held.has('ArrowDown') ? 1 : 0) +
+    stick.forward;
   const side =
-    (held.has('KeyD') || held.has('ArrowRight') ? 1 : 0) - (held.has('KeyA') || held.has('ArrowLeft') ? 1 : 0);
+    (held.has('KeyD') || held.has('ArrowRight') ? 1 : 0) -
+    (held.has('KeyA') || held.has('ArrowLeft') ? 1 : 0) +
+    stick.side;
   if (!forward && !side) return;
 
-  const speed = (held.has('Shift') ? RUN : WALK) * seconds;
+  // a thumb half way out walks at half pace; a key is all the way
+  const push = Math.min(1, Math.hypot(forward, side));
+  const speed = (held.has('Shift') || stick.run ? RUN : WALK) * seconds * push;
   const sin = Math.sin(player.yaw);
   const cos = Math.cos(player.yaw);
   // yaw turns the way you face; forward is -z when yaw is zero
@@ -732,8 +757,8 @@ loop({
         `block ${traffic.block || '…'}, ` +
         `${traffic.flying} passing, ${traffic.queued} to come · ` +
         `${arrived ? `at ${arrived} · ` : ''}` +
-        `${taking.digging ? 'digging: stop to walk · ' : 'wasd to walk, shift to run, space to jump, '}home to go back, ` +
-        `v for ${overShoulder ? 'first person' : 'third person'}, drag to look`;
+        `${taking.digging ? 'digging: stop to walk · ' : touch ? 'stick to walk, ' : 'wasd to walk, shift to run, space to jump, '}` +
+        `${touch ? '' : 'home to go back, '}v for ${overShoulder ? 'first person' : 'third person'}, drag to look`;
       const on = afoot();
       const away = Math.round(Math.hypot(on.x, on.z));
       place.textContent =

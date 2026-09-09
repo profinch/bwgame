@@ -484,3 +484,94 @@ body.world {
   opacity: 0.45;
   cursor: progress;
 }
+
+/* walking with a thumb: only on devices driven by touch */
+
+.touchpad {
+  position: fixed;
+  z-index: 3;
+  left: 22px;
+  bottom: 28px;
+  width: 128px;
+  height: 128px;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--fg) 35%, transparent);
+  background: color-mix(in srgb, var(--panel) 45%, transparent);
+  touch-action: none;
+  pointer-events: auto;
+  display: none;
+}
+
+body.touch .touchpad {
+  display: block;
+}
+
+.touchpad .knob {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 48px;
+  height: 48px;
+  margin: -24px 0 0 -24px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--fg) 60%, transparent);
+  pointer-events: none;
+}
+
+.touchpad-buttons {
+  position: fixed;
+  z-index: 3;
+  right: 22px;
+  bottom: 28px;
+  display: none;
+  flex-direction: column;
+  gap: 12px;
+}
+
+body.touch .touchpad-buttons {
+  display: flex;
+}
+
+.touchpad-buttons button {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--fg) 35%, transparent);
+  background: color-mix(in srgb, var(--panel) 55%, transparent);
+  color: var(--fg);
+  font: inherit;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  touch-action: manipulation;
+}
+
+/* a narrow screen: the readouts stack at the top, the thumbs have the bottom */
+
+@media (max-width: 640px) {
+  .hud .hint {
+    display: none;
+  }
+
+  .hud.bottom {
+    top: 52px;
+    bottom: auto;
+    left: 12px;
+    right: 12px;
+  }
+
+  .hud .stat {
+    display: none;
+  }
+
+  .hud .go input {
+    width: 100%;
+  }
+
+  .hud.claim {
+    top: 124px;
+    bottom: auto;
+    left: 12px;
+    right: 12px;
+    max-width: none;
+  }
+}
