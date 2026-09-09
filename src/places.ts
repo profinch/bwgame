@@ -13,6 +13,7 @@
 import { keccak_256 } from '@noble/hashes/sha3';
 import type { Account } from './chain';
 import { offsetOf } from './engine/land';
+import { maskedPlotCode } from './plot';
 
 /**
  * What kind of thing stands here.
@@ -26,8 +27,14 @@ import { offsetOf } from './engine/land';
  *
  * An address nobody has ever touched gets neither, because there is nothing
  * there. Almost all of them are like that.
+ *
+ * And a plot — a contract deployed by the factory, which the world knows by
+ * its code — is a thing that has not been said yet. Its address fixes where it
+ * stands, how big it is and which way it turns, and nothing else about it is
+ * decided until its owner writes into it. So until then it is framed: drawn
+ * in ink as the plan of the building it will be, and not built.
  */
-export type Kind = 'built' | 'written';
+export type Kind = 'built' | 'written' | 'framed';
 
 export interface Structure {
   kind: Kind;
@@ -45,6 +52,8 @@ export interface Structure {
   posts?: Post[];
   /** For a stone: how far it has to reach down to meet the hill it sits on. */
   sink?: number;
+  /** How much of it stands yet, from the ground up: 0 to 1, and 1 if unset. */
+  grown?: number;
 }
 
 
@@ -537,9 +546,18 @@ export function layoutOf() {
   };
 }
 
-/** Bytes of the code hash, or of the address for something with no code. */
-function seedOf(account: Account): Uint8Array {
-  const text = account.codeSize > 0 ? account.code : account.address.toLowerCase();
+/**
+ * Bytes of the code hash, or of the address for something with no code.
+ *
+ * A plot is seeded from its code with the owner blanked out, so that every
+ * plot is the one shape and the one turn — they are clones of one contract,
+ * and the twenty bytes that differ are whose it is, not what it is.
+ */
+function seedOf(account: Account, plot: boolean): Uint8Array {
+  const text =
+    account.codeSize === 0 ? account.address.toLowerCase()
+    : plot ? (maskedPlotCode(account.code) ?? account.code)
+    : account.code;
   return keccak_256(encoder.encode(text));
 }
 
@@ -555,9 +573,11 @@ export function structureOf(
   account: Account,
   holdings: readonly Holding[] = [],
   coin: { symbol: string; supply: bigint } = NATIVE,
+  /** If this is a plot: what has been written into it, which may be nothing. */
+  plot: { note: string } | null = null,
 ): Structure {
   const at = offsetOf(account.address);
-  const seed = seedOf(account);
+  const seed = seedOf(account, plot !== null);
   const byte = (i: number) => seed[i % 32]! / 255;
   const held = Number(account.balance / 10n ** 15n) / 1000; // in ether, roughly
 
@@ -585,15 +605,19 @@ export function structureOf(
 
   // code size runs from a few hundred bytes to about twenty five thousand
   const bulk = Math.log2(Math.max(64, account.codeSize)) / Math.log2(24576);
+  // a plot with nothing said into it yet is the drawing of a building, and a
+  // drawing is smaller than the thing: seven tenths of what will stand here
+  const drawn = plot !== null && plot.note.length === 0;
+  const scale = drawn ? 0.7 : 1;
 
   return {
-    kind: 'built',
+    kind: drawn ? 'framed' : 'built',
     address: account.address,
     x: at.x,
     z: at.z,
-    wide: 6 + bulk * 26 * (0.7 + byte(0) * 0.6),
-    deep: 6 + bulk * 26 * (0.7 + byte(1) * 0.6),
-    tall: 8 + bulk * 90 * (0.6 + byte(2) * 0.8),
+    wide: (6 + bulk * 26 * (0.7 + byte(0) * 0.6)) * scale,
+    deep: (6 + bulk * 26 * (0.7 + byte(1) * 0.6)) * scale,
+    tall: (8 + bulk * 90 * (0.6 + byte(2) * 0.8)) * scale,
     turn: byte(3) * Math.PI * 2,
     // what it holds makes it heavier to look at, on a scale where a hundred
     // ether is already dark; nothing at all leaves it pale
@@ -672,6 +696,8 @@ export function standingOn(
  * held, each post's wall laid in rectangles that go round its writing.
  */
 export function piecesOf(structure: Structure, base: number, origin = { x: 0, z: 0 }): Float32Array {
+  // a drawing is not made of stone: see blueprint.ts
+  if (structure.kind === 'framed') return new Float32Array(0);
   if (structure.kind !== 'written') return instanceOf(structure, base, origin);
 
   const posts = structure.posts ?? [];
