@@ -6,12 +6,17 @@
  * is no threshold and no waiting — the work *is* the distance, so an hour buys
  * a plot in sight of here and a night buys one you could walk to. Then one
  * transaction, which deploys a contract whose address is the place itself.
+ *
+ * What is found is kept (see finds.ts), so a reload or a walk elsewhere loses
+ * nothing: come back near a find and it is offered again, measured from where
+ * you stand now, and digging on from here starts from it rather than from zero.
  */
 import { call } from './chain';
 import { CHAINS, chain } from './chains';
-import { type Progress, type Search, search } from './claim';
+import { type Progress, type Search, chooseThreads, coresAvailable, search, threadsChosen } from './claim';
 import { HOME } from './engine/land';
-import type { Found } from './mine';
+import { drop, keep, keyOf, nearest, recall } from './finds';
+import { type Dig, type Found, bytesOf, placeOf } from './mine';
 import { connect, connected, landed, onOurChain, send, wallet } from './signer';
 
 /** `claim(bytes32)` and `plotCodeHash()`, as the chain hears them. */
@@ -19,10 +24,12 @@ const CLAIM = '0xbd66528a';
 const CODE_HASH = '0x73f355c3';
 
 export interface Taking {
-  /** Where the digging is aimed, in metres from home. Set before digging. */
-  aimAt(target: { x: number; z: number }): void;
   /** Stop everything: leaving the patch, walking away, going somewhere else. */
   stop(): void;
+  /** Whether the threads are at work — in which case the walker is, too. */
+  readonly digging: boolean;
+  /** Attempts a second while digging, for anything that wants to show effort. */
+  readonly rate: number;
 }
 
 function count(n: number): string {
@@ -51,12 +58,15 @@ export function takeGround(
 ): Taking {
   const said = panel.querySelector<HTMLElement>('.claim-said')!;
   const counted = panel.querySelector<HTMLElement>('.claim-count')!;
+  const earlier = panel.querySelector<HTMLElement>('.claim-earlier')!;
   const digButton = panel.querySelector<HTMLButtonElement>('.dig')!;
   const takeButton = panel.querySelector<HTMLButtonElement>('.take')!;
+  const coresSlider = panel.querySelector<HTMLInputElement>('.cores')!;
+  const coresSaid = panel.querySelector<HTMLElement>('.cores-said')!;
 
   let digging: Search | null = null;
   let best: Found | null = null;
-  let aim = { x: 0, z: 0 };
+  let owner: string | null = null;
 
   panel.hidden = false;
 
@@ -80,27 +90,128 @@ export function takeGround(
       to.searchParams.set('chain', somewhere.key);
       location.href = to.toString();
     });
-    return { aimAt: () => {}, stop: () => {} };
+    return { stop: () => {}, digging: false, rate: 0 };
   }
+  const factory = chain.plots;
+  const home = placeOf(bytesOf(HOME));
+
+  // --- what was found before ------------------------------------------------
+
+  const shelfKey = () => (owner ? keyOf(chain.key, factory, owner) : null);
+
+  /**
+   * How far off a find can be and still be offered from here.
+   *
+   * The ground underfoot is built seventeen hundred metres across, and that is
+   * about as far as you can see; anything beyond it is not near you but
+   * somewhere else, and somewhere else is reached by address, not on foot. So
+   * a find within this is offered with its distance, and the rest are counted.
+   */
+  const NEARBY = 2000;
+
+  /**
+   * Offer the nearest earlier find, measured from where the walker is now.
+   *
+   * Runs every second while idle. A find is a point in the world, so how far it
+   * is depends on where you stand, and the line keeps up as you walk. Digging
+   * takes the panel over and this stays quiet until it stops.
+   */
+  const showEarlier = () => {
+    if (digging) return;
+    const key = shelfKey();
+    const finds = key ? recall(localStorage, key) : [];
+    const near = nearest(finds, home, where());
+    const elsewhere = near && near.away <= NEARBY ? finds.length - 1 : finds.length;
+    const others = elsewhere > 0 ? `${elsewhere} more elsewhere` : '';
+
+    if (!near || near.away > NEARBY) {
+      best = null;
+      takeButton.hidden = true;
+      earlier.hidden = !others;
+      earlier.textContent = others ? `found earlier: ${others}` : '';
+      return;
+    }
+    best = { salt: near.find.salt, address: near.find.address, ground: near.ground, away: near.away };
+    earlier.hidden = false;
+    earlier.textContent = `found earlier: ${far(near.away)} from here${others ? ` · ${others}` : ''}`;
+    takeButton.hidden = false;
+    takeButton.disabled = false;
+  };
+
+  // an account already granted is enough to know whose finds to look for
+  void connected().then((had) => {
+    owner = had ? had.toLowerCase() : null;
+    showEarlier();
+  });
+  setInterval(showEarlier, 1000);
+
+  // --- how much of the machine ------------------------------------------------
+
+  /**
+   * The slider is the number of threads, and it is theirs to set: half the
+   * machine by default, kept between visits. Moving it while digging restarts
+   * the threads at the new count — a few thousand attempts of the batch in
+   * flight are lost, and nothing else, since the best so far is kept here.
+   */
+  const cores = coresAvailable();
+  coresSlider.max = String(cores);
+  coresSlider.value = String(threadsChosen());
+  const sayCores = () => {
+    coresSaid.textContent = `${coresSlider.value} of ${cores} cores`;
+  };
+  sayCores();
+  coresSlider.addEventListener('input', () => {
+    chooseThreads(Number(coresSlider.value));
+    sayCores();
+    if (digging && spec) {
+      digging.stop();
+      digging = startDigging(spec);
+    }
+  });
+
+  // --- digging --------------------------------------------------------------
 
   const show = (progress: Progress | null) => {
     if (!progress) {
       counted.textContent = '';
       return;
     }
-    const cores = navigator.hardwareConcurrency || 0;
-    const lines = [
-      `${count(progress.tries)} tries · ${count(progress.rate)}/s · ` +
-        `${progress.threads}${cores ? ` of ${cores}` : ''} cores`,
-    ];
-    if (progress.best) lines.push(`closest so far: ${far(progress.best.away)} from here`);
+    const lines = [`${count(progress.tries)} tries · ${count(progress.rate)}/s`];
+    if (progress.paused) lines.push('paused: the tab is out of sight');
+    if (best) lines.push(`closest so far: ${far(best.away)} from here`);
     counted.textContent = lines.join('\n');
   };
 
   const stop = () => {
     digging?.stop();
     digging = null;
+    spec = null;
+    rate = 0;
     digButton.textContent = 'dig here';
+    showEarlier();
+  };
+
+  let rate = 0;
+  /** What is being dug for, kept so the threads can be restarted at another count. */
+  let spec: Dig | null = null;
+
+  const startDigging = (dig: Dig): Search => {
+    const key = keyOf(chain.key, factory, dig.owner);
+    return search(
+      dig,
+      (progress) => {
+        rate = progress.paused ? 0 : progress.rate;
+        if (progress.best && (!best || progress.best.away < best.away)) {
+          best = progress.best;
+          keep(localStorage, key, { salt: best.salt, address: best.address });
+          takeButton.hidden = false;
+        }
+        show(progress);
+      },
+      (trouble) => {
+        said.textContent = `the threads cannot work: ${trouble}`;
+      },
+    );
   };
 
   digButton.addEventListener('click', async () => {
@@ -119,46 +230,42 @@ export function takeGround(
       return;
     }
     said.textContent = 'asking the wallet for an address';
-    const owner = await connected().then((had) => had ?? connect()).catch(() => null);
-    if (!owner) {
+    const granted = await connected().then((had) => had ?? connect()).catch(() => null);
+    if (!granted) {
       said.textContent = 'the wallet said no';
       return;
     }
+    owner = granted.toLowerCase();
 
     // asked of the factory rather than guessed: it is part of the address
-    const codeHash = await call(chain.plots!, CODE_HASH);
+    const codeHash = await call(factory, CODE_HASH);
     if (!codeHash) {
       said.textContent = 'the factory did not answer';
       return;
     }
 
-    aim = where();
-    best = null;
-    takeButton.hidden = true;
+    const aim = where();
+    const key = shelfKey()!;
+    // start from the best of what was found before, measured from this aim:
+    // work already done is not done again
+    const had = nearest(recall(localStorage, key), home, aim);
+    best = had ? { salt: had.find.salt, address: had.find.address, ground: had.ground, away: had.away } : null;
+    earlier.hidden = true;
+    takeButton.hidden = !best;
     said.textContent = 'digging for a place beside you. stop whenever you like';
     counted.textContent = 'starting the threads…';
     digButton.textContent = 'stop';
-    digging = search(
-      { factory: chain.plots!, owner, home: HOME, codeHash: codeHash.slice(0, 66), target: aim },
-      (progress) => {
-        show(progress);
-        if (progress.best && (!best || progress.best.away < best.away)) {
-          best = progress.best;
-          takeButton.hidden = false;
-        }
-      },
-      (trouble) => {
-        said.textContent = `the threads cannot work: ${trouble}`;
-      },
-    );
+    spec = { factory, owner: granted, home: HOME, codeHash: codeHash.slice(0, 66), target: aim };
+    digging = startDigging(spec);
   });
 
   takeButton.addEventListener('click', async () => {
     if (!best) return;
-    const owner = (await connected()) ?? (await connect());
-    if (!owner) return;
-    if (!(await onOurChain())) {
-      said.textContent = `switch the wallet to ${chain.name} — a plot exists on one chain only`;
+    const granted = (await connected()) ?? (await connect());
+    if (!granted) return;
+    const wrong = await onOurChain();
+    if (wrong) {
+      said.textContent = wrong;
       return;
     }
 
@@ -166,7 +273,7 @@ export function takeGround(
     const taking = best;
     said.textContent = `claiming ${far(taking.away)} from here — sign in the wallet`;
     try {
-      const hash = await send(owner, chain.plots!, CLAIM + taking.salt.slice(2));
+      const hash = await send(granted, factory, CLAIM + taking.salt.slice(2));
       said.textContent = 'sent. waiting for a block';
       const ok = await landed(hash);
       if (!ok) {
@@ -174,9 +281,10 @@ export function takeGround(
         takeButton.disabled = false;
         return;
       }
+      const key = shelfKey();
+      if (key) drop(localStorage, key, taking.address);
       stop();
       said.textContent = `yours: ${taking.address.slice(0, 10)}… ${far(taking.away)} from here`;
-      takeButton.hidden = true;
       onClaimed(taking.address);
     } catch (error) {
       said.textContent = (error as { message?: string }).message ?? 'the wallet said no';
@@ -185,9 +293,12 @@ export function takeGround(
   });
 
   return {
-    aimAt(target) {
-      aim = target;
-    },
     stop,
+    get digging() {
+      return digging !== null;
+    },
+    get rate() {
+      return rate;
+    },
   };
 }

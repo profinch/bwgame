@@ -41,37 +41,58 @@ export async function connected(): Promise<string | null> {
 }
 
 /**
- * Put the wallet on the chain this world is.
+ * Put the wallet on the chain this world is. Null if it is; otherwise why not.
  *
  * Ground claimed on one chain exists on that chain and nowhere else, so signing
  * on the wrong one would deploy a plot into a world nobody is standing in.
+ *
+ * Wallets disagree about how to refuse a switch: one says the chain is unknown
+ * with code 4902, another wraps that code inside another error, a third has
+ * the chain but a request already open. So a refusal is not read too closely —
+ * the chain is offered whole, which on every wallet also switches to it — and
+ * the wallet is asked where it stands afterwards rather than believed.
  */
-export async function onOurChain(): Promise<boolean> {
+export async function onOurChain(): Promise<string | null> {
   const provider = wallet();
-  if (!provider) return false;
+  if (!provider) return 'no wallet in this browser';
   const want = `0x${chain.id.toString(16)}`;
-  const now = (await provider.request({ method: 'eth_chainId' })) as string;
-  if (now.toLowerCase() === want) return true;
+  const there = async () => {
+    const now = (await provider.request({ method: 'eth_chainId' })) as string;
+    return now.toLowerCase() === want;
+  };
+  if (await there()) return null;
+
   try {
     await provider.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: want }] });
-    return true;
-  } catch (error) {
-    // 4902: the wallet has never heard of this chain, so offer it
-    if ((error as { code?: number }).code !== 4902) return false;
-    await provider.request({
-      method: 'wallet_addEthereumChain',
-      params: [
-        {
-          chainId: want,
-          chainName: chain.name,
-          rpcUrls: chain.rpcs,
-          nativeCurrency: { name: chain.coin.symbol, symbol: chain.coin.symbol, decimals: 18 },
-          blockExplorerUrls: [chain.explorer.replace(/address\/$/, '')],
-        },
-      ],
-    });
-    return true;
+  } catch (refusal) {
+    // 4001 is the person saying no, and there is nothing to offer them
+    if ((refusal as { code?: number }).code === 4001) {
+      return `the wallet stays where it is — a plot exists on ${chain.name} and nowhere else`;
+    }
+    try {
+      await provider.request({
+        method: 'wallet_addEthereumChain',
+        params: [
+          {
+            chainId: want,
+            chainName: chain.name,
+            rpcUrls: chain.rpcs,
+            nativeCurrency: { name: chain.coin.symbol, symbol: chain.coin.symbol, decimals: 18 },
+            blockExplorerUrls: [chain.explorer.replace(/address\/$/, '')],
+          },
+        ],
+      });
+    } catch (again) {
+      return `the wallet would not switch to ${chain.name}: ${wording(again) || wording(refusal)}`;
+    }
   }
+  return (await there()) ? null : `the wallet is still not on ${chain.name} — switch it there and claim again`;
+}
+
+/** What a wallet's error says, in its own words if it has any. */
+function wording(error: unknown): string {
+  const said = (error as { message?: string })?.message;
+  return typeof said === 'string' ? said.split('\n')[0]!.slice(0, 160) : '';
 }
 
 /** Send one call and hand back its hash. */

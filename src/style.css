@@ -441,10 +441,28 @@ body.world {
   color: #2a2a28;
 }
 
-.hud.claim .claim-count {
+.hud.claim .claim-count,
+.hud.claim .claim-earlier {
   font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
   color: #4a4a48;
   white-space: pre-line;
+}
+
+.hud.claim .claim-cores {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: #4a4a48;
+}
+
+.hud.claim .claim-cores input {
+  width: 110px;
+  margin: 0;
+  accent-color: var(--fg);
+  cursor: pointer;
 }
 
 .hud.claim button {
