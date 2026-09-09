@@ -8,7 +8,7 @@
  * transaction, which deploys a contract whose address is the place itself.
  */
 import { call } from './chain';
-import { chain } from './chains';
+import { CHAINS, chain } from './chains';
 import { type Progress, type Search, search } from './claim';
 import type { Found } from './mine';
 import { connect, connected, landed, onOurChain, send, wallet } from './signer';
@@ -57,12 +57,30 @@ export function takeGround(
   let best: Found | null = null;
   let aim = { x: 0, z: 0 };
 
-  // ground is claimed on the chain that has a factory, and nowhere else
+  panel.hidden = false;
+
+  /**
+   * Ground is claimed on the chain that has a factory, and nowhere else.
+   *
+   * Which is most of them, so the panel says where it can be done and offers to
+   * take you there rather than quietly not being on the page — a control that
+   * hides itself is indistinguishable from one that is broken.
+   */
   if (!chain.plots) {
-    panel.hidden = true;
+    const somewhere = Object.values(CHAINS).find((other) => other.plots);
+    said.textContent = somewhere
+      ? `ground is taken on ${somewhere.name}, which is where the factory stands`
+      : 'no factory on any chain yet';
+    digButton.textContent = somewhere ? `go to ${somewhere.name}` : 'nowhere to dig';
+    digButton.disabled = !somewhere;
+    digButton.addEventListener('click', () => {
+      if (!somewhere) return;
+      const to = new URL(location.href);
+      to.searchParams.set('chain', somewhere.key);
+      location.href = to.toString();
+    });
     return { aimAt: () => {}, stop: () => {} };
   }
-  panel.hidden = false;
 
   const show = (progress: Progress | null) => {
     if (!progress) {
@@ -91,11 +109,16 @@ export function takeGround(
       return;
     }
 
-    const owner = (await connected()) ?? (await connect());
+    if (!wallet()) {
+      said.textContent =
+        'no wallet in this browser. a salt carries the address it was mined for, ' +
+        'so digging needs one before it starts';
+      return;
+    }
+    said.textContent = 'asking the wallet for an address';
+    const owner = await connected().then((had) => had ?? connect()).catch(() => null);
     if (!owner) {
-      said.textContent = wallet()
-        ? 'the wallet said no'
-        : 'no wallet in this browser — ground is claimed by a transaction';
+      said.textContent = 'the wallet said no';
       return;
     }
 
@@ -110,6 +133,7 @@ export function takeGround(
     best = null;
     takeButton.hidden = true;
     said.textContent = 'digging for a place beside you. stop whenever you like';
+    counted.textContent = 'starting the threads…';
     digButton.textContent = 'stop';
     digging = search(
       { factory: chain.plots!, owner, codeHash: codeHash.slice(0, 66), target: aim },
@@ -119,6 +143,9 @@ export function takeGround(
           best = progress.best;
           takeButton.hidden = false;
         }
+      },
+      (trouble) => {
+        said.textContent = `the threads cannot work: ${trouble}`;
       },
     );
   });

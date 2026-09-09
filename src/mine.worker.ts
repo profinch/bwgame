@@ -26,6 +26,11 @@ export interface Report {
   close: boolean;
 }
 
+/** A thread that cannot work says so, rather than going quiet. */
+export interface Trouble {
+  trouble: string;
+}
+
 let stopped = false;
 
 async function run(task: Task): Promise<void> {
@@ -57,5 +62,8 @@ onmessage = (event: MessageEvent<Task | 'stop'>) => {
     stopped = true;
     return;
   }
-  void run(event.data);
+  void run(event.data).catch((error: unknown) => {
+    const trouble: Trouble = { trouble: (error as Error)?.message ?? String(error) };
+    postMessage(trouble);
+  });
 };

@@ -8,7 +8,7 @@
  * is best when you stop is what you may claim.
  */
 import type { Dig, Found } from './mine';
-import type { Report, Task } from './mine.worker';
+import type { Report, Task, Trouble } from './mine.worker';
 
 export interface Progress {
   /** Attempts made by every thread together. */
@@ -27,13 +27,20 @@ export interface Search {
   readonly progress: Progress;
 }
 
+/** Told when a thread cannot work, because a silent search looks like a slow one. */
+export type OnTrouble = (what: string) => void;
+
 /** How many threads to set on it: all of them but one, so the world still draws. */
 export function threadsAvailable(): number {
   const cores = navigator.hardwareConcurrency || 4;
   return Math.max(1, cores - 1);
 }
 
-export function search(spec: Dig, onProgress: (progress: Progress) => void): Search {
+export function search(
+  spec: Dig,
+  onProgress: (progress: Progress) => void,
+  onTrouble: OnTrouble = () => {},
+): Search {
   const threads = threadsAvailable();
   const workers: Worker[] = [];
   const progress: Progress = { tries: 0, rate: 0, best: null, threads };
@@ -44,8 +51,16 @@ export function search(spec: Dig, onProgress: (progress: Progress) => void): Sea
 
   for (let lane = 0; lane < threads; lane++) {
     const worker = new Worker(new URL('./mine.worker.ts', import.meta.url), { type: 'module' });
-    worker.onmessage = (event: MessageEvent<Report>) => {
+    // a thread that dies says nothing on its own, and a search that reports
+    // nothing looks exactly like a search that is simply slow
+    worker.onerror = (event) => onTrouble(event.message || 'a thread died');
+    worker.onmessageerror = () => onTrouble('a thread sent something unreadable');
+    worker.onmessage = (event: MessageEvent<Report | Trouble>) => {
       if (stopped) return;
+      if ('trouble' in event.data) {
+        onTrouble(event.data.trouble);
+        return;
+      }
       const report = event.data;
       progress.tries += report.tries;
       counted += report.tries;
