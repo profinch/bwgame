@@ -381,7 +381,7 @@ keyButton.addEventListener('click', async () => {
     // the word stands in for the key, then the key comes back
     copy.textContent = said;
     clearTimeout(restore);
-    restore = setTimeout(() => {
+    restore = window.setTimeout(() => {
       copy.textContent = shown;
     }, 1200);
   });

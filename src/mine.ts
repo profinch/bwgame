@@ -19,10 +19,13 @@
  * The first twenty bytes of a salt must be the owner's own address, which the
  * factory checks. That makes a found salt useless to anybody watching the
  * mempool, and it keeps the search to one hash per attempt.
+ *
+ * The attempts themselves are made in WebAssembly (`wasm/mine.ts`, compiled to
+ * `mine.wasm`): the preimage, the hash, the reading of the address and the
+ * measuring against the target all happen inside it, and this file only lays
+ * the preimage out, starts it, and reads the best back once a batch.
  */
-import { DEPTH, HOME } from './engine/land';
-
-export type Keccak = (input: Uint8Array) => Uint8Array;
+import { DEPTH } from './engine/land';
 
 /** Where an address sits, in metres, on the walkable world's grid. */
 export function placeOf(address: Uint8Array): { x: number; z: number } {
@@ -37,7 +40,7 @@ export function placeOf(address: Uint8Array): { x: number; z: number } {
   return { x, z };
 }
 
-function bytesOf(hex: string): Uint8Array {
+export function bytesOf(hex: string): Uint8Array {
   const body = hex.replace(/^0x/, '');
   const out = new Uint8Array(body.length / 2);
   for (let i = 0; i < out.length; i++) out[i] = parseInt(body.slice(i * 2, i * 2 + 2), 16);
@@ -48,9 +51,6 @@ export function hexOf(bytes: Uint8Array): string {
   return `0x${[...bytes].map((byte) => byte.toString(16).padStart(2, '0')).join('')}`;
 }
 
-/** Where home sits on that same grid, so offsets can be worked out from it. */
-export const HOME_PLACE = placeOf(bytesOf(HOME));
-
 export interface Ground {
   /** How far from home, in metres. */
   x: number;
@@ -58,14 +58,24 @@ export interface Ground {
 }
 
 /** A place, relative to home rather than to the corner of the world. */
-export function groundOf(address: Uint8Array): Ground {
+export function groundOf(address: Uint8Array, home: { x: number; z: number }): Ground {
   const at = placeOf(address);
-  return { x: at.x - HOME_PLACE.x, z: at.z - HOME_PLACE.z };
+  return { x: at.x - home.x, z: at.z - home.z };
 }
 
 export interface Dig {
   factory: string;
   owner: string;
+  /**
+   * The address the world is built around, which `target` is measured from.
+   *
+   * Passed in rather than read here on purpose. This runs in a worker, and a
+   * worker's `location` is its own script's, not the page's — so anything that
+   * reads `?chain=` or `?home=` off the URL answers for the wrong world there,
+   * and the search aims at a point that may not even be inside this one. The
+   * page knows where home is; it says so.
+   */
+  home: string;
   /** keccak of the plot's creation code, which the factory will tell you. */
   codeHash: string;
   /** Where you want to stand, in metres from home. */
@@ -81,61 +91,77 @@ export interface Found {
   address: string;
   ground: Ground;
   away: number;
-  tries: number;
 }
 
+/** What one batch of attempts came to. */
+export interface Round {
+  /** The closest so far, over every batch since the search began. */
+  best: Found | null;
+  /** Whether that is within what the caller asked for. */
+  close: boolean;
+  /** Attempts this batch made. */
+  tries: number;
+  /** Where the next batch should start counting. */
+  next: bigint;
+}
+
+/** What `mine.wasm` exports. */
+export interface MineExports {
+  memory: WebAssembly.Memory;
+  reset(): void;
+  search(from: bigint, step: bigint, count: number, targetX: number, targetZ: number): bigint;
+  bestDistance(): number;
+  bestCounter(): bigint;
+  hashOnce(): void;
+}
+
+/** Where things sit in the module's memory. Mirrors the layout in wasm/mine.ts. */
+export const PREIMAGE = 0;
+export const BEST_ADDRESS = 96;
+export const STATE = 128;
+/** The salt's counter: the last eight of its thirty-two bytes. */
+const COUNTER = 45;
+const SALT = 21;
+const SALT_END = 53;
+
 /**
- * Grind salts until one lands close enough.
+ * Lay out the preimage once, and hand back a way of grinding it.
  *
- * The work buffer is laid out once and only its last twelve bytes change, so
- * the loop does nothing but hash: 0xff, the factory, the salt, the code hash.
+ * The buffer is 0xff, the factory, the salt, the code hash. Only the salt's
+ * last eight bytes ever change, and the module changes them itself.
  */
-export function dig(
-  keccak: Keccak,
-  spec: Dig,
-  /** Where to start counting from, so several workers can share the search. */
-  from = 0n,
-  step = 1n,
-): { best: Found | null; close: boolean; tries: number; next: bigint } {
-  const factory = bytesOf(spec.factory);
-  const owner = bytesOf(spec.owner);
-  const codeHash = bytesOf(spec.codeHash);
+export function miner(exports: MineExports, spec: Dig): { run(from: bigint, step: bigint): Round } {
+  const memory = new Uint8Array(exports.memory.buffer);
+  memory.fill(0, PREIMAGE, PREIMAGE + 85);
+  memory[PREIMAGE] = 0xff;
+  memory.set(bytesOf(spec.factory), PREIMAGE + 1);
+  memory.set(bytesOf(spec.owner), SALT); // the salt begins with the owner's address
+  memory.set(bytesOf(spec.codeHash), SALT_END);
+  exports.reset();
 
-  const work = new Uint8Array(85);
-  work[0] = 0xff;
-  work.set(factory, 1);
-  work.set(owner, 21); // the salt begins with the owner's address
-  work.set(codeHash, 53);
+  // the target in the module's terms: whole cells from the corner of the world
+  const home = placeOf(bytesOf(spec.home));
+  const targetX = Math.round(home.x + spec.target.x);
+  const targetZ = Math.round(home.z + spec.target.z);
+  const batch = spec.batch ?? 500_000;
 
-  const tail = new DataView(work.buffer, 41, 12); // the twelve bytes we vary
-  const batch = spec.batch ?? 200_000;
-  let counter = from;
-  let best: Found | null = null;
+  return {
+    run(from, step) {
+      const next = exports.search(from, step, batch, targetX, targetZ);
+      const squared = exports.bestDistance();
+      if (!Number.isFinite(squared)) return { best: null, close: false, tries: batch, next };
 
-  for (let i = 0; i < batch; i++) {
-    tail.setUint32(4, Number(counter >> 32n) >>> 0);
-    tail.setUint32(8, Number(counter & 0xffffffffn) >>> 0);
-
-    const digest = keccak(work);
-    const address = digest.subarray(12);
-    const ground = groundOf(address);
-    const away = Math.hypot(ground.x - spec.target.x, ground.z - spec.target.z);
-
-    if (best === null || away < best.away) {
-      best = {
-        salt: hexOf(work.subarray(21, 53)),
-        address: hexOf(address),
-        ground,
-        away,
-        tries: i + 1,
-      };
-      // near enough to stop for, if the caller said what near enough is
-      if (spec.within !== undefined && away <= spec.within) {
-        return { best, close: true, tries: i + 1, next: counter + step };
-      }
-    }
-    counter += step;
-  }
-
-  return { best, close: false, tries: batch, next: counter };
+      // the module keeps the address it found; the salt is the owner plus the
+      // counter it was found with, written back the way the module wrote it
+      const counter = exports.bestCounter();
+      const salt = memory.slice(SALT, SALT_END);
+      new DataView(salt.buffer).setBigUint64(COUNTER - SALT, counter);
+      const address = memory.slice(BEST_ADDRESS, BEST_ADDRESS + 20);
+      const ground = groundOf(address, home);
+      const away = Math.hypot(ground.x - spec.target.x, ground.z - spec.target.z);
+      const best: Found = { salt: hexOf(salt), address: hexOf(address), ground, away };
+      const close = spec.within !== undefined && away <= spec.within;
+      return { best, close, tries: batch, next };
+    },
+  };
 }

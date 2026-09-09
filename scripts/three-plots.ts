@@ -11,9 +11,8 @@
 import { spawn } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { keccak_256 } from '@noble/hashes/sha3';
-import { createKeccak } from 'hash-wasm';
-import { DEPTH } from '../src/engine/land';
-import { dig, groundOf, hexOf, type Found, type Ground } from '../src/mine';
+import { DEPTH, HOME } from '../src/engine/land';
+import { type Found, type Ground, type MineExports, hexOf, miner } from '../src/mine';
 
 const RPC = 'http://127.0.0.1:8545';
 const WITHIN = Number(process.argv[2] ?? 20_000);
@@ -85,12 +84,9 @@ async function main() {
   console.log(`factory ${factory}`);
   console.log(`three plots, each within ${WITHIN.toLocaleString('en')} m of the first\n`);
 
-  const keccak = await createKeccak(256);
-  const hash = (input: Uint8Array) => {
-    keccak.init();
-    keccak.update(input);
-    return keccak.digest('binary') as Uint8Array;
-  };
+  // the same module the browser's workers run, straight off the disk
+  const { instance } = await WebAssembly.instantiate(readFileSync('src/mine.wasm'), {});
+  const exports = instance.exports as unknown as MineExports;
 
   const plots: { found: Found; owner: string; seconds: number; tries: number }[] = [];
   let target: Ground = { x: 0, z: 0 };
@@ -103,8 +99,9 @@ async function main() {
     let from = 0n;
     let found: Found | null = null;
 
+    const mine = miner(exports, { factory, owner: owners[n]!, home: HOME, codeHash, target, within });
     while (!found) {
-      const round = dig(hash, { factory, owner: owners[n]!, codeHash, target, within }, from);
+      const round = mine.run(from, 1n);
       tries += round.tries;
       from = round.next;
       if (round.close) found = round.best;

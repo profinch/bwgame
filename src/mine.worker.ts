@@ -6,12 +6,13 @@
  * it has made and the closest it has come. The deciding — which of the threads'
  * bests is the best, and when to stop — belongs to whoever started them.
  *
- * The keccak comes from WebAssembly rather than from the same library the rest
- * of the world uses: measured on this machine it is thirteen times faster, and
- * a search is nothing but that one call.
+ * The hashing is done in a WebAssembly module of our own (`wasm/mine.ts`) that
+ * runs the whole attempt — counter, hash, address, distance — without coming
+ * back to JavaScript. Measured against a hashing library called once per
+ * attempt, it is three times as fast, because the boundary was the cost.
  */
-import { createKeccak } from 'hash-wasm';
-import { type Dig, type Found, dig } from './mine';
+import { type Dig, type Found, type MineExports, miner } from './mine';
+import instantiate from './mine.wasm?init';
 
 export interface Task {
   spec: Dig;
@@ -34,22 +35,16 @@ export interface Trouble {
 let stopped = false;
 
 async function run(task: Task): Promise<void> {
-  const keccak = await createKeccak(256);
-  const hash = (input: Uint8Array): Uint8Array => {
-    keccak.init();
-    keccak.update(input);
-    return keccak.digest('binary');
-  };
+  const instance = await instantiate();
+  const mine = miner(instance.exports as unknown as MineExports, task.spec);
 
   let from = BigInt(task.from);
   const step = BigInt(task.step);
-  let best: Found | null = null;
 
   while (!stopped) {
-    const round = dig(hash, task.spec, from, step);
+    const round = mine.run(from, step);
     from = round.next;
-    if (round.best && (best === null || round.best.away < best.away)) best = round.best;
-    const report: Report = { tries: round.tries, best, close: round.close };
+    const report: Report = { tries: round.tries, best: round.best, close: round.close };
     postMessage(report);
     if (round.close) return;
     // let the thread breathe, so a stop message gets through between batches

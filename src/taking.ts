@@ -10,6 +10,7 @@
 import { call } from './chain';
 import { CHAINS, chain } from './chains';
 import { type Progress, type Search, search } from './claim';
+import { HOME } from './engine/land';
 import type { Found } from './mine';
 import { connect, connected, landed, onOurChain, send, wallet } from './signer';
 
@@ -138,7 +139,7 @@ export function takeGround(
     counted.textContent = 'starting the threads…';
     digButton.textContent = 'stop';
     digging = search(
-      { factory: chain.plots!, owner, codeHash: codeHash.slice(0, 66), target: aim },
+      { factory: chain.plots!, owner, home: HOME, codeHash: codeHash.slice(0, 66), target: aim },
       (progress) => {
         show(progress);
         if (progress.best && (!best || progress.best.away < best.away)) {
