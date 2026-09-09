@@ -46,6 +46,23 @@ turns the claim into something permanent that everybody else can walk up to.
 There is no land registry and no ownership token, because there doesn't need to be one. The
 plot *is* the contract's address, and two addresses cannot collide.
 
+Digging is done where you stand: every thread the machine has, hashing salts, and the closest
+attempt so far is yours to claim whenever you like — there is no threshold, the work simply *is*
+the distance. The hashing runs in a WebAssembly module of our own, about seven million attempts
+a second a thread, and what it finds is kept in the browser, so a reload loses nothing. While
+you dig you cannot walk: the walker turns into an auger, half sunk, with the ground coming up
+round it.
+
+A plot just claimed is not yet a building. It is the drawing of one — dashed edges and panes of
+smoked glass, drawn stroke by stroke where the digging got you — because the address has fixed
+where it stands and how large it is, and the walls are what the owner has not said yet. Writing
+into the plot (`inscribe`) turns the drawing into the building. A plot can be handed to somebody
+else (`transfer`): ground is given, sold and inherited.
+
+Every plot the factory has made is indexed by a subgraph, so a client arriving anywhere asks one
+question and gets everything standing near it — the address, who holds it, what is written into
+it, and the address read as coordinates, down to the tile it falls in.
+
 ## Made of nothing
 
 No textures, no models, no asset pipeline. Geometry is generated from what an account already
@@ -66,6 +83,40 @@ black and white that a gradient shows its steps without it.
 Started at **ETHOnline 2026** (September 4–13, 2026) and continued after it. The hackathon is
 where this begins, not what it is for. Work in progress, in the open.
 
+Live at **[gs.bwtoken.io](https://gs.bwtoken.io)** — the map — and
+**[gs.bwtoken.io/world.html](https://gs.bwtoken.io/world.html)** — the world. Ground is taken on
+Sepolia: `world.html?chain=sepolia`. A place is a link: `?at=0x…` or `?at=name.eth`.
+
+## On the chain
+
+| | |
+|---|---|
+| plot factory (Sepolia) | [`0x4bbfaE0A0BEe0F49F3ecbCCcC638a0235359eb73`](https://eth-sepolia.blockscout.com/address/0x4bbfaE0A0BEe0F49F3ecbCCcC638a0235359eb73), deployed in block 11669423 |
+| source, verified | [Sourcify](https://repo.sourcify.dev/11155111/0x4bbfaE0A0BEe0F49F3ecbCCcC638a0235359eb73) · `contracts/src/Plot.sol` |
+| subgraph | [`ground-state`](https://thegraph.com/studio/subgraph/ground-state) on Subgraph Studio — [query](https://api.studio.thegraph.com/query/1760017/ground-state/version/latest), source in `subgraph/` |
+| first plot | [`0x3095c19ca43d4f17d5b62be3c3eacd5274dfca92`](https://eth-sepolia.blockscout.com/address/0x3095c19ca43d4f17d5b62be3c3eacd5274dfca92) |
+
+`Plots.claim(bytes32 salt)` deploys a `Plot` with CREATE2. The first twenty bytes of the salt must
+be the caller's address, so a salt seen in the mempool is worthless to anyone else. `predict(salt)`
+says where a salt would land; `plotCodeHash()` is what a miner needs. A `Plot` has an `owner`, a
+`note`, `inscribe(string)` and `transfer(address)`.
+
+An earlier factory, `0x9f76BcE99c0b997af2442FfD65A48fB58f1cA088`, holds one plot from before
+plots could change hands; the world no longer looks at it.
+
+## Run it
+
+```bash
+npm install
+npm run dev          # the map at /, the world at /world.html
+npm test             # vitest
+npm run build        # tsc --noEmit + vite build
+npm run wasm         # rebuild src/mine.wasm from wasm/mine.ts (AssemblyScript)
+forge test           # the contracts (Foundry; forge install foundry-rs/forge-std first)
+```
+
+The subgraph has its own `package.json` in `subgraph/`; see the README there.
+
 ## Left to settle
 
 - **Where a wallet's own address is written.** A wallet's plate is plain stone: the runes are on
@@ -85,6 +136,23 @@ where this begins, not what it is for. Work in progress, in the open.
   fungible holding is. An NFT is not that: one of nine thousand is not a millionth of anything
   you can stand a stone to. Wallets hold them, the indexer already returns them, and they get
   nothing on the plate for now — they need a shape of their own, decided rather than borrowed.
+
+- **Two plots in one metre.** The walkable world is thirteen hex digits deep: a metre of ground is
+  one cell, and two addresses that share thirteen digits stand in the same place. Random addresses
+  never do; mined ones could, if somebody dug all the way into a taken cell. The factory does not
+  forbid it and the world does not yet say what happens. Refusing at the factory, offsetting within
+  the cell by the digits that remain, or leaving it to the map — which is continuous to the fortieth
+  digit — are the three honest answers.
+
+- **What is found lives in one browser.** A salt mined here is kept in this browser's storage, filed
+  by chain, factory and owner. It is not shared between devices and not backed up; clearing site
+  data loses it. It could be written to the plot itself at claim time, or kept with the presence
+  server when there is one.
+
+- **The size of a written plot.** A plot's code is the same for every plot and says nothing about
+  the place, so sizing it by code size — as the world sizes every other contract — makes every
+  plot the same building. The drawing is seven tenths of that. What a *written* plot should be
+  sized by (the note? what the plot holds? what has passed through it?) is open.
 
 ## Prior work
 
