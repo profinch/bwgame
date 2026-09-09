@@ -37,6 +37,13 @@ export interface Chain {
   /** The block it was deployed in: there are no plots to look for before it. */
   plotsSince?: number;
   /**
+   * A subgraph over the factory, once there is one: every plot, who holds it,
+   * what is written into it. Asked first; the factory's own logs are the
+   * fallback, and stop being enough once the history outgrows what a public
+   * gateway will search.
+   */
+  subgraph?: string;
+  /**
    * An indexer that can say what a wallet holds.
    *
    * There is no way to ask a chain this. A token only knows its own ledger, so

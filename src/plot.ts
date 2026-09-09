@@ -54,6 +54,8 @@ const RANGE = 50_000;
 export interface Claimed {
   plot: string;
   owner: string;
+  /** What is written into it, if whoever answered knew. */
+  note?: string;
 }
 
 /** The plots named in a batch of `Claimed` logs. */
@@ -67,20 +69,72 @@ export function plotsIn(logs: readonly { topics: string[] }[]): Claimed[] {
   return out;
 }
 
+/** What a subgraph answers, read into plots. Null if it is not an answer at all. */
+export function plotsInGraph(answer: unknown): Claimed[] | null {
+  const data = (answer as { data?: { plots?: unknown } })?.data;
+  if (!data || !Array.isArray(data.plots)) return null;
+  const out: Claimed[] = [];
+  for (const row of data.plots as { id?: string; owner?: { id?: string }; note?: string }[]) {
+    if (typeof row.id !== 'string' || typeof row.owner?.id !== 'string') continue;
+    out.push({ plot: row.id, owner: row.owner.id, note: typeof row.note === 'string' ? row.note : undefined });
+  }
+  return out;
+}
+
+/** The most plots asked for in one query. */
+const PAGE = 1000;
+
+/**
+ * Every plot, from the subgraph, or null if it did not answer.
+ *
+ * One query says everything the logs would, and more — what is written into
+ * each plot, which the logs cannot say without a call per plot — and it costs
+ * the same whether the factory is a day old or a year.
+ */
+async function fromGraph(): Promise<Claimed[] | null> {
+  if (!chain.subgraph) return null;
+  const all: Claimed[] = [];
+  for (let skip = 0; ; skip += PAGE) {
+    try {
+      const response = await fetch(chain.subgraph, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          query: `{ plots(first: ${PAGE}, skip: ${skip}, orderBy: claimedIn) { id owner { id } note } }`,
+        }),
+      });
+      if (!response.ok) return null;
+      const page = plotsInGraph(await response.json());
+      if (page === null) return null;
+      all.push(...page);
+      if (page.length < PAGE) return all;
+    } catch {
+      return null;
+    }
+  }
+}
+
 let known: Claimed[] = [];
 let seenUpTo = 0;
 
 /**
- * Every plot the factory has ever deployed, read off its `Claimed` events.
+ * Every plot the factory has ever deployed.
  *
- * The world cannot list the contracts on a chain, and does not try — but the
- * factory is one contract, young, and it says what it has made. Its logs are
- * asked for from the block it was deployed in, in the pieces a public gateway
- * allows, and only the new blocks on each call after the first. It is what an
- * indexer will do for it later, done by hand while the history is short.
+ * From the subgraph when the chain has one. Otherwise off the factory's own
+ * `Claimed` events: the world cannot list the contracts on a chain, and does
+ * not try — but the factory is one contract, young, and it says what it has
+ * made. Its logs are asked for from the block it was deployed in, in the pieces
+ * a public gateway allows, and only the new blocks on each call after the
+ * first. That is the indexer's job done by hand, and it holds only while the
+ * history is short.
  */
 export async function claimedPlots(): Promise<Claimed[]> {
   if (!chain.plots) return [];
+  const indexed = await fromGraph();
+  if (indexed) {
+    known = indexed;
+    return known;
+  }
   const head = await rpc<string>('eth_blockNumber', []);
   if (!head) return known;
   const latest = Number(BigInt(head));
@@ -100,8 +154,8 @@ export async function claimedPlots(): Promise<Claimed[]> {
   return known;
 }
 
-/** Whether the factory says it made a plot at this address. */
-export async function isClaimed(address: string): Promise<boolean> {
+/** What the factory says about a plot at this address, or null if it made none there. */
+export async function claimAt(address: string): Promise<Claimed | null> {
   const wanted = address.toLowerCase();
-  return (await claimedPlots()).some((claimed) => claimed.plot.toLowerCase() === wanted);
+  return (await claimedPlots()).find((claimed) => claimed.plot.toLowerCase() === wanted) ?? null;
 }
