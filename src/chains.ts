@@ -108,6 +108,8 @@ export const CHAINS: Record<string, Chain> = {
     // nowhere else
     plots: '0x4bbfaE0A0BEe0F49F3ecbCCcC638a0235359eb73',
     plotsSince: 11_669_423,
+    // the subgraph in subgraph/, deployed to Subgraph Studio; "latest" follows redeploys
+    subgraph: 'https://api.studio.thegraph.com/query/1760017/ground-state/version/latest',
     tokens: [
       { at: '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238', symbol: 'usdc', decimals: 6 },
       { at: '0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14', symbol: 'weth', decimals: 18 },
