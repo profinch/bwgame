@@ -53,17 +53,8 @@ export class Chips {
    * walker does.
    */
   step(seconds: number, source: Source | null, rate: number, gravity: number): void {
-    if (source && rate > 0) {
-      const perSecond = 8 + 28 * Math.min(1, rate / 4e7);
-      this.due += seconds * perSecond;
-      while (this.due >= 1) {
-        this.due -= 1;
-        if (this.chips.length < MOST) this.chips.push(this.throwFrom(source));
-      }
-    } else {
-      this.due = 0;
-    }
-
+    // the ones in the air move first, then new ones are thrown: a chip is seen
+    // at the rim for a frame before gravity has a say, whatever the frame is
     for (let i = this.chips.length - 1; i >= 0; i--) {
       const chip = this.chips[i]!;
       chip.vy -= gravity * seconds;
@@ -74,6 +65,17 @@ export class Chips {
         this.chips[i] = this.chips[this.chips.length - 1]!;
         this.chips.pop();
       }
+    }
+
+    if (source && rate > 0) {
+      const perSecond = 8 + 28 * Math.min(1, rate / 4e7);
+      this.due += seconds * perSecond;
+      while (this.due >= 1) {
+        this.due -= 1;
+        if (this.chips.length < MOST) this.chips.push(this.throwFrom(source));
+      }
+    } else {
+      this.due = 0;
     }
 
     this.instances.fill(0);
