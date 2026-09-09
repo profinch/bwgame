@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import type { Account } from '../src/chain';
 import { piecesOf, structureOf } from '../src/places';
+import { OUTLINED, glassOf, inkOf, strokesOf } from '../src/blueprint';
 import { PLOT_CODE_SIZE, isPlot, maskedPlotCode, plotsIn } from '../src/plot';
 
 /** The compiled plot, if forge has built it here; the runtime code with the owner blank. */
@@ -84,6 +85,48 @@ describe('a plot nobody has written into', () => {
 
   it('is not made of stone', () => {
     expect(piecesOf(structureOf(plot, [], undefined, { note: '' }), 10).length).toBe(0);
+  });
+
+  it('is outlined in dashes, plan first, corners up, roof last, with the pen where it has got to', () => {
+    const framed = structureOf(plot, [], undefined, { note: '' });
+    const strokes = strokesOf(framed, 10);
+    // dashes: many short strokes, none longer than a dash
+    expect(strokes.length).toBeGreaterThan(12);
+    for (const { from, to } of strokes) {
+      expect(Math.hypot(to[0] - from[0], to[1] - from[1], to[2] - from[2])).toBeLessThanOrEqual(1.1 + 1e-6);
+    }
+    // the plan lies just above the ground and comes first; the roof comes last
+    expect(strokes[0]!.from[1]).toBeCloseTo(10.04, 6);
+    expect(strokes[strokes.length - 1]!.to[1]).toBeCloseTo(10 + framed.tall, 6);
+
+    const eye: [number, number, number] = [40, 12, 40];
+    const half: number[] = [];
+    const pen = inkOf(strokes, OUTLINED / 2, eye, half);
+    const whole: number[] = [];
+    expect(inkOf(strokes, 1, eye, whole)).toBeNull();
+    // every dash is six vertices of four floats, and no pen when done
+    expect(whole.length).toBe(strokes.length * 6 * 4);
+    expect(half.length).toBeLessThan(whole.length);
+    expect(pen).not.toBeNull();
+    expect(pen![1]).toBeGreaterThanOrEqual(10.04);
+    expect(pen![1]).toBeLessThanOrEqual(10 + framed.tall);
+  });
+
+  it('glazes over once the outline is drawn: five panes, from nothing to smoked', () => {
+    const framed = structureOf(plot, [], undefined, { note: '' });
+    const none: number[] = [];
+    glassOf(framed, 10, { x: 0, z: 0 }, OUTLINED, none);
+    expect(none).toHaveLength(0);
+    const some: number[] = [];
+    glassOf(framed, 10, { x: 0, z: 0 }, (1 + OUTLINED) / 2, some);
+    const all: number[] = [];
+    glassOf(framed, 10, { x: 0, z: 0 }, 1, all);
+    expect(all).toHaveLength(5 * 6 * 4);
+    expect(some).toHaveLength(all.length);
+    // the same panes, fainter on the way up
+    expect(some[3]).toBeLessThan(all[3]!);
+    expect(some[3]).toBeGreaterThan(0);
+    expect(all[3]).toBeLessThan(0.3);
   });
 });
 
