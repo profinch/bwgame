@@ -170,7 +170,7 @@ export function box(): Geometry {
 }
 
 /** Append one axis-aligned box, given its two corners, to a growing mesh. */
-function addBox(
+export function addBox(
   into: { positions: number[]; normals: number[]; indices: number[] },
   min: [number, number, number],
   max: [number, number, number],
@@ -208,6 +208,61 @@ export function figure(): Geometry {
     normals: new Float32Array(parts.normals),
     indices: new Uint32Array(parts.indices),
   };
+}
+
+/**
+ * A square post drawn to a point and twisted on the way down: a screw.
+ *
+ * Built in slices. Each slice is a square that is a little smaller and a
+ * little more turned than the one above it, and the four walls between two
+ * neighbouring squares are quads — so the corners of the post run down to the
+ * tip as four helical edges, and when the whole thing turns about its axis it
+ * looks like it is going in. `turns` is how many times round the edges go over
+ * the height; the top square is square with the axes so a body can sit on it.
+ */
+export function addScrew(
+  into: { positions: number[]; normals: number[]; indices: number[] },
+  half: number,
+  height: number,
+  turns: number,
+  slices: number,
+): void {
+  const square = (y: number): number[][] => {
+    const size = (half * y) / height;
+    const angle = turns * 2 * Math.PI * (y / height - 1);
+    const c = Math.cos(angle);
+    const s = Math.sin(angle);
+    return [
+      [-size, size],
+      [size, size],
+      [size, -size],
+      [-size, -size],
+    ].map(([x, z]) => [c * x! - s * z!, y, s * x! + c * z!]);
+  };
+  for (let i = 0; i < slices; i++) {
+    const below = square((height * i) / slices);
+    const above = square((height * (i + 1)) / slices);
+    for (let k = 0; k < 4; k++) {
+      const quad = [below[k]!, below[(k + 1) % 4]!, above[(k + 1) % 4]!, above[k]!];
+      // Newell's normal, which does not mind that the bottom edge of the
+      // lowest slice is a point
+      let nx = 0;
+      let ny = 0;
+      let nz = 0;
+      for (let v = 0; v < 4; v++) {
+        const a = quad[v]!;
+        const b = quad[(v + 1) % 4]!;
+        nx += (a[1]! - b[1]!) * (a[2]! + b[2]!);
+        ny += (a[2]! - b[2]!) * (a[0]! + b[0]!);
+        nz += (a[0]! - b[0]!) * (a[1]! + b[1]!);
+      }
+      const length = Math.hypot(nx, ny, nz) || 1;
+      const base = into.positions.length / 3;
+      for (const corner of quad) into.positions.push(...corner);
+      for (let v = 0; v < 4; v++) into.normals.push(nx / length, ny / length, nz / length);
+      into.indices.push(base, base + 1, base + 2, base, base + 2, base + 3);
+    }
+  }
 }
 
 const GOLDEN = (1 + Math.sqrt(5)) / 2;

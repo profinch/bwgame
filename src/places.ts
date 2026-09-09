@@ -382,7 +382,21 @@ export function signCut(char: string, size: number): Uint8Array {
  * tiny letters rather than half of it in big ones.
  */
 export function writingOn(symbol: string, amount: string, tall: number, wide = POST) {
-  const columns = [[...symbol], [...amount]];
+  return carve([symbol, amount], tall, wide);
+}
+
+/** How wide a wall of `wide` metres is in cells, and how tall in metres per cell. */
+export const CELLS_ACROSS = WALL;
+
+/**
+ * Columns of writing cut down a wall, side by side and centred, read top to
+ * bottom. This is the carving itself; `writingOn` is the two-column case a
+ * post uses, and anything else that has a word to cut into stone comes here.
+ * The writing hangs from the top of the wall unless `foot` is set, in which
+ * case it stands on the bottom edge.
+ */
+export function carve(words: readonly string[], tall: number, wide: number, foot = false) {
+  const columns = words.map((word) => [...word]);
   const lines = Math.max(1, ...columns.map((column) => column.length));
   const across = wide / WALL;
   const high = Math.max(GRID + EDGE * 2, Math.floor(tall / across));
@@ -392,7 +406,10 @@ export function writingOn(symbol: string, amount: string, tall: number, wide = P
   const size = Math.max(3, Math.min(GRID, Math.floor(room / lines) - 1));
   const pitch = size + Math.max(1, Math.round(size / 5));
   const gap = Math.max(2, Math.round(size / 2));
-  const left = Math.max(0, Math.floor((WALL - (size * 2 + gap)) / 2));
+  const left = Math.max(0, Math.floor((WALL - (size * columns.length + gap * (columns.length - 1))) / 2));
+  // the writing hangs from the top of the wall, or stands on its foot
+  const written = lines * pitch - (pitch - size);
+  const top = foot ? Math.max(EDGE, high - EDGE - written) : EDGE;
 
   const cut = new Uint8Array(WALL * high);
   for (let side = 0; side < columns.length; side++) {
@@ -400,7 +417,7 @@ export function writingOn(symbol: string, amount: string, tall: number, wide = P
     for (let i = 0; i < letters.length; i++) {
       const sign = signCut(letters[i]!, size);
       const atCol = left + side * (size + gap);
-      const atRow = EDGE + i * pitch;
+      const atRow = top + i * pitch;
       for (let row = 0; row < size; row++) {
         for (let col = 0; col < size; col++) {
           if (sign[row * size + col] === 1) cut[(atRow + row) * WALL + atCol + col] = 1;
