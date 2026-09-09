@@ -30,10 +30,18 @@ export interface Search {
 /** Told when a thread cannot work, because a silent search looks like a slow one. */
 export type OnTrouble = (what: string) => void;
 
-/** How many threads to set on it: all of them but one, so the world still draws. */
+/**
+ * How many threads to set on it: half the machine.
+ *
+ * Every one of them runs a hash loop flat out, so all-but-one turns a laptop
+ * into a heater and the fans tell everyone about it. Half leaves the machine
+ * usable and costs a factor of two in a search where a factor of two is
+ * √2 in distance — hours of digging, not the difference between having a plot
+ * and not.
+ */
 export function threadsAvailable(): number {
   const cores = navigator.hardwareConcurrency || 4;
-  return Math.max(1, cores - 1);
+  return Math.max(1, Math.floor(cores / 2));
 }
 
 export function search(

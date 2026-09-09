@@ -87,8 +87,10 @@ export function takeGround(
       counted.textContent = '';
       return;
     }
+    const cores = navigator.hardwareConcurrency || 0;
     const lines = [
-      `${count(progress.tries)} tries · ${count(progress.rate)}/s · ${progress.threads} threads`,
+      `${count(progress.tries)} tries · ${count(progress.rate)}/s · ` +
+        `${progress.threads}${cores ? ` of ${cores}` : ''} cores`,
     ];
     if (progress.best) lines.push(`closest so far: ${far(progress.best.away)} from here`);
     counted.textContent = lines.join('\n');
