@@ -1,0 +1,66 @@
+"""
+A place somebody has taken.
+
+The id is the plot's address, which is also where it stands: the map is the
+address space. `x` and `y` are that address read as coordinates — each hex
+digit's top two bits step x and bottom two step y — and `cell` and `tile` are
+its first thirteen and nine digits: the metre of ground the plot stands on in
+the walkable world, and the 256-metre tile the world files things by. Anyone
+standing somewhere can ask for every plot in their tile with one query.
+"""
+type Plot @entity(immutable: false) {
+  "The address, which is the place."
+  id: Bytes!
+  "Who holds it now."
+  owner: Owner!
+  "Who mined it."
+  claimedBy: Bytes!
+  "The salt that put it here: the claimant's address, then what they found."
+  salt: Bytes!
+  claimedAt: BigInt!
+  claimedIn: BigInt!
+  claimTx: Bytes!
+  "What the owner has written into it. Empty until they do."
+  note: String!
+  inscribedAt: BigInt
+  "The address as coordinates: eighty bits each."
+  x: BigInt!
+  y: BigInt!
+  "First thirteen hex digits: the metre of ground it stands on."
+  cell: String!
+  "First nine hex digits: the 256-metre tile it falls in."
+  tile: String!
+  inscriptions: [Inscription!]! @derivedFrom(field: "plot")
+  transfers: [Transfer!]! @derivedFrom(field: "plot")
+}
+
+"Somebody who holds ground, or did."
+type Owner @entity(immutable: false) {
+  id: Bytes!
+  plots: [Plot!]! @derivedFrom(field: "owner")
+  "Plots held now."
+  held: Int!
+  "Plots ever mined by this address."
+  claimed: Int!
+}
+
+"One writing into a plot. The plot keeps the latest; these keep them all."
+type Inscription @entity(immutable: true) {
+  id: Bytes!
+  plot: Plot!
+  note: String!
+  at: BigInt!
+  block: BigInt!
+  tx: Bytes!
+}
+
+"A plot changing hands."
+type Transfer @entity(immutable: true) {
+  id: Bytes!
+  plot: Plot!
+  from: Bytes!
+  to: Bytes!
+  at: BigInt!
+  block: BigInt!
+  tx: Bytes!
+}

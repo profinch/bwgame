@@ -1,0 +1,57 @@
+specVersion: 1.2.0
+description: Ground State — every plot the factory has made, who holds it, and what is written into it
+repository: https://github.com/profinch/bwgame
+schema:
+  file: ./schema.graphql
+dataSources:
+  # The factory: the one contract that ever deploys a plot, and the one that
+  # says what it has made.
+  - kind: ethereum
+    name: Plots
+    network: sepolia
+    source:
+      address: "0x4bbfaE0A0BEe0F49F3ecbCCcC638a0235359eb73"
+      abi: Plots
+      startBlock: 11669423
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.9
+      language: wasm/assemblyscript
+      entities:
+        - Plot
+        - Owner
+      abis:
+        - name: Plots
+          file: ./abis/Plots.json
+        - name: Plot
+          file: ./abis/Plot.json
+      eventHandlers:
+        - event: Claimed(indexed address,indexed address,bytes32)
+          handler: handleClaimed
+      file: ./src/plots.ts
+templates:
+  # Every plot is its own contract, brought into being by a claim; from then on
+  # it is listened to for what is written into it and whose it becomes.
+  - kind: ethereum
+    name: Plot
+    network: sepolia
+    source:
+      abi: Plot
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.9
+      language: wasm/assemblyscript
+      entities:
+        - Plot
+        - Owner
+        - Inscription
+        - Transfer
+      abis:
+        - name: Plot
+          file: ./abis/Plot.json
+      eventHandlers:
+        - event: Inscribed(string)
+          handler: handleInscribed
+        - event: Transferred(indexed address,indexed address)
+          handler: handleTransferred
+      file: ./src/plot.ts

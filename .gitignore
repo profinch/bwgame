@@ -31,3 +31,8 @@ _*.png
 Thumbs.db
 *.log
 npm-debug.log*
+
+# subgraph
+subgraph/node_modules/
+subgraph/generated/
+subgraph/build/
