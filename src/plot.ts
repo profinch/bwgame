@@ -1,56 +1,42 @@
 /**
  * Knowing a plot when you see one.
  *
- * Every plot is deployed from the same source by the same factory, so their
- * code is the same — except for twenty bytes. The owner is an immutable, and an
- * immutable is written into the runtime code at deploy time, so each plot's
- * code carries its owner's address in two fixed places. Blank those out and
- * every plot hashes to one value. That value is how the world tells a plot
- * from any other small contract without asking anybody: the code is on the
- * chain, and the chain is what the world reads.
+ * Every plot is deployed from the same source by the same factory, and nothing
+ * about its owner is written into its code — the owner lives in storage — so
+ * every plot's runtime code is the same, byte for byte. Its hash is how the
+ * world tells a plot from any other small contract without asking anybody: the
+ * code is on the chain, and the chain is what the world reads.
+ *
+ * The same code alone is not proof, though. Anyone can deploy these bytes from
+ * a factory of their own and stand a thing in the world that hashes like a
+ * plot. So the world only calls a plot what the factory says it made: the code
+ * says *what* it is, the factory's `Claimed` events say *that* it is.
  *
  * The constants come from the compiled `Plot`, whose creation code hashes to
- * what the factory on Sepolia reports — so they describe the plots that
- * factory actually deploys. If the contract changes, they change with it.
+ * what the factory reports as `plotCodeHash()` — so they describe the plots
+ * that factory actually deploys. If the contract changes, they change with it.
  */
 import { keccak_256 } from '@noble/hashes/sha3';
 import { call, readString, rpc } from './chain';
 import { chain } from './chains';
 
 /** Bytes of runtime code a plot has. */
-export const PLOT_CODE_SIZE = 1068;
+export const PLOT_CODE_SIZE = 1263;
 
-/** Where in that code the owner is written, as a 32-byte word each time. */
-const OWNER_AT = [102, 331];
+/** keccak of that code. */
+const PLOT_CODE_HASH = '8a2b92030edfaf1921297f0b762b4b9f2ecd92e3e295e21165cdb1ec8cf5e635';
 
-/** keccak of the runtime code with both owner words blanked. */
-const MASKED_HASH = 'b0dc3338391728367b8f32503f039a389267d41ccb31aa029c9ead66a76d33ef';
+/** Whether this code is a plot's. `code` is hex, with or without the 0x. */
+export function isPlot(code: string): boolean {
+  const body = code.replace(/^0x/, '').toLowerCase();
+  if (body.length !== PLOT_CODE_SIZE * 2) return false;
+  const bytes = new Uint8Array(PLOT_CODE_SIZE);
+  for (let i = 0; i < PLOT_CODE_SIZE; i++) bytes[i] = parseInt(body.slice(i * 2, i * 2 + 2), 16);
+  return [...keccak_256(bytes)].map((b) => b.toString(16).padStart(2, '0')).join('') === PLOT_CODE_HASH;
+}
 
 /** `note()`, as the chain hears it. */
 const NOTE = '0x26d111f5';
-
-/**
- * The code with its owner blanked out, or null if it is not the size of a
- * plot's. `code` is hex without the 0x, as `accountAt` hands it over.
- */
-export function maskedPlotCode(code: string): string | null {
-  const body = code.replace(/^0x/, '').toLowerCase();
-  if (body.length !== PLOT_CODE_SIZE * 2) return null;
-  let masked = body;
-  for (const at of OWNER_AT) {
-    masked = masked.slice(0, at * 2) + '0'.repeat(64) + masked.slice(at * 2 + 64);
-  }
-  return masked;
-}
-
-/** Whether this code is a plot's. */
-export function isPlot(code: string): boolean {
-  const masked = maskedPlotCode(code);
-  if (masked === null) return false;
-  const bytes = new Uint8Array(PLOT_CODE_SIZE);
-  for (let i = 0; i < PLOT_CODE_SIZE; i++) bytes[i] = parseInt(masked.slice(i * 2, i * 2 + 2), 16);
-  return [...keccak_256(bytes)].map((b) => b.toString(16).padStart(2, '0')).join('') === MASKED_HASH;
-}
 
 /** What its owner has written into a plot. Empty if nothing yet, or if nothing answered. */
 export async function noteOf(address: string): Promise<string> {
@@ -112,4 +98,10 @@ export async function claimedPlots(): Promise<Claimed[]> {
     from = to + 1;
   }
   return known;
+}
+
+/** Whether the factory says it made a plot at this address. */
+export async function isClaimed(address: string): Promise<boolean> {
+  const wanted = address.toLowerCase();
+  return (await claimedPlots()).some((claimed) => claimed.plot.toLowerCase() === wanted);
 }

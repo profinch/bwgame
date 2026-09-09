@@ -29,7 +29,7 @@ import { type Structure, instancesOf, standingOn, stands, structureOf } from './
 import { POINT, auger } from './auger';
 import { glassOf, inkOf, strokesOf } from './blueprint';
 import { Chips } from './chips';
-import { claimedPlots, isPlot, noteOf } from './plot';
+import { claimedPlots, isClaimed, isPlot, noteOf } from './plot';
 import { takeGround } from './taking';
 import type { Obstacle } from './obstacles';
 import { mark } from './logo';
@@ -119,8 +119,10 @@ function reliefUnder(structure: Structure): { high: number; low: number } {
  */
 async function standing(account: Account): Promise<Structure> {
   const holdings = account.codeSize === 0 ? await holdingsOf(account.address) : [];
-  // a plot is known by its code, and stands as a frame until something is written into it
-  const plot = isPlot(account.code) ? { note: await noteOf(account.address) } : null;
+  // a plot is known by its code and vouched for by its factory, and stands as
+  // a drawing until something is written into it
+  const plot =
+    isPlot(account.code) && (await isClaimed(account.address)) ? { note: await noteOf(account.address) } : null;
   return structureOf(account, holdings, chain.coin, plot);
 }
 

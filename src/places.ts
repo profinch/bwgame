@@ -13,7 +13,6 @@
 import { keccak_256 } from '@noble/hashes/sha3';
 import type { Account } from './chain';
 import { offsetOf } from './engine/land';
-import { maskedPlotCode } from './plot';
 
 /**
  * What kind of thing stands here.
@@ -546,18 +545,9 @@ export function layoutOf() {
   };
 }
 
-/**
- * Bytes of the code hash, or of the address for something with no code.
- *
- * A plot is seeded from its code with the owner blanked out, so that every
- * plot is the one shape and the one turn — they are clones of one contract,
- * and the twenty bytes that differ are whose it is, not what it is.
- */
-function seedOf(account: Account, plot: boolean): Uint8Array {
-  const text =
-    account.codeSize === 0 ? account.address.toLowerCase()
-    : plot ? (maskedPlotCode(account.code) ?? account.code)
-    : account.code;
+/** Bytes of the code hash, or of the address for something with no code. */
+function seedOf(account: Account): Uint8Array {
+  const text = account.codeSize > 0 ? account.code : account.address.toLowerCase();
   return keccak_256(encoder.encode(text));
 }
 
@@ -577,7 +567,7 @@ export function structureOf(
   plot: { note: string } | null = null,
 ): Structure {
   const at = offsetOf(account.address);
-  const seed = seedOf(account, plot !== null);
+  const seed = seedOf(account);
   const byte = (i: number) => seed[i % 32]! / 255;
   const held = Number(account.balance / 10n ** 15n) / 1000; // in ether, roughly
 
