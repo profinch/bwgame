@@ -14,26 +14,46 @@ pragma solidity 0.8.28;
  * one particular set of contents. What differs between one plot and the next is
  * what its owner writes into it — and since the world takes a structure's shape
  * from what an account holds, writing is how you build.
+ *
+ * The owner is kept in storage rather than baked into the code, so every plot's
+ * runtime code is byte for byte the same — which is how the world knows one
+ * when it sees one — and so that a plot can change hands: ground is given, sold
+ * and inherited, and a place nobody can ever pass on is a place that dies with
+ * its first owner.
  */
 contract Plot {
-    /// Set from the factory, which knows who asked. Never changes.
-    address public immutable owner;
+    /// Set from the factory, which knows who asked. Passed on by `transfer`.
+    address public owner;
 
     /// Whatever the owner has to say about the place. Shape and label both.
     string public note;
 
     error NotOwner();
+    error NoOwner();
 
     event Inscribed(string note);
+    event Transferred(address indexed from, address indexed to);
 
     constructor() {
         owner = Plots(msg.sender).claimant();
     }
 
-    function inscribe(string calldata text) external {
+    modifier onlyOwner() {
         if (msg.sender != owner) revert NotOwner();
+        _;
+    }
+
+    function inscribe(string calldata text) external onlyOwner {
         note = text;
         emit Inscribed(text);
+    }
+
+    /// Hand the place to somebody else. Not to nobody: ground with no owner is
+    /// ground nobody can ever write into again.
+    function transfer(address to) external onlyOwner {
+        if (to == address(0)) revert NoOwner();
+        emit Transferred(owner, to);
+        owner = to;
     }
 }
 
@@ -64,6 +84,9 @@ contract Plots {
         // the first twenty bytes of the salt are the caller's own address
         // forge-lint: disable-next-line(unsafe-typecast)
         if (address(bytes20(salt)) != msg.sender) revert SaltNotYours();
+        // the same salt puts a plot in the same place, and the place is taken;
+        // said in words rather than left to CREATE2 to fail without any
+        if (_predict(salt).code.length != 0) revert AlreadyTaken();
 
         claimant = msg.sender;
         plot = address(new Plot{salt: salt}());
@@ -74,6 +97,10 @@ contract Plots {
 
     /// Where a salt would put a plot, without spending anything to find out.
     function predict(bytes32 salt) external view returns (address) {
+        return _predict(salt);
+    }
+
+    function _predict(bytes32 salt) internal view returns (address) {
         return address(
             uint160(
                 uint256(

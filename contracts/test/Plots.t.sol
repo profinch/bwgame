@@ -39,14 +39,52 @@ contract PlotsTest is Test {
         plots.claim(salt);
     }
 
-    function test_groundCannotBeTakenTwice() public {
+    function test_groundCannotBeTakenTwice_andSaysSo() public {
         bytes32 salt = saltFor(alice, 3);
         vm.prank(alice);
         plots.claim(salt);
 
         vm.prank(alice);
-        vm.expectRevert();
+        vm.expectRevert(Plots.AlreadyTaken.selector);
         plots.claim(salt);
+    }
+
+    function test_aPlotCanChangeHands_butNotToNobody() public {
+        vm.prank(alice);
+        Plot plot = Plot(plots.claim(saltFor(alice, 11)));
+
+        // not by anyone but the owner
+        vm.prank(bob);
+        vm.expectRevert(Plot.NotOwner.selector);
+        plot.transfer(bob);
+
+        // not to nobody
+        vm.prank(alice);
+        vm.expectRevert(Plot.NoOwner.selector);
+        plot.transfer(address(0));
+
+        vm.prank(alice);
+        vm.expectEmit(true, true, false, true);
+        emit Plot.Transferred(alice, bob);
+        plot.transfer(bob);
+        assertEq(plot.owner(), bob, "the plot is bob's now");
+
+        // and the old owner has no say any more; the new one has
+        vm.prank(alice);
+        vm.expectRevert(Plot.NotOwner.selector);
+        plot.inscribe("still mine");
+        vm.prank(bob);
+        plot.inscribe("mine now");
+        assertEq(plot.note(), "mine now");
+    }
+
+    /// The world knows a plot by its code, so two plots must have the same code exactly.
+    function test_everyPlotHasTheSameRuntimeCode() public {
+        vm.prank(alice);
+        address one = plots.claim(saltFor(alice, 21));
+        vm.prank(bob);
+        address two = plots.claim(saltFor(bob, 22));
+        assertEq(keccak256(one.code), keccak256(two.code), "owner must not be written into the code");
     }
 
     function test_onlyTheOwnerWritesIntoTheirOwnPlot() public {
@@ -63,7 +101,7 @@ contract PlotsTest is Test {
     }
 
     /// Different salts are different places; that is what makes mining mean anything.
-    function test_everySaltIsItsOwnPlace() public {
+    function test_everySaltIsItsOwnPlace() public view {
         address first = plots.predict(saltFor(alice, 1));
         address second = plots.predict(saltFor(alice, 2));
         address elsewhere = plots.predict(saltFor(bob, 1));
