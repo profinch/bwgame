@@ -33,6 +33,9 @@ export interface Trouble {
 }
 
 let stopped = false;
+let paused = false;
+/** Wakes the loop when the tab comes back. */
+let resume: (() => void) | null = null;
 
 async function run(task: Task): Promise<void> {
   const instance = await instantiate();
@@ -47,14 +50,30 @@ async function run(task: Task): Promise<void> {
     const report: Report = { tries: round.tries, best: round.best, close: round.close };
     postMessage(report);
     if (round.close) return;
+    if (paused) {
+      // the tab is out of sight: stand still until it is back or we are told to stop
+      await new Promise<void>((wake) => (resume = wake));
+      continue;
+    }
     // let the thread breathe, so a stop message gets through between batches
     await new Promise((wake) => setTimeout(wake, 0));
   }
 }
 
-onmessage = (event: MessageEvent<Task | 'stop'>) => {
+onmessage = (event: MessageEvent<Task | 'stop' | 'pause' | 'resume'>) => {
   if (event.data === 'stop') {
     stopped = true;
+    resume?.();
+    return;
+  }
+  if (event.data === 'pause') {
+    paused = true;
+    return;
+  }
+  if (event.data === 'resume') {
+    paused = false;
+    resume?.();
+    resume = null;
     return;
   }
   void run(event.data).catch((error: unknown) => {

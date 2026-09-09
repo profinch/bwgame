@@ -19,6 +19,8 @@ export interface Progress {
   best: Found | null;
   /** Threads at work. */
   threads: number;
+  /** Whether the threads are standing still because the tab is out of sight. */
+  paused: boolean;
 }
 
 /** A search in progress. Stopping it leaves the best it found standing. */
@@ -94,7 +96,7 @@ export function search(
 ): Search {
   const threads = threadsChosen();
   const workers: Worker[] = [];
-  const progress: Progress = { tries: 0, rate: 0, best: null, threads };
+  const progress: Progress = { tries: 0, rate: 0, best: null, threads, paused: false };
 
   let since = performance.now();
   let counted = 0;
@@ -134,10 +136,33 @@ export function search(
     workers.push(worker);
   }
 
+  /**
+   * Out of sight, the threads stand still.
+   *
+   * A hidden tab still burns every core it was given, with nobody watching the
+   * number go up — and a laptop lid closed on a search is a laptop that is hot
+   * in the bag. So the threads pause with the tab and pick up where they were
+   * when it comes back. The rate window is restarted then, so the first report
+   * back does not average the work over the time nothing was done.
+   */
+  const onVisibility = () => {
+    const hidden = document.hidden;
+    for (const worker of workers) worker.postMessage(hidden ? 'pause' : 'resume');
+    if (!hidden) {
+      since = performance.now();
+      counted = 0;
+    }
+    progress.paused = hidden;
+    onProgress(progress);
+  };
+  document.addEventListener('visibilitychange', onVisibility);
+  if (document.hidden) onVisibility();
+
   return {
     progress,
     stop() {
       stopped = true;
+      document.removeEventListener('visibilitychange', onVisibility);
       for (const worker of workers) {
         worker.postMessage('stop');
         worker.terminate();
