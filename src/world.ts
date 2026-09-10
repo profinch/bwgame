@@ -117,13 +117,22 @@ function reliefUnder(structure: Structure): { high: number; low: number } {
  *
  * A wallet's stone says what it holds, and what it holds takes one call a
  * token, so a stone costs a few more reads than a building does.
+ *
+ * `vouched` is for a caller that watched the factory make this plot itself — a
+ * claim of its own, whose receipt came back. The rule that the code says what
+ * a thing is and the factory says that it is holds either way; this is only
+ * about who heard the factory. Asking an indexer instead means waiting for it
+ * to catch up, and a plot asked for in that gap comes back looking like an
+ * ordinary contract: built, and so never drawn.
  */
-async function standing(account: Account): Promise<Structure> {
+async function standing(account: Account, vouched = false): Promise<Structure> {
   const holdings = account.codeSize === 0 ? await holdingsOf(account.address) : [];
   // a plot is known by its code and vouched for by its factory, and stands as
   // a drawing until something is written into it
-  const claimed = isPlot(account.code) ? await claimAt(account.address) : null;
-  const plot = claimed ? { note: claimed.note ?? (await noteOf(account.address)) } : null;
+  const coded = isPlot(account.code);
+  const claimed = coded && !vouched ? await claimAt(account.address) : null;
+  const plot =
+    coded && (vouched || claimed) ? { note: claimed?.note ?? (await noteOf(account.address)) } : null;
   return structureOf(account, holdings, chain.coin, plot);
 }
 
@@ -302,7 +311,9 @@ async function raiseClaimed(address: string): Promise<void> {
     account = await accountAt(address);
   }
   if (!account || !stands(account)) return;
-  const structure = await standing(account);
+  // vouched for by the receipt: this factory made this plot a moment ago, so
+  // the drawing does not wait on an indexer hearing about it
+  const structure = await standing(account, true);
   startRising(structure);
   // and turn, unhurried, to where it is going up — to the middle of its
   // height, so a tall one is not looked at from under. Forward is -z at yaw
