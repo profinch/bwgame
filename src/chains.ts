@@ -115,13 +115,17 @@ export const CHAINS: Record<string, Chain> = {
     explorer: 'https://sepolia.etherscan.io/address/',
     indexer: 'https://eth-sepolia.blockscout.com',
     coin: { symbol: 'eth', supply: 120_500_000n * 10n ** 18n },
-    // deployed 09.09.2026 (the second factory: plots that change hands, and
-    // taken ground that says so); ground claimed here exists on this chain and
-    // nowhere else
-    plots: '0x4bbfaE0A0BEe0F49F3ecbCCcC638a0235359eb73',
-    plotsSince: 11_669_423,
-    // the first factory, 08.09.2026: its plots stand as the contracts they are
-    former: [{ plots: '0x9f76BcE99c0b997af2442FfD65A48fB58f1cA088', since: 11_661_029 }],
+    // deployed 10.09.2026 (the third factory: a plot is a proxy its owner can
+    // point at any code, and seal); ground claimed here exists on this chain
+    // and nowhere else
+    plots: '0xcEa322619d375B381bff95e53a02Ef92Ea81B5Df',
+    plotsSince: 11_674_690,
+    // the factories before it, 08.09 and 09.09.2026: what they made stands as
+    // relics of the first and second ground
+    former: [
+      { plots: '0x9f76BcE99c0b997af2442FfD65A48fB58f1cA088', since: 11_661_029 },
+      { plots: '0x4bbfaE0A0BEe0F49F3ecbCCcC638a0235359eb73', since: 11_669_423 },
+    ],
     live: 'wss://gs.bwtoken.io/live',
     // the subgraph in subgraph/, deployed to Subgraph Studio; "latest" follows redeploys
     subgraph: 'https://api.studio.thegraph.com/query/1760017/ground-state/version/latest',

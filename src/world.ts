@@ -29,7 +29,7 @@ import { type Structure, instancesOf, standingOn, stands, structureOf } from './
 import { POINT, auger } from './auger';
 import { type Stroke, glassOf, inkOf, strokesOf } from './blueprint';
 import { Chips } from './chips';
-import { claimAt, claimedPlots, formerPlots, isPlot, noteOf } from './plot';
+import { claimAt, claimedPlots, formerPlots, implementationOf, isPlot, noteOf, relicOf } from './plot';
 import { Live } from './live';
 import { bytesOf, placeOf } from './mine';
 import { Stick, coarse } from './stick';
@@ -129,13 +129,20 @@ function reliefUnder(structure: Structure): { high: number; low: number } {
  */
 async function standing(account: Account, vouched = false): Promise<Structure> {
   const holdings = account.codeSize === 0 ? await holdingsOf(account.address) : [];
+  // a plot of an earlier ground is a relic, whatever else it is
+  const relic = relicOf(account.code);
+  if (relic) return structureOf(account, holdings, chain.coin, null, relic);
   // a plot is known by its code and vouched for by its factory, and stands as
-  // a drawing until something is written into it
+  // a drawing until something is written into it or it is pointed at code —
+  // in which case that code is what stands here
   const coded = isPlot(account.code);
   const claimed = coded && !vouched ? await claimAt(account.address) : null;
-  const plot =
-    coded && (vouched || claimed) ? { note: claimed?.note ?? (await noteOf(account.address)) } : null;
-  return structureOf(account, holdings, chain.coin, plot);
+  if (!coded || !(vouched || claimed)) return structureOf(account, holdings, chain.coin);
+  const note = claimed?.note ?? (await noteOf(account.address));
+  const pointedAt =
+    claimed?.implementation !== undefined ? claimed.implementation : await implementationOf(account.address);
+  const code = pointedAt ? await accountAt(pointedAt) : null;
+  return structureOf(account, holdings, chain.coin, { note, code: code && code.codeSize > 0 ? code : null });
 }
 
 /** Put a thing up where it stands. False if it was standing there already. */
@@ -176,15 +183,16 @@ async function raiseNearby(growing = false): Promise<void> {
     // this factory's plots, and behind them the contracts the factories before
     // it made — which stand as the contracts they are, and nothing more
     const plots = [...(await claimedPlots()), ...(await formerPlots())];
-    for (const { plot, note } of plots) {
+    for (const { plot, note, implementation } of plots) {
       if (origin.x !== here.x || origin.z !== here.z) return;
       const at = offsetOf(plot);
       if (Math.abs(at.x - here.x) > GROUND / 2 || Math.abs(at.z - here.z) > GROUND / 2) continue;
-      // a drawing that has since been written into is taken down and put up
-      // again as the building it now is; anything else standing is left alone
+      // a drawing that has since been written into or pointed at code is taken
+      // down and put up again as the building it now is; anything else standing
+      // is left alone
       const already = structures.find((standing) => standing.address.toLowerCase() === plot.toLowerCase());
       if (already) {
-        if (already.kind !== 'framed' || !note) continue;
+        if (already.kind !== 'framed' || !(note || implementation)) continue;
         structures.splice(structures.indexOf(already), 1);
       }
       const account = await accountAt(plot);
@@ -417,8 +425,9 @@ async function travelTo(address: string): Promise<Structure | null> {
 }
 
 const walker = renderer.add(figure(), new Float32Array(9), true);
-/** Everybody else here, as the same figure in white. */
+/** Everybody else here, as the same figure in white — or the auger, if they are digging. */
 const others = renderer.add(figure(), new Float32Array(0), true);
+const othersDigging = renderer.add(auger(), new Float32Array(0), true);
 /** The corner of the world is where positions are measured from on the wire. */
 const homeCell = placeOf(bytesOf(HOME));
 /**
@@ -835,6 +844,7 @@ loop({
     // the auger turns with the work: a little on its own, more as the rate
     // climbs — and the ground comes up round it in proportion
     if (taking.digging) spin += seconds * 2 * Math.PI * (0.4 + Math.min(1, taking.rate / 4e7));
+    else if (live && [...live.peers.values()].some((peer) => peer.dig)) spin += seconds * 2 * Math.PI * 0.6;
     chips.step(
       seconds,
       taking.digging ? { x: player.x, y: feet(), z: player.z } : null,
@@ -889,14 +899,19 @@ loop({
     renderer.update(spray, chips.instances);
     // everybody else, if they are on this patch of ground
     if (live) {
-      const out: number[] = [];
+      const standing: number[] = [];
+      const digging: number[] = [];
       for (const peer of live.peers.values()) {
         const x = peer.drawnX - homeCell.x - origin.x;
         const z = peer.drawnZ - homeCell.z - origin.z;
         if (Math.abs(x) > GROUND / 2 || Math.abs(z) > GROUND / 2) continue;
-        out.push(x, supportAt(x, z, ground.surfaceAt(x, z) + STEP_UP), z, 1, 1, 1, peer.drawnYaw, 0.92, 0.6);
+        const y = supportAt(x, z, ground.surfaceAt(x, z) + STEP_UP);
+        // their auger turns with ours: the rate is theirs, but the turning is a sign, not a measure
+        if (peer.dig) digging.push(x, y - POINT / 2, z, 1, 1, 1, spin, 0.92, 0.6);
+        else standing.push(x, y, z, 1, 1, 1, peer.drawnYaw, 0.92, 0.6);
       }
-      renderer.update(others, new Float32Array(out));
+      renderer.update(others, new Float32Array(standing));
+      renderer.update(othersDigging, new Float32Array(digging));
     }
 
     const eyes = head();

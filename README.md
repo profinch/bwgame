@@ -91,18 +91,27 @@ Sepolia: `world.html?chain=sepolia`. A place is a link: `?at=0x…` or `?at=name
 
 | | |
 |---|---|
-| plot factory (Sepolia) | [`0x4bbfaE0A0BEe0F49F3ecbCCcC638a0235359eb73`](https://eth-sepolia.blockscout.com/address/0x4bbfaE0A0BEe0F49F3ecbCCcC638a0235359eb73), deployed in block 11669423 |
-| source, verified | [Sourcify](https://repo.sourcify.dev/11155111/0x4bbfaE0A0BEe0F49F3ecbCCcC638a0235359eb73) · `contracts/src/Plot.sol` |
+| plot factory (Sepolia) | [`0xcEa322619d375B381bff95e53a02Ef92Ea81B5Df`](https://eth-sepolia.blockscout.com/address/0xcEa322619d375B381bff95e53a02Ef92Ea81B5Df), deployed in block 11674690 |
+| source, verified | [Sourcify](https://repo.sourcify.dev/11155111/0xcEa322619d375B381bff95e53a02Ef92Ea81B5Df) · `contracts/src/Plot.sol` |
 | subgraph | [`ground-state`](https://thegraph.com/studio/subgraph/ground-state) on Subgraph Studio — [query](https://api.studio.thegraph.com/query/1760017/ground-state/version/latest), source in `subgraph/` |
-| first plot | [`0x3095c19ca43d4f17d5b62be3c3eacd5274dfca92`](https://eth-sepolia.blockscout.com/address/0x3095c19ca43d4f17d5b62be3c3eacd5274dfca92) |
+| live server | `wss://gs.bwtoken.io/live` — who else is here, and word of a claim as the indexer has it; source in `live/` |
 
 `Plots.claim(bytes32 salt)` deploys a `Plot` with CREATE2. The first twenty bytes of the salt must
 be the caller's address, so a salt seen in the mempool is worthless to anyone else. `predict(salt)`
-says where a salt would land; `plotCodeHash()` is what a miner needs. A `Plot` has an `owner`, a
-`note`, `inscribe(string)` and `transfer(address)`.
+says where a salt would land; `plotCodeHash()` is what a miner needs.
 
-An earlier factory, `0x9f76BcE99c0b997af2442FfD65A48fB58f1cA088`, holds one plot from before
-plots could change hands; the world no longer looks at it.
+A `Plot` is a proxy. It has an `owner`, a `note` (`inscribe`), and it can change hands
+(`transfer`). Its owner can point it at any contract they have deployed (`setCode`), and from then
+on every call the plot does not answer itself runs as that code — with the plot's own address,
+balance and storage. A casino, a gallery, a game lives *here*, at this place; the world draws the
+plot as the code it is pointed at. `seal()` fixes the code for good, which is the promise a
+casino's players want to see. The plot keeps its own state in EIP-1967 and namespaced slots, so an
+implementation is written like any ordinary contract.
+
+Two earlier factories stand in the history: `0x9f76BcE99c0b997af2442FfD65A48fB58f1cA088`
+(08.09.2026, owner written into the code, no `transfer`) and
+`0x4bbfaE0A0BEe0F49F3ecbCCcC638a0235359eb73` (09.09.2026, `transfer` but no code). What they made
+stands in the world as relics: foundation stones of the first ground, marker stones of the second.
 
 ## Run it
 
@@ -149,10 +158,10 @@ The subgraph has its own `package.json` in `subgraph/`; see the README there.
   data loses it. It could be written to the plot itself at claim time, or kept with the presence
   server when there is one.
 
-- **The size of a written plot.** A plot's code is the same for every plot and says nothing about
-  the place, so sizing it by code size — as the world sizes every other contract — makes every
-  plot the same building. The drawing is seven tenths of that. What a *written* plot should be
-  sized by (the note? what the plot holds? what has passed through it?) is open.
+- **The size of a written plot.** A plot pointed at code is sized and shaped by that code, as any
+  contract is. A plot merely written into, with no code, is sized by the plot's own code, which is
+  the same for every plot — so every such plot is the same building. What it should be sized by
+  instead (the note? what the plot holds?) is open.
 
 ## Prior work
 

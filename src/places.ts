@@ -33,7 +33,7 @@ import { offsetOf } from './engine/land';
  * decided until its owner writes into it. So until then it is framed: drawn
  * in ink as the plan of the building it will be, and not built.
  */
-export type Kind = 'built' | 'written' | 'framed';
+export type Kind = 'built' | 'written' | 'framed' | 'relic';
 
 export interface Structure {
   kind: Kind;
@@ -53,6 +53,8 @@ export interface Structure {
   sink?: number;
   /** How much of it stands yet, from the ground up: 0 to 1, and 1 if unset. */
   grown?: number;
+  /** For a relic: which earlier ground it is a plot of. */
+  relic?: 1 | 2;
 }
 
 
@@ -563,11 +565,16 @@ export function structureOf(
   account: Account,
   holdings: readonly Holding[] = [],
   coin: { symbol: string; supply: bigint } = NATIVE,
-  /** If this is a plot: what has been written into it, which may be nothing. */
-  plot: { note: string } | null = null,
+  /**
+   * If this is a plot: what has been written into it, which may be nothing, and
+   * the code it has been pointed at, if any — which is then what stands here.
+   */
+  plot: { note: string; code?: Account | null } | null = null,
+  /** If this is a plot of an earlier ground: which. */
+  relic: 1 | 2 | null = null,
 ): Structure {
   const at = offsetOf(account.address);
-  const seed = seedOf(account);
+  const seed = seedOf(plot?.code ?? account);
   const byte = (i: number) => seed[i % 32]! / 255;
   const held = Number(account.balance / 10n ** 15n) / 1000; // in ether, roughly
 
@@ -593,11 +600,15 @@ export function structureOf(
     };
   }
 
-  // code size runs from a few hundred bytes to about twenty five thousand
-  const bulk = Math.log2(Math.max(64, account.codeSize)) / Math.log2(24576);
-  // a plot with nothing said into it yet is the drawing of a building, and a
-  // drawing is smaller than the thing: seven tenths of what will stand here
-  const drawn = plot !== null && plot.note.length === 0;
+  if (relic !== null) return relicOf(account, at, byte, relic);
+
+  // code size runs from a few hundred bytes to about twenty five thousand. A
+  // plot pointed at code is that code, standing here: its size and its hash.
+  const sized = plot?.code ?? account;
+  const bulk = Math.log2(Math.max(64, sized.codeSize)) / Math.log2(24576);
+  // a plot with nothing said into it and no code yet is the drawing of a
+  // building, and a drawing is smaller than the thing: seven tenths
+  const drawn = plot !== null && plot.note.length === 0 && !plot.code;
   const scale = drawn ? 0.7 : 1;
 
   return {
@@ -613,6 +624,53 @@ export function structureOf(
     // ether is already dark; nothing at all leaves it pale
     albedo: 0.72 - Math.min(0.55, Math.log10(1 + held) / 4),
     roughness: 0.35 + byte(4) * 0.5,
+  };
+}
+
+/**
+ * A plot of an earlier ground.
+ *
+ * The first ground left foundation stones: a squat dark block, sunk to its
+ * shoulders, turned as its address turns it. The second left marker stones: a
+ * narrow pale slab standing a little over head height. Neither is sized by its
+ * code — a relic is not a building and does not pretend to be one — and both
+ * are plainly not the drawings and buildings of the ground that is lived on
+ * now. They are what was here first.
+ */
+function relicOf(
+  account: Account,
+  at: { x: number; z: number },
+  byte: (i: number) => number,
+  version: 1 | 2,
+): Structure {
+  const turn = byte(3) * Math.PI * 2;
+  if (version === 1) {
+    return {
+      kind: 'relic',
+      relic: 1,
+      address: account.address,
+      x: at.x,
+      z: at.z,
+      wide: 1.6,
+      deep: 1.6,
+      tall: 1.0,
+      turn,
+      albedo: 0.28,
+      roughness: 0.9,
+    };
+  }
+  return {
+    kind: 'relic',
+    relic: 2,
+    address: account.address,
+    x: at.x,
+    z: at.z,
+    wide: 0.5,
+    deep: 0.24,
+    tall: 2.6,
+    turn,
+    albedo: 0.52,
+    roughness: 0.7,
   };
 }
 

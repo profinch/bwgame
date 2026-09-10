@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { Account } from '../src/chain';
 import { piecesOf, structureOf } from '../src/places';
 import { OUTLINED, glassOf, inkOf, strokesOf } from '../src/blueprint';
-import { PLOT_CODE_SIZE, isPlot, plotsIn, plotsInGraph } from '../src/plot';
+import { PLOT_CODE_SIZE, isPlot, plotsIn, plotsInGraph, relicOf } from '../src/plot';
 
 /** The compiled plot's runtime code, if forge has built it here. */
 const ARTIFACT = 'contracts/out/Plot.sol/Plot.json';
@@ -13,9 +13,9 @@ function compiledPlot(): string | null {
   return artifact.deployedBytecode.object.slice(2);
 }
 
-describe('knowing a plot by its code', () => {
-  const code = compiledPlot();
+const code = compiledPlot();
 
+describe('knowing a plot by its code', () => {
   it.skipIf(!code)('is the compiled plot, exactly', () => {
     expect(code!.length).toBe(PLOT_CODE_SIZE * 2);
     expect(isPlot(code!)).toBe(true);
@@ -31,11 +31,32 @@ describe('knowing a plot by its code', () => {
   });
 });
 
+describe('the plots of earlier grounds', () => {
+  it('knows neither ground in random bytes, and does not mistake a plot for a relic', () => {
+    expect(relicOf('ab'.repeat(1068))).toBeNull();
+    expect(relicOf('ab'.repeat(1263))).toBeNull();
+    expect(relicOf('')).toBeNull();
+    if (code) expect(relicOf(code)).toBeNull();
+  });
+
+  it('stands a relic as a stone of its ground, not as a building', () => {
+    const account: Account = { address: '0x3095c19c9105b97eab5403753f9539a71a701a27', codeSize: 1068, code: 'ab'.repeat(1068), balance: 0n, nonce: 1 };
+    const first = structureOf(account, [], undefined, null, 1);
+    const second = structureOf(account, [], undefined, null, 2);
+    expect(first.kind).toBe('relic');
+    expect(first.relic).toBe(1);
+    expect(first.tall).toBeLessThan(first.wide);
+    expect(second.relic).toBe(2);
+    expect(second.tall).toBeGreaterThan(second.wide * 4);
+    expect(piecesOf(first, 10).length / 9).toBe(1);
+  });
+});
+
 describe('a plot nobody has written into', () => {
   const plot: Account = {
     address: '0x784379da6111c8ff4a5ea78f22aed9cb1f938df1',
     codeSize: PLOT_CODE_SIZE,
-    code: 'ab'.repeat(PLOT_CODE_SIZE),
+    code: 'cd'.repeat(PLOT_CODE_SIZE),
     balance: 0n,
     nonce: 1,
   };
@@ -44,6 +65,16 @@ describe('a plot nobody has written into', () => {
     expect(structureOf(plot, [], undefined, { note: '' }).kind).toBe('framed');
     expect(structureOf(plot, [], undefined, { note: 'here, and on purpose' }).kind).toBe('built');
     expect(structureOf(plot).kind).toBe('built');
+  });
+
+  it('pointed at code, is that code standing here', () => {
+    const casino: Account = { address: '0x784379da6111c8ff4a5ea78f22aed9cb1f938df1', codeSize: 12_000, code: '6080604052' + 'ff'.repeat(2000), balance: 0n, nonce: 1 };
+    const pointed = structureOf(plot, [], undefined, { note: '', code: casino });
+    const bare = structureOf(plot, [], undefined, { note: 'x' });
+    expect(pointed.kind).toBe('built');
+    expect(pointed.address).toBe(plot.address);
+    expect(pointed.tall).toBeGreaterThan(bare.tall);
+    expect(pointed.turn).not.toBe(bare.turn);
   });
 
   it('is drawn at seven tenths of the building it will be', () => {
@@ -65,6 +96,15 @@ describe('a plot nobody has written into', () => {
 
   it('is not made of stone', () => {
     expect(piecesOf(structureOf(plot, [], undefined, { note: '' }), 10).length).toBe(0);
+  });
+
+  it('reads the code it is pointed at off a subgraph answer', () => {
+    const got = plotsInGraph({ data: { _meta: { block: { number: 1 } }, plots: [
+      { id: '0x3095c19c9105b97eab5403753f9539a71a701a27', owner: { id: '0x01' }, note: '', updatedIn: '5', implementation: null },
+      { id: '0x784379da6111c8ff4a5ea78f22aed9cb1f938df1', owner: { id: '0x02' }, note: '', updatedIn: '6', implementation: '0xabcdef0000000000000000000000000000000001' },
+    ] } })!;
+    expect(got.plots[0]!.implementation).toBeNull();
+    expect(got.plots[1]!.implementation).toBe('0xabcdef0000000000000000000000000000000001');
   });
 
   it('is outlined in dashes, plan first, corners up, roof last, with the pen where it has got to', () => {

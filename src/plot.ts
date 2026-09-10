@@ -17,26 +17,62 @@
  * that factory actually deploys. If the contract changes, they change with it.
  */
 import { keccak_256 } from '@noble/hashes/sha3';
-import { call, readString, rpc } from './chain';
+import { call, readAddress, readString, rpc } from './chain';
 import { chain } from './chains';
 
 /** Bytes of runtime code a plot has. */
-export const PLOT_CODE_SIZE = 1263;
+export const PLOT_CODE_SIZE = 2271;
 
 /** keccak of that code. */
-const PLOT_CODE_HASH = '8a2b92030edfaf1921297f0b762b4b9f2ecd92e3e295e21165cdb1ec8cf5e635';
+const PLOT_CODE_HASH = '3289e6f9fe8a6dd8f65d770e7490741664af1e039b6deeffd4c9fdd374fdef31';
+
+/**
+ * The plots of the factories before this one: relics.
+ *
+ * The first ground (08.09.2026) wrote its owner into the code as an immutable,
+ * so its plots differ by twenty bytes each and are known by the hash with
+ * those bytes blanked. The second ground (09.09.2026) kept the owner in
+ * storage, so one hash knows them all. Neither can be pointed at code, and the
+ * first cannot change hands: they stand in the world as what they are, stones
+ * from before.
+ */
+const RELICS: { version: 1 | 2; size: number; hash: string; blank?: number[] }[] = [
+  { version: 1, size: 1068, hash: 'b0dc3338391728367b8f32503f039a389267d41ccb31aa029c9ead66a76d33ef', blank: [102, 331] },
+  { version: 2, size: 1263, hash: '8a2b92030edfaf1921297f0b762b4b9f2ecd92e3e295e21165cdb1ec8cf5e635' },
+];
+
+function hashOf(hex: string): string {
+  const bytes = new Uint8Array(hex.length / 2);
+  for (let i = 0; i < bytes.length; i++) bytes[i] = parseInt(hex.slice(i * 2, i * 2 + 2), 16);
+  return [...keccak_256(bytes)].map((b) => b.toString(16).padStart(2, '0')).join('');
+}
 
 /** Whether this code is a plot's. `code` is hex, with or without the 0x. */
 export function isPlot(code: string): boolean {
   const body = code.replace(/^0x/, '').toLowerCase();
-  if (body.length !== PLOT_CODE_SIZE * 2) return false;
-  const bytes = new Uint8Array(PLOT_CODE_SIZE);
-  for (let i = 0; i < PLOT_CODE_SIZE; i++) bytes[i] = parseInt(body.slice(i * 2, i * 2 + 2), 16);
-  return [...keccak_256(bytes)].map((b) => b.toString(16).padStart(2, '0')).join('') === PLOT_CODE_HASH;
+  return body.length === PLOT_CODE_SIZE * 2 && hashOf(body) === PLOT_CODE_HASH;
 }
 
-/** `note()`, as the chain hears it. */
+/** Which earlier ground this code is a plot of, or null if it is none of them. */
+export function relicOf(code: string): 1 | 2 | null {
+  const body = code.replace(/^0x/, '').toLowerCase();
+  for (const relic of RELICS) {
+    if (body.length !== relic.size * 2) continue;
+    let masked = body;
+    for (const at of relic.blank ?? []) masked = masked.slice(0, at * 2) + '0'.repeat(64) + masked.slice(at * 2 + 64);
+    if (hashOf(masked) === relic.hash) return relic.version;
+  }
+  return null;
+}
+
+/** `note()` and `implementation()`, as the chain hears them. */
 const NOTE = '0x26d111f5';
+const IMPLEMENTATION = '0x5c60da1b';
+
+/** The code a plot has been pointed at, or null if none. */
+export async function implementationOf(address: string): Promise<string | null> {
+  return readAddress(await call(address, IMPLEMENTATION));
+}
 
 /** What its owner has written into a plot. Empty if nothing yet, or if nothing answered. */
 export async function noteOf(address: string): Promise<string> {
@@ -58,6 +94,8 @@ export interface Claimed {
   note?: string;
   /** The block it last changed in, if whoever answered knew. */
   updatedIn?: number;
+  /** The code it is pointed at, if whoever answered knew: null for none, undefined for unknown. */
+  implementation?: string | null;
 }
 
 /** The plots named in a batch of `Claimed` logs. */
@@ -76,13 +114,20 @@ export function plotsInGraph(answer: unknown): { plots: Claimed[]; block: number
   const data = (answer as { data?: { plots?: unknown; _meta?: { block?: { number?: number } } } })?.data;
   if (!data || !Array.isArray(data.plots)) return null;
   const plots: Claimed[] = [];
-  for (const row of data.plots as { id?: string; owner?: { id?: string }; note?: string; updatedIn?: string }[]) {
+  for (const row of data.plots as {
+    id?: string;
+    owner?: { id?: string };
+    note?: string;
+    updatedIn?: string;
+    implementation?: string | null;
+  }[]) {
     if (typeof row.id !== 'string' || typeof row.owner?.id !== 'string') continue;
     plots.push({
       plot: row.id,
       owner: row.owner.id,
       note: typeof row.note === 'string' ? row.note : undefined,
       updatedIn: row.updatedIn !== undefined ? Number(row.updatedIn) : undefined,
+      implementation: row.implementation === undefined ? undefined : row.implementation,
     });
   }
   return { plots, block: data._meta?.block?.number ?? 0 };
@@ -116,7 +161,7 @@ async function fromGraph(): Promise<Claimed[] | null> {
           query:
             `{ _meta { block { number } } ` +
             `plots(first: ${PAGE}, skip: ${skip}, orderBy: updatedIn, where: { updatedIn_gt: ${graphSeen} }) ` +
-            `{ id owner { id } note updatedIn } }`,
+            `{ id owner { id } note updatedIn implementation } }`,
         }),
       });
       if (!response.ok) return null;
