@@ -26,11 +26,18 @@ export function loop(handlers: LoopHandlers, stepSeconds = 1 / 60): () => void {
     owed = Math.min(owed + (now - previous), MAX_CATCH_UP);
     previous = now;
 
-    while (owed >= stepSeconds) {
-      handlers.step(stepSeconds);
-      owed -= stepSeconds;
+    // a frame that throws is reported and skipped, not the end of the world:
+    // the loop was dying on the first exception and the picture froze on it
+    try {
+      while (owed >= stepSeconds) {
+        handlers.step(stepSeconds);
+        owed -= stepSeconds;
+      }
+      handlers.draw(owed / stepSeconds);
+    } catch (error) {
+      owed = 0;
+      (globalThis as { reportError?: (e: unknown) => void }).reportError?.(error);
     }
-    handlers.draw(owed / stepSeconds);
     frame = requestAnimationFrame(tick);
   };
 

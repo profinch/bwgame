@@ -219,11 +219,31 @@ export function heightAt(x: number, z: number): number {
  * prefix, not an address, and it is the honest thing to show.
  */
 export function addressUnder(x: number, z: number): string {
+  const inside = withinWorld(x, z);
   const full = pointToAddress({
-    x: home.x + BigInt(Math.floor(x)) * PER_METRE,
-    y: home.y + BigInt(Math.floor(z)) * PER_METRE,
+    x: home.x + BigInt(Math.floor(inside.x)) * PER_METRE,
+    y: home.y + BigInt(Math.floor(inside.z)) * PER_METRE,
   });
   return full.slice(0, DEPTH);
+}
+
+/** Where home is, in metres from the corner of the world. */
+export const HOME_METRES = { x: Number(home.x / PER_METRE), z: Number(home.y / PER_METRE) };
+
+/**
+ * The world has an edge. The address space is finite — forty digits, and no
+ * forty-first — so a point past `0x000…` or `0xfff…` is not a place, and nobody
+ * stands there. Given metres from home, the same point pulled back inside the
+ * world by a hand's breadth where it had left it. On mainnet home is in the
+ * middle of the world and this never bites; on Sepolia home is the ENS registry
+ * at `0x00000000000C2E…`, twelve metres from the west edge and two from the
+ * north, and the edge is right there.
+ */
+export function withinWorld(x: number, z: number): { x: number; z: number } {
+  const margin = 0.5;
+  const ax = Math.max(margin, Math.min(WORLD - margin, HOME_METRES.x + x));
+  const az = Math.max(margin, Math.min(WORLD - margin, HOME_METRES.z + z));
+  return { x: ax - HOME_METRES.x, z: az - HOME_METRES.z };
 }
 
 /**

@@ -18,7 +18,7 @@ import { lookAt, multiply, orthographic, perspective, type Mat4 } from './engine
 import { loop } from './engine/loop';
 import { Coverage } from './engine/coverage';
 import { Renderer, once, type Sky } from './engine/renderer';
-import { addressUnder, DEPTH, HOME, levelOff, offsetOf, rawHeightAt } from './engine/land';
+import { addressUnder, DEPTH, HOME, levelOff, offsetOf, rawHeightAt, withinWorld } from './engine/land';
 import { boulder, box, figure, groundUnder, terrain } from './engine/shapes';
 import { Traffic, pollBlocks } from './engine/traffic';
 import { CHAINS, chain } from './chains';
@@ -333,13 +333,30 @@ let holdDescent = false;
  */
 let alightAngle = 0;
 
+/**
+ * A side of a point, `off` metres from it, that is inside the world: random,
+ * tried a few times, and failing that the side that faces the middle of the
+ * world. Home on Sepolia stands twelve metres from the world's edge.
+ */
+function sideInside(atX: number, atZ: number, off: number): number {
+  for (let tries = 0; tries < 24; tries++) {
+    const angle = Math.random() * 2 * Math.PI;
+    const x = atX + Math.sin(angle) * off;
+    const z = atZ + Math.cos(angle) * off;
+    const kept = withinWorld(x, z);
+    if (kept.x === x && kept.z === z) return angle;
+  }
+  const middle = withinWorld(-1e12, -1e12); // the far corner, so the middle is half way to it
+  return Math.atan2(middle.x / 2 - atX, middle.z / 2 - atZ);
+}
+
 function arriveAt(x: number, z: number): void {
   origin.x = x;
   origin.z = z;
   descent = DESCENT_FROM;
   // beside the address rather than on it: arriving dead on one puts you inside
   // whatever stands there, and the inside of a building is not drawn
-  alightAngle = Math.random() * 2 * Math.PI;
+  alightAngle = sideInside(x, z, ALIGHT);
   player.x = Math.sin(alightAngle) * ALIGHT;
   player.z = Math.cos(alightAngle) * ALIGHT;
   // forward is -z at yaw zero; facing the address means facing back along the radius
@@ -524,7 +541,7 @@ const spray = renderer.add(box(), new Float32Array(chips.instances.length), true
  * The first stand is somewhere on a ring round home, a different somewhere
  * each time, so two people opening the page do not open it inside each other.
  */
-const firstAngle = Math.random() * 2 * Math.PI;
+const firstAngle = sideInside(0, 0, 150);
 const player = {
   x: Math.sin(firstAngle) * 150,
   z: Math.cos(firstAngle) * 150,
@@ -1016,6 +1033,13 @@ loop({
   step(seconds) {
     walk(seconds);
     apart(seconds);
+    // the edge of the world is a wall
+    {
+      const on = afoot();
+      const kept = withinWorld(on.x, on.z);
+      player.x += kept.x - on.x;
+      player.z += kept.z - on.z;
+    }
     turn(seconds);
     fall(seconds);
     ride(seconds);
