@@ -127,13 +127,15 @@ async function standing(account: Account): Promise<Structure> {
   return structureOf(account, holdings, chain.coin, plot);
 }
 
-function raise(structure: Structure): void {
-  if (standingAt(structure.address)) return;
+/** Put a thing up where it stands. False if it was standing there already. */
+function raise(structure: Structure): boolean {
+  if (standingAt(structure.address)) return false;
   structures.push(structure);
   // a stone is laid on levelled ground, so it does not stand on a wall of its
   // own foundation on the low side — which is what stopped you walking up to it
   if (structure.kind === 'written' && level(structure)) rebuild();
   settle();
+  return true;
 }
 
 function standingAt(address: string): boolean {
@@ -268,8 +270,22 @@ const taking = takeGround(claiming, afoot, (plot) => {
 
 /** How long a plot just claimed takes to be drawn, in seconds. */
 const BUILDS_IN = 10;
-/** Plots on their way up, and when each began. */
-const rising: { structure: Structure; since: number }[] = [];
+/** Plots on their way up. */
+const rising: Structure[] = [];
+
+/**
+ * Put a plot up and let it be seen going up.
+ *
+ * Only what actually went up rises. A plot already standing is left exactly as
+ * it is: a second copy of it drawn from nothing would be a building inside a
+ * building, and the one already there — drawn whole — would go on being drawn
+ * whole while the copy grew invisibly beside it.
+ */
+function startRising(structure: Structure): void {
+  if (!raise(structure)) return;
+  structure.grown = 0;
+  rising.push(structure);
+}
 
 /**
  * A plot just claimed goes up where it is, not under your feet.
@@ -287,9 +303,7 @@ async function raiseClaimed(address: string): Promise<void> {
   }
   if (!account || !stands(account)) return;
   const structure = await standing(account);
-  structure.grown = 0;
-  rising.push({ structure, since: performance.now() });
-  raise(structure);
+  startRising(structure);
   // and turn, unhurried, to where it is going up — to the middle of its
   // height, so a tall one is not looked at from under. Forward is -z at yaw
   // zero, and yaw turns the way you face.
@@ -724,12 +738,13 @@ loop({
     turn(seconds);
     fall(seconds);
     ride(seconds);
-    // whatever is going up, goes up a little more
+    // whatever is going up, goes up a little more — by the loop's own clock
+    // and not the wall's, because a tab out of sight takes no steps: a plot
+    // waits where it is rather than being finished while nobody is watching
     if (rising.length) {
-      const now = performance.now();
       for (let i = rising.length - 1; i >= 0; i--) {
-        const { structure, since } = rising[i]!;
-        structure.grown = Math.min(1, (now - since) / 1000 / BUILDS_IN);
+        const structure = rising[i]!;
+        structure.grown = Math.min(1, (structure.grown ?? 0) + seconds / BUILDS_IN);
         if (structure.grown >= 1) rising.splice(i, 1);
       }
       renderer.update(built, instancesOf(structures, baseOf, origin));
