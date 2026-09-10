@@ -9,7 +9,7 @@ a real chain.
 
 ## How to play
 
-1. Open **[gs.bwtoken.io/world.html?chain=sepolia](https://gs.bwtoken.io/world.html?chain=sepolia)**. You
+1. Open **[gs.bwtoken.io](https://gs.bwtoken.io)**. You
    come down onto the ground from above. `WASD` walks, `Shift` runs, `Space` jumps, drag to look,
    `V` changes the view; on a phone, the stick on the right walks. The ground is dark where nobody
    has stood.
