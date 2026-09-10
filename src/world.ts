@@ -29,7 +29,9 @@ import { type Structure, instancesOf, standingOn, stands, structureOf } from './
 import { POINT, auger } from './auger';
 import { type Stroke, glassOf, inkOf, strokesOf } from './blueprint';
 import { Chips } from './chips';
-import { claimAt, claimedPlots, isPlot, noteOf } from './plot';
+import { claimAt, claimedPlots, formerPlots, isPlot, noteOf } from './plot';
+import { Live } from './live';
+import { bytesOf, placeOf } from './mine';
 import { Stick, coarse } from './stick';
 import { takeGround } from './taking';
 import type { Obstacle } from './obstacles';
@@ -171,7 +173,9 @@ async function raiseNearby(growing = false): Promise<void> {
   asking = true;
   try {
     const here = { x: origin.x, z: origin.z };
-    const plots = await claimedPlots();
+    // this factory's plots, and behind them the contracts the factories before
+    // it made — which stand as the contracts they are, and nothing more
+    const plots = [...(await claimedPlots()), ...(await formerPlots())];
     for (const { plot, note } of plots) {
       if (origin.x !== here.x || origin.z !== here.z) return;
       const at = offsetOf(plot);
@@ -413,6 +417,16 @@ async function travelTo(address: string): Promise<Structure | null> {
 }
 
 const walker = renderer.add(figure(), new Float32Array(9), true);
+/** Everybody else here, as the same figure in white. */
+const others = renderer.add(figure(), new Float32Array(0), true);
+/** The corner of the world is where positions are measured from on the wire. */
+const homeCell = placeOf(bytesOf(HOME));
+/**
+ * The live server, if this chain has one: who else is here, and word of a
+ * claim the moment the indexer has it — which goes up while you watch, the
+ * way your own does. The world works the same with nobody on the other end.
+ */
+const live = chain.live ? new Live(chain.live, chain.key, () => askAgain()) : null;
 /** What the walker turns into while digging. Only one of the two is ever drawn. */
 const drill = renderer.add(auger(), new Float32Array(9), true);
 /** How far the auger has turned. */
@@ -828,6 +842,13 @@ loop({
       GRAVITY,
     );
     traffic.step(seconds);
+    // where you are, for everybody else; and everybody else a little closer to
+    // where they were last said to be
+    if (live) {
+      const on = afoot();
+      live.say(homeCell.x + on.x, homeCell.z + on.z, player.yaw, taking.digging);
+      live.step(seconds);
+    }
     // stepping onto a low roof rather than through it
     player.y = Math.max(player.y, supportAt(player.x, player.z, player.y + STEP_UP));
     uncover(seconds);
@@ -866,6 +887,17 @@ loop({
       new Float32Array([player.x, feet() - POINT / 2, player.z, digging ? 1 : 0, digging ? 1 : 0, digging ? 1 : 0, spin, 0.2, 0.6]),
     );
     renderer.update(spray, chips.instances);
+    // everybody else, if they are on this patch of ground
+    if (live) {
+      const out: number[] = [];
+      for (const peer of live.peers.values()) {
+        const x = peer.drawnX - homeCell.x - origin.x;
+        const z = peer.drawnZ - homeCell.z - origin.z;
+        if (Math.abs(x) > GROUND / 2 || Math.abs(z) > GROUND / 2) continue;
+        out.push(x, supportAt(x, z, ground.surfaceAt(x, z) + STEP_UP), z, 1, 1, 1, peer.drawnYaw, 0.92, 0.6);
+      }
+      renderer.update(others, new Float32Array(out));
+    }
 
     const eyes = head();
     const look: [number, number, number] = [

@@ -36,3 +36,6 @@ npm-debug.log*
 subgraph/node_modules/
 subgraph/generated/
 subgraph/build/
+
+# live server
+live/node_modules/

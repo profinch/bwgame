@@ -37,6 +37,18 @@ export interface Chain {
   /** The block it was deployed in: there are no plots to look for before it. */
   plotsSince?: number;
   /**
+   * Factories that came before, and the blocks they were deployed in. What they
+   * made is not plots of this world any more — a different code, no way to
+   * change hands — but it is still contracts standing on the ground, and the
+   * ground shows what stands on it. They are read for where those are.
+   */
+  former?: { plots: string; since: number }[];
+  /**
+   * The live server, once there is one: who else is standing here, and word of
+   * a claim the moment the indexer has it. The world works without it.
+   */
+  live?: string;
+  /**
    * A subgraph over the factory, once there is one: every plot, who holds it,
    * what is written into it. Asked first; the factory's own logs are the
    * fallback, and stop being enough once the history outgrows what a public
@@ -108,6 +120,9 @@ export const CHAINS: Record<string, Chain> = {
     // nowhere else
     plots: '0x4bbfaE0A0BEe0F49F3ecbCCcC638a0235359eb73',
     plotsSince: 11_669_423,
+    // the first factory, 08.09.2026: its plots stand as the contracts they are
+    former: [{ plots: '0x9f76BcE99c0b997af2442FfD65A48fB58f1cA088', since: 11_661_029 }],
+    live: 'wss://gs.bwtoken.io/live',
     // the subgraph in subgraph/, deployed to Subgraph Studio; "latest" follows redeploys
     subgraph: 'https://api.studio.thegraph.com/query/1760017/ground-state/version/latest',
     tokens: [

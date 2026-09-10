@@ -146,8 +146,44 @@ function fold(into: Claimed[], changed: readonly Claimed[]): Claimed[] {
   return out;
 }
 
+/** A factory's Claimed logs, read from where the last read stopped. */
+interface Reader {
+  factory: string;
+  /** The next block to read from. */
+  from: number;
+  known: Claimed[];
+}
+
+/**
+ * Read a factory's `Claimed` events from where the last read stopped, in the
+ * pieces a public gateway allows. Leaves `from` where it got to, so a gateway
+ * refusing halfway costs nothing but another try later.
+ */
+async function readClaims(reader: Reader): Promise<Claimed[]> {
+  const head = await rpc<string>('eth_blockNumber', []);
+  if (!head) return reader.known;
+  const latest = Number(BigInt(head));
+  while (reader.from <= latest) {
+    const to = Math.min(latest, reader.from + RANGE - 1);
+    const logs = await rpc<{ topics: string[] }[]>('eth_getLogs', [
+      {
+        address: reader.factory,
+        fromBlock: `0x${reader.from.toString(16)}`,
+        toBlock: `0x${to.toString(16)}`,
+        topics: [CLAIMED],
+      },
+    ]);
+    if (!logs) break; // nothing answered: try again from here next time
+    reader.known = fold(reader.known, plotsIn(logs));
+    reader.from = to + 1;
+  }
+  return reader.known;
+}
+
+const current: Reader = { factory: chain.plots ?? '', from: chain.plotsSince ?? 0, known: [] };
+const former: Reader[] = (chain.former ?? []).map((it) => ({ factory: it.plots, from: it.since, known: [] }));
+
 let known: Claimed[] = [];
-let seenUpTo = 0;
 
 /**
  * Every plot the factory has ever deployed.
@@ -155,9 +191,7 @@ let seenUpTo = 0;
  * From the subgraph when the chain has one. Otherwise off the factory's own
  * `Claimed` events: the world cannot list the contracts on a chain, and does
  * not try — but the factory is one contract, young, and it says what it has
- * made. Its logs are asked for from the block it was deployed in, in the pieces
- * a public gateway allows, and only the new blocks on each call after the
- * first. That is the indexer's job done by hand, and it holds only while the
+ * made. That is the indexer's job done by hand, and it holds only while the
  * history is short.
  */
 export async function claimedPlots(): Promise<Claimed[]> {
@@ -167,23 +201,18 @@ export async function claimedPlots(): Promise<Claimed[]> {
     known = fold(known, changed);
     return known;
   }
-  const head = await rpc<string>('eth_blockNumber', []);
-  if (!head) return known;
-  const latest = Number(BigInt(head));
-  let from = seenUpTo ? seenUpTo + 1 : (chain.plotsSince ?? 0);
-  while (from <= latest) {
-    const to = Math.min(latest, from + RANGE - 1);
-    const logs = await rpc<{ topics: string[] }[]>('eth_getLogs', [
-      { address: chain.plots, fromBlock: `0x${from.toString(16)}`, toBlock: `0x${to.toString(16)}`, topics: [CLAIMED] },
-    ]);
-    if (!logs) break; // nothing answered: try again from here next time
-    for (const claimed of plotsIn(logs)) {
-      if (!known.some((had) => had.plot.toLowerCase() === claimed.plot.toLowerCase())) known.push(claimed);
-    }
-    seenUpTo = to;
-    from = to + 1;
-  }
+  known = fold(known, await readClaims(current));
   return known;
+}
+
+/**
+ * What the factories before this one made: contracts, standing where they were
+ * put, and nothing more to this world — but the ground shows what stands on it.
+ */
+export async function formerPlots(): Promise<Claimed[]> {
+  const out: Claimed[] = [];
+  for (const reader of former) out.push(...(await readClaims(reader)));
+  return out;
 }
 
 /** What the factory says about a plot at this address, or null if it made none there. */
