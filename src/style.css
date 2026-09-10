@@ -571,6 +571,21 @@ body.world {
   pointer-events: auto;
 }
 
+.hud .chains a {
+  text-decoration: none;
+  opacity: 0.55;
+}
+
+.hud .chains a:hover {
+  opacity: 1;
+}
+
+.hud .chains .here {
+  opacity: 1;
+  text-decoration: underline;
+  cursor: default;
+}
+
 .hud .near {
   font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
   font-size: 11px;

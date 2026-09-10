@@ -21,7 +21,7 @@ import { Renderer, once, type Sky } from './engine/renderer';
 import { addressUnder, DEPTH, HOME, levelOff, offsetOf, rawHeightAt } from './engine/land';
 import { boulder, box, figure, groundUnder, terrain } from './engine/shapes';
 import { Traffic, pollBlocks } from './engine/traffic';
-import { chain } from './chains';
+import { CHAINS, chain } from './chains';
 import { type Account, accountAt, holdingsOf } from './chain';
 import { normalizeAddress } from './coord';
 import { looksLikeName, resolveName } from './ens';
@@ -881,6 +881,29 @@ function strokesFor(structure: Structure, base: number): Stroke[] {
   const strokes = strokesOf(structure, base, origin);
   strokesKept.set(structure, { base, strokes });
   return strokes;
+}
+
+/**
+ * Which world this is, and the others: the chain is not a setting but the
+ * ground you stand on, so it is said in the header and changed by walking out
+ * of one world into another — the page reloads, nothing carries over, as
+ * nothing should.
+ */
+const chains = document.querySelector<HTMLElement>('.chains');
+if (chains) {
+  for (const other of Object.values(CHAINS)) {
+    const link = document.createElement('a');
+    link.textContent = other.name;
+    if (other.key === chain.key) {
+      link.className = 'here';
+    } else {
+      const to = new URL(location.href);
+      to.search = `?chain=${other.key}`;
+      link.href = to.toString();
+    }
+    chains.append(link);
+    if (other !== Object.values(CHAINS).at(-1)) chains.append(document.createTextNode(' '));
+  }
 }
 
 /**
