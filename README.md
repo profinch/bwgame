@@ -103,9 +103,9 @@ black and white that a gradient shows its steps without it.
 Started at **ETHOnline 2026** (September 4–13, 2026) and continued after it. The hackathon is
 where this begins, not what it is for. Work in progress, in the open.
 
-Live at **[gs.bwtoken.io](https://gs.bwtoken.io)** — the map — and
-**[gs.bwtoken.io/world.html](https://gs.bwtoken.io/world.html)** — the world. Ground is taken on
-Sepolia: `world.html?chain=sepolia`. A place is a link: `?at=0x…` or `?at=name.eth`.
+Live at **[gs.bwtoken.io](https://gs.bwtoken.io)** — the world, on Sepolia, where ground is
+taken — and **[gs.bwtoken.io/map.html](https://gs.bwtoken.io/map.html)** — the map. A place is a
+link: `?at=0x…` or `?at=name.eth`; `?chain=mainnet` walks the mainnet instead.
 
 ## On the chain
 
