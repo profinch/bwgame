@@ -47,6 +47,8 @@ const EASES_AT = 12;
 
 export class Live {
   readonly peers = new Map<number, Peer>();
+  /** Who I am in the room, once the server has said. */
+  me = 0;
   private socket: WebSocket | null = null;
   private lastSaid = 0;
   private lastSaidWhat = '';
@@ -102,7 +104,9 @@ export class Live {
         for (const id of [...this.peers.keys()]) if (!seen.has(id)) this.peers.delete(id);
         return;
       }
-      if ((message as { t?: string })?.t === 'changed') this.onChanged();
+      const said = message as { t?: string; id?: number };
+      if (said?.t === 'you' && typeof said.id === 'number') this.me = said.id;
+      if (said?.t === 'changed') this.onChanged();
     });
     const drop = () => {
       if (this.socket !== socket) return;

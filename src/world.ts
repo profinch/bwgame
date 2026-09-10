@@ -519,8 +519,20 @@ let spin = 0;
 /** The ground it throws up. */
 const chips = new Chips();
 const spray = renderer.add(box(), new Float32Array(chips.instances.length), true);
-/** Feet in world height, not height above the ground: you can be on a roof. */
-const player = { x: 0, z: 150, y: 0, yaw: 0, pitch: -0.03, rise: 0 };
+/**
+ * Feet in world height, not height above the ground: you can be on a roof.
+ * The first stand is somewhere on a ring round home, a different somewhere
+ * each time, so two people opening the page do not open it inside each other.
+ */
+const firstAngle = Math.random() * 2 * Math.PI;
+const player = {
+  x: Math.sin(firstAngle) * 150,
+  z: Math.cos(firstAngle) * 150,
+  y: 0,
+  yaw: Math.atan2(Math.sin(firstAngle) * 150, Math.cos(firstAngle) * 150),
+  pitch: -0.03,
+  rise: 0,
+};
 
 const coverage = new Coverage(renderer.gl, { x: player.x, z: player.z });
 
@@ -889,8 +901,9 @@ function apart(seconds: number): void {
     const dz = player.z - (peer.drawnZ - homeCell.z - origin.z);
     const away = Math.hypot(dx, dz);
     if (away >= GIRTH * 2 || away < 1e-6) {
-      // dead on top of each other: step off to a side, any side
-      if (away < 1e-6) player.x += GIRTH * seconds * 4;
+      // dead on top of each other: step off to a side — the one the room's
+      // numbering gives me, so the other steps the other way and we part
+      if (away < 1e-6) player.x += (live.me < peer.id ? 1 : -1) * GIRTH * seconds * 4;
       continue;
     }
     const push = Math.min(1, (GIRTH * 2 - away) * seconds * 6);
