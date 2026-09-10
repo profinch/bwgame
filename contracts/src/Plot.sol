@@ -12,39 +12,81 @@ pragma solidity 0.8.28;
  * The code is identical for every plot on purpose. Its hash is part of what
  * fixes the address, so if it varied, mining a location would mean mining for
  * one particular set of contents. What differs between one plot and the next is
- * what its owner writes into it — and since the world takes a structure's shape
- * from what an account holds, writing is how you build.
+ * what its owner puts into it.
  *
- * The owner is kept in storage rather than baked into the code, so every plot's
- * runtime code is byte for byte the same — which is how the world knows one
- * when it sees one — and so that a plot can change hands: ground is given, sold
- * and inherited, and a place nobody can ever pass on is a place that dies with
- * its first owner.
+ * And what they can put into it is anything. A plot is a proxy: its owner
+ * points it at an implementation — any contract they have written and deployed
+ * — and from then on every call the plot does not answer itself is run as that
+ * implementation's code, with the plot's own address, balance and storage. A
+ * casino, a gallery, a game: it lives *here*, at this place. The owner can
+ * point it somewhere else later, or seal it, after which the code can never
+ * change again — which is the promise a casino's players want to see.
+ *
+ * The plot's own state lives in hashed storage slots (the EIP-1967 slots for
+ * the implementation and the owner, a namespaced slot for the rest), so an
+ * implementation may use ordinary storage from slot zero as any contract does,
+ * and the two never meet.
  */
 contract Plot {
-    /// Set from the factory, which knows who asked. Passed on by `transfer`.
-    address public owner;
+    /// EIP-1967: bytes32(uint256(keccak256("eip1967.proxy.implementation")) - 1)
+    bytes32 private constant IMPLEMENTATION_SLOT = 0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc;
+    /// EIP-1967: bytes32(uint256(keccak256("eip1967.proxy.admin")) - 1)
+    bytes32 private constant OWNER_SLOT = 0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103;
+    /// bytes32(uint256(keccak256("groundstate.plot.words")) - 1): the note, and the seal
+    bytes32 private constant WORDS_SLOT = 0x9cd8f8100ccd357e601900697171708d60891808cd52063bf7e0fe7d3dc16ef9;
 
-    /// Whatever the owner has to say about the place. Shape and label both.
-    string public note;
+    struct Words {
+        string note;
+        /// `sealed` is a word Solidity keeps for itself
+        bool forGood;
+    }
 
     error NotOwner();
     error NoOwner();
+    error NotAContract();
+    error Sealed();
+    error NoCode();
 
     event Inscribed(string note);
     event Transferred(address indexed from, address indexed to);
+    event CodeSet(address indexed implementation);
+    event SealedForGood();
 
     constructor() {
-        owner = Plots(msg.sender).claimant();
+        _setOwner(Plots(msg.sender).claimant());
     }
 
     modifier onlyOwner() {
-        if (msg.sender != owner) revert NotOwner();
+        if (msg.sender != owner()) revert NotOwner();
         _;
     }
 
+    // --- what the plot itself answers ---------------------------------------
+
+    function owner() public view returns (address who) {
+        assembly {
+            who := sload(OWNER_SLOT)
+        }
+    }
+
+    function implementation() public view returns (address code) {
+        assembly {
+            code := sload(IMPLEMENTATION_SLOT)
+        }
+    }
+
+    /// Whatever the owner has to say about the place. Label and shape both.
+    function note() external view returns (string memory) {
+        return _words().note;
+    }
+
+    /// Whether the code is fixed for good.
+    function isSealed() external view returns (bool) {
+        return _words().forGood;
+    }
+
     function inscribe(string calldata text) external onlyOwner {
-        note = text;
+        _words().note = text;
         emit Inscribed(text);
     }
 
@@ -52,8 +94,64 @@ contract Plot {
     /// ground nobody can ever write into again.
     function transfer(address to) external onlyOwner {
         if (to == address(0)) revert NoOwner();
-        emit Transferred(owner, to);
-        owner = to;
+        emit Transferred(owner(), to);
+        _setOwner(to);
+    }
+
+    /// Point the plot at code of the owner's own. Anything with code will do;
+    /// address zero takes it back to being just a plot.
+    function setCode(address code) external onlyOwner {
+        if (_words().forGood) revert Sealed();
+        if (code != address(0) && code.code.length == 0) revert NotAContract();
+        assembly {
+            sstore(IMPLEMENTATION_SLOT, code)
+        }
+        emit CodeSet(code);
+    }
+
+    /// Fix the code for good. Whoever deals with this place afterwards can be
+    /// sure it will go on doing exactly what it does now.
+    function seal() external onlyOwner {
+        _words().forGood = true;
+        emit SealedForGood();
+    }
+
+    // --- everything else is the implementation's -------------------------------
+
+    /// Plain ether is taken either way: a plot can hold a balance, and what a
+    /// place holds is part of how the world draws it.
+    receive() external payable {
+        address code = implementation();
+        if (code != address(0)) _delegate(code);
+    }
+
+    fallback() external payable {
+        address code = implementation();
+        if (code == address(0)) revert NoCode();
+        _delegate(code);
+    }
+
+    function _delegate(address code) private {
+        assembly {
+            calldatacopy(0, 0, calldatasize())
+            let ok := delegatecall(gas(), code, 0, calldatasize(), 0, 0)
+            returndatacopy(0, 0, returndatasize())
+            switch ok
+            case 0 { revert(0, returndatasize()) }
+            default { return(0, returndatasize()) }
+        }
+    }
+
+    function _setOwner(address who) private {
+        assembly {
+            sstore(OWNER_SLOT, who)
+        }
+    }
+
+    function _words() private pure returns (Words storage words) {
+        assembly {
+            words.slot := WORDS_SLOT
+        }
     }
 }
 
