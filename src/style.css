@@ -488,10 +488,10 @@ body.world {
 /* the plot of yours you are standing at */
 
 .hud.own {
-  top: auto;
+  top: 64px;
   left: auto;
   right: 18px;
-  bottom: 18px;
+  bottom: auto;
   pointer-events: auto;
   max-width: 34ch;
   padding: 10px 12px;
@@ -549,11 +549,6 @@ body.world {
 .hud.own button:disabled {
   opacity: 0.45;
   cursor: progress;
-}
-
-/* the claim panel makes way for it: both stand at the right, one at a time */
-.hud.claim.aside {
-  display: none;
 }
 
 /* walking with a thumb: only on devices driven by touch. The stick is under
@@ -648,6 +643,13 @@ body.touch .hud.claim {
   .hud.claim {
     top: 124px;
     bottom: auto;
+    left: 12px;
+    right: 12px;
+    max-width: none;
+  }
+
+  .hud.own {
+    top: 300px;
     left: 12px;
     right: 12px;
     max-width: none;

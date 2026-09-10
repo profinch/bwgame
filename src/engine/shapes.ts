@@ -293,9 +293,11 @@ function icosahedron(): { points: number[][]; faces: number[][] } {
  * runs over it instead of breaking on every edge — which is the whole
  * difference between a rock and a die. Refused once as scenery, and back for
  * the one thing in this world that is a stone and not a building: the relics
- * of the first ground.
+ * of the first ground. `dressedAt` flattens the front (+z) of the stone at that
+ * distance from its centre, the way a mason dresses one face of a boulder to
+ * cut into it.
  */
-export function boulder(subdivisions = 2, seed = 1, roughness = 0.34): Geometry {
+export function boulder(subdivisions = 2, seed = 1, roughness = 0.34, dressedAt?: number): Geometry {
   let { points, faces } = icosahedron();
   const middles = new Map<string, number>();
 
@@ -325,10 +327,13 @@ export function boulder(subdivisions = 2, seed = 1, roughness = 0.34): Geometry 
     middles.clear();
   }
 
-  // push each point along its own direction, then squash and sit it on the floor
+  // push each point along its own direction, then squash and sit it on the floor;
+  // and if one face is to be dressed, cut everything past that plane back to it,
+  // so the stone has a flat front that can be written on
   const displaced = points.map(([x, y, z]) => {
     const push = 1 + (fbm3(x! * 1.7 + 5, y! * 1.7 + 5, z! * 1.7 + 5, 3, seed) - 0.5) * roughness * 2;
-    return [x! * push, y! * push * 0.78, z! * push];
+    const front = z! * push;
+    return [x! * push, y! * push * 0.78, dressedAt === undefined ? front : Math.min(front, dressedAt)];
   });
   const lowest = Math.min(...displaced.map((p) => p[1]!));
 

@@ -634,14 +634,16 @@ export function structureOf(
  * A plot of an earlier ground.
  *
  * The first ground left boulders: rough stones, each big enough to sit on the
- * shoulder of, with one face dressed flat and cut with the signs that say what
- * it is — an ancient relic of the first ground. The second left gates: two
+ * shoulder of, one face dressed flat and the signs that say what it is cut
+ * straight into it — an ancient relic of the first ground. The second left gates: two
  * piers and a lintel you can walk through, the piers carrying the same words —
  * because the second ground was the one where a place could pass from hand to
  * hand, and a gate is a place that is passed through. Neither is sized by its
  * code: a relic is not a building and does not pretend to be one.
  */
 export const BOULDER_ACROSS = 3.0;
+/** How far from the centre of a unit boulder its front is dressed flat. */
+export const DRESSED_AT = 0.55;
 const GATE = { pier: 0.6, tall: 3.2, apart: 2.8, lintel: 0.6, deep: 0.8 };
 
 function relicOf(
@@ -734,11 +736,28 @@ function relicPieces(structure: Structure, base: number, origin: { x: number; z:
   const words = relicWords(structure.relic ?? 1);
 
   if (structure.relic === 1) {
-    // the dressed face: a tall plaque set into the front of the stone, a little
-    // proud of it — tall rather than wide, so seven signs down a column come out
-    // the size of a hand
+    // cut into the stone itself: its front is dressed flat, and the signs are
+    // laid on that face as the stone left standing between the strokes, so the
+    // strokes are the face showing through. Sized to the stone, tall rather than
+    // wide, so seven signs down a column come out the size of a hand.
     const r = structure.wide / 2;
-    carvedBlock(put, 0, base + 0.5, r * 0.62, 0.9, 1.6, 0.7, words);
+    const face = DRESSED_AT * r;
+    // the dressed face runs from a third of the radius up to one and a third
+    const wide = 0.55 * r;
+    const tall = 0.75 * r;
+    const foot = base + 0.5 * r;
+    const { across, down, patches } = carve(words, tall, wide);
+    const cutIn = Math.max(across * 1.6, 0.003);
+    for (const { col, row, cols, rows } of patches) {
+      put(
+        (col + cols / 2 - WALL / 2) * across,
+        foot + tall - (row + rows) * down,
+        face + cutIn / 2,
+        cols * across,
+        rows * down,
+        cutIn,
+      );
+    }
   } else {
     const half = GATE.apart / 2 + GATE.pier / 2;
     carvedBlock(put, -half, base, 0, GATE.pier, GATE.tall, GATE.pier, [words[0]!]);

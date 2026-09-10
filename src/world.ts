@@ -25,7 +25,7 @@ import { chain } from './chains';
 import { type Account, accountAt, holdingsOf } from './chain';
 import { normalizeAddress } from './coord';
 import { looksLikeName, resolveName } from './ens';
-import { type Structure, blocksOf, bouldersOf, instancesOf, stands, structureOf } from './places';
+import { DRESSED_AT, type Structure, blocksOf, bouldersOf, instancesOf, stands, structureOf } from './places';
 import { POINT, auger } from './auger';
 import { type Stroke, glassOf, inkOf, strokesOf } from './blueprint';
 import { Chips } from './chips';
@@ -82,7 +82,7 @@ const obstacles: Obstacle[] = [];
 // raised squares that spell an address out across them
 const built = renderer.add(box(), new Float32Array(0), true);
 // except the relics of the first ground, which are stones and not boxes
-const boulders = renderer.add(boulder(2, 1, 0.34), new Float32Array(0), true);
+const boulders = renderer.add(boulder(2, 1, 0.34, DRESSED_AT), new Float32Array(0), true);
 
 /** Where a structure's floor sits: the lowest ground its footprint covers. */
 function baseOf(structure: Structure): number {

@@ -49,7 +49,6 @@ export function ownGround(
   const coding = panel.querySelector<HTMLFormElement>('.own-code')!;
   const codeInput = coding.querySelector<HTMLInputElement>('input')!;
   const sealButton = panel.querySelector<HTMLButtonElement>('.seal')!;
-  const claiming = document.querySelector<HTMLElement>('.hud.claim');
 
   let owner: string | null = null;
   let plot: Structure | null = null;
@@ -63,12 +62,10 @@ export function ownGround(
     plot = owner ? plotOf(owner) : null;
     if (!plot) {
       panel.hidden = true;
-      claiming?.classList.remove('aside');
       sticky = '';
       return;
     }
     panel.hidden = false;
-    claiming?.classList.add('aside');
     const what = plot.plot!;
     said.textContent = sticky || `yours: ${plot.address.slice(0, 10)}…`;
     noteLine.textContent =
