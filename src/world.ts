@@ -326,15 +326,24 @@ const DESCENT_FROM = 380;
 let descent = DESCENT_FROM;
 let holdDescent = false;
 
+/**
+ * Which side of the address you come down on: a different one each time, so
+ * two people following the same link do not land inside each other. Facing
+ * the address, whichever side it is.
+ */
+let alightAngle = 0;
+
 function arriveAt(x: number, z: number): void {
   origin.x = x;
   origin.z = z;
   descent = DESCENT_FROM;
   // beside the address rather than on it: arriving dead on one puts you inside
   // whatever stands there, and the inside of a building is not drawn
-  player.x = 0;
-  player.z = ALIGHT;
-  player.yaw = 0;
+  alightAngle = Math.random() * 2 * Math.PI;
+  player.x = Math.sin(alightAngle) * ALIGHT;
+  player.z = Math.cos(alightAngle) * ALIGHT;
+  // forward is -z at yaw zero; facing the address means facing back along the radius
+  player.yaw = Math.atan2(player.x, player.z);
   player.pitch = -0.2;
   ground = terrain(GROUND, 340, origin);
   renderer.reshape(floor, ground.geometry);
@@ -481,8 +490,11 @@ async function travelTo(address: string): Promise<Structure | null> {
   const structure = await standing(account);
   if (stands(account)) raise(structure);
   // a stone with forty posts on it is ten metres across, so stand off far
-  // enough to see the whole of it rather than inside the first row
-  player.z = Math.max(ALIGHT, structure.deep / 2 + ALIGHT * 0.8);
+  // enough to see the whole of it rather than inside the first row — on the
+  // same side you came down on
+  const off = Math.max(ALIGHT, Math.max(structure.wide, structure.deep) / 2 + ALIGHT * 0.8);
+  player.x = Math.sin(alightAngle) * off;
+  player.z = Math.cos(alightAngle) * off;
   player.y = ground.surfaceAt(player.x, player.z);
   settle();
   return structure;
@@ -866,6 +878,28 @@ function walk(seconds: number): void {
 }
 
 /**
+ * Nobody stands inside anybody else. People are not walls — you can push past
+ * — but a walker standing in another is stepped out of them a little each
+ * frame, by both clients, so two people who came down on one spot part.
+ */
+function apart(seconds: number): void {
+  if (!live) return;
+  for (const peer of live.peers.values()) {
+    const dx = player.x - (peer.drawnX - homeCell.x - origin.x);
+    const dz = player.z - (peer.drawnZ - homeCell.z - origin.z);
+    const away = Math.hypot(dx, dz);
+    if (away >= GIRTH * 2 || away < 1e-6) {
+      // dead on top of each other: step off to a side, any side
+      if (away < 1e-6) player.x += GIRTH * seconds * 4;
+      continue;
+    }
+    const push = Math.min(1, (GIRTH * 2 - away) * seconds * 6);
+    player.x += (dx / away) * push;
+    player.z += (dz / away) * push;
+  }
+}
+
+/**
  * A drawing's strokes, worked out once for where it stands.
  *
  * They depend on the plot and on the ground it sits on, neither of which moves
@@ -968,6 +1002,7 @@ let since = 0;
 loop({
   step(seconds) {
     walk(seconds);
+    apart(seconds);
     turn(seconds);
     fall(seconds);
     ride(seconds);
