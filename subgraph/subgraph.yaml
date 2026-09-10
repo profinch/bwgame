@@ -29,6 +29,29 @@ dataSources:
         - event: Claimed(indexed address,indexed address,bytes32)
           handler: handleClaimed
       file: ./src/plots.ts
+  # Names: what plots are called under groundstate.eth (ENSv2 on Sepolia).
+  - kind: ethereum
+    name: Names
+    network: sepolia
+    source:
+      address: "0x2E32A8CE61f46c7276Bc3786e0a7AE32da2E29ED"
+      abi: Names
+      startBlock: 11675060
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.9
+      language: wasm/assemblyscript
+      entities:
+        - Plot
+      abis:
+        - name: Names
+          file: ./abis/Names.json
+      eventHandlers:
+        - event: Named(indexed address,string)
+          handler: handleNamed
+        - event: Unnamed(indexed address,string)
+          handler: handleUnnamed
+      file: ./src/names.ts
 templates:
   # Every plot is its own contract, brought into being by a claim; from then on
   # it is listened to for what is written into it and whose it becomes.

@@ -29,6 +29,8 @@ type Plot @entity(immutable: false) {
   implementation: Bytes
   "Whether the code is fixed for good."
   sealed: Boolean!
+  "Its name under groundstate.eth (ENSv2, Sepolia), if its owner has given it one."
+  name: String
   "The address as coordinates: eighty bits each."
   x: BigInt!
   y: BigInt!
