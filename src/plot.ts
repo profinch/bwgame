@@ -65,9 +65,15 @@ export function relicOf(code: string): 1 | 2 | null {
   return null;
 }
 
-/** `note()` and `implementation()`, as the chain hears them. */
+/** `note()`, `implementation()` and `owner()`, as the chain hears them. */
 const NOTE = '0x26d111f5';
 const IMPLEMENTATION = '0x5c60da1b';
+const OWNER = '0x8da5cb5b';
+
+/** Whose a plot is, asked of the plot itself. */
+export async function ownerOf(address: string): Promise<string | null> {
+  return readAddress(await call(address, OWNER));
+}
 
 /** The code a plot has been pointed at, or null if none. */
 export async function implementationOf(address: string): Promise<string | null> {

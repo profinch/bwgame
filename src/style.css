@@ -485,6 +485,77 @@ body.world {
   cursor: progress;
 }
 
+/* the plot of yours you are standing at */
+
+.hud.own {
+  top: auto;
+  left: auto;
+  right: 18px;
+  bottom: 18px;
+  pointer-events: auto;
+  max-width: 34ch;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--line) 22%, transparent);
+  background: color-mix(in srgb, var(--panel) 82%, transparent);
+  display: grid;
+  gap: 6px;
+}
+
+.hud.own p {
+  margin: 0;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: #2a2a28;
+}
+
+.hud.own .own-note {
+  font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  color: #4a4a48;
+  white-space: pre-line;
+}
+
+.hud.own form {
+  display: flex;
+  gap: 6px;
+}
+
+.hud.own input {
+  flex: 1;
+  min-width: 0;
+  padding: 4px 6px;
+  border: 1px solid color-mix(in srgb, var(--line) 30%, transparent);
+  background: transparent;
+  color: var(--fg);
+  font: inherit;
+  font-size: 11px;
+}
+
+.hud.own button {
+  padding: 5px 10px;
+  border: 1px solid color-mix(in srgb, var(--line) 30%, transparent);
+  background: transparent;
+  color: var(--fg);
+  font: inherit;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.hud.own button:hover {
+  border-color: var(--fg);
+}
+
+.hud.own button:disabled {
+  opacity: 0.45;
+  cursor: progress;
+}
+
+/* the claim panel makes way for it: both stand at the right, one at a time */
+.hud.claim.aside {
+  display: none;
+}
+
 /* walking with a thumb: only on devices driven by touch. The stick is under
    the right thumb, the buttons under the left; the rest of the screen looks. */
 

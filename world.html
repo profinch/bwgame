@@ -31,6 +31,21 @@
         <button type="button" class="take" hidden>claim it</button>
       </p>
     </aside>
+    <aside class="hud own" hidden>
+      <p class="own-said"></p>
+      <p class="own-note"></p>
+      <form class="own-write">
+        <input name="note" placeholder="write into it" spellcheck="false" autocomplete="off" maxlength="200" />
+        <button type="submit">inscribe</button>
+      </form>
+      <form class="own-code">
+        <input name="code" placeholder="0x… a contract of yours" spellcheck="false" autocomplete="off" />
+        <button type="submit">point at code</button>
+      </form>
+      <p class="own-do">
+        <button type="button" class="seal">seal the code for good</button>
+      </p>
+    </aside>
     <div class="touchpad" aria-label="walk"><div class="knob"></div></div>
     <div class="touchpad-buttons">
       <button type="button" class="jump" aria-label="jump">jump</button>
