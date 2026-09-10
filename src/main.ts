@@ -35,6 +35,7 @@ app.innerHTML = `
   <header class="bar">
     <h1><span class="mark">${mark({ size: 24, rows: 7 })}</span>ground state</h1>
     <p class="hint">the ethereum address space — drag to move, wheel to zoom</p>
+    <a class="walk" href="/world.html?chain=sepolia">walk in the world</a>
   </header>
 
   <section class="stage">

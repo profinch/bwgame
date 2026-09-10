@@ -13,7 +13,7 @@
  */
 import { call } from './chain';
 import { CHAINS, chain } from './chains';
-import { type Progress, type Search, chooseThreads, coresAvailable, search, threadsChosen } from './claim';
+import { type Progress, type Search, chooseThreads, coresAvailable, mindTheBattery, search, threadsChosen } from './claim';
 import { HOME } from './engine/land';
 import { drop, keep, keyOf, nearest, recall } from './finds';
 import { type Dig, type Found, bytesOf, placeOf } from './mine';
@@ -157,10 +157,17 @@ export function takeGround(
   const cores = coresAvailable();
   coresSlider.max = String(cores);
   coresSlider.value = String(threadsChosen());
+  let onBattery = false;
   const sayCores = () => {
-    coresSaid.textContent = `${coresSlider.value} of ${cores} cores`;
+    coresSaid.textContent = `${coresSlider.value} of ${cores} cores${onBattery ? ' · on battery' : ''}`;
   };
   sayCores();
+  // on a battery the default is a quarter, and the slider shows it; a choice already made stands
+  void mindTheBattery().then((battery) => {
+    onBattery = battery;
+    coresSlider.value = String(threadsChosen());
+    sayCores();
+  });
   coresSlider.addEventListener('input', () => {
     chooseThreads(Number(coresSlider.value));
     sayCores();

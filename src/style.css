@@ -62,6 +62,23 @@ h1 {
   color: var(--mut);
 }
 
+/* from the map into the world: the one link on the page */
+.bar .walk {
+  margin-left: auto;
+  padding: 5px 12px;
+  border: 1px solid var(--fg);
+  color: var(--fg);
+  text-decoration: none;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  white-space: nowrap;
+}
+
+.bar .walk:hover {
+  background: var(--fg);
+  color: var(--bg);
+}
+
 /* --- the map ------------------------------------------------------------ */
 
 /* the map is square and has to stay inside whatever room is left, at any page

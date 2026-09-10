@@ -58,7 +58,25 @@ export function threadsChosen(): number {
   } catch {
     // no storage: the default, then
   }
-  return Math.max(1, Math.floor(cores / 2));
+  return Math.max(1, Math.floor(cores / share));
+}
+
+/** What share of the machine the default takes: half, or a quarter on a battery. */
+let share = 2;
+
+/**
+ * A machine running on its battery gets a quarter by default rather than half:
+ * digging is the one thing here that can drain a laptop or a phone, and it is
+ * still their choice — the slider overrides this. Only some browsers say
+ * whether they are on a battery; the rest keep the half.
+ */
+export async function mindTheBattery(): Promise<boolean> {
+  const battery = await (
+    navigator as { getBattery?: () => Promise<{ charging: boolean }> }
+  ).getBattery?.().catch(() => null);
+  if (!battery || battery.charging) return false;
+  share = 4;
+  return true;
 }
 
 export function chooseThreads(threads: number): void {

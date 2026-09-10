@@ -7,6 +7,26 @@ It has no level designer and no map file. The map *is* the Ethereum address spac
 2<sup>160</sup> of it — and the things standing in it are real accounts and contracts on
 a real chain.
 
+## How to play
+
+1. Open **[gs.bwtoken.io/world.html?chain=sepolia](https://gs.bwtoken.io/world.html?chain=sepolia)**. You
+   come down onto the ground from above. `WASD` walks, `Shift` runs, `Space` jumps, drag to look,
+   `V` changes the view; on a phone, the stick on the right walks. The ground is dark where nobody
+   has stood.
+2. Type an address or a name into the field at the bottom — `first.groundstate.eth`, or a wallet
+   you know — and you are taken there. Contracts stand as buildings; wallets lie as stones with a
+   post for every token, the name and amount cut into it in signs you can learn to read. The line
+   under the address says what plots are near.
+3. To take ground you need a wallet with a little Sepolia ETH (any faucet). Stand where you want
+   to be and press **dig here**: every core of your machine mines salts, and the closest attempt so
+   far is shown. Stop whenever you like and press **claim it** — one transaction, and the plot is
+   drawn where it landed, a few hundred metres off. Walk to it.
+4. At a plot of your own a panel appears: **inscribe** writes a line into it and the drawing
+   becomes a building; **name it** gives it a name under `groundstate.eth`; **point at code** makes
+   it run a contract you deployed — a game, a gallery, anything — at this very address; **seal**
+   fixes that code for good.
+5. Other people are here as white figures. What they claim goes up while you watch.
+
 ## The map is the address space
 
 An address is forty hexadecimal digits. Each digit splits the world into a 4×4 grid and picks
