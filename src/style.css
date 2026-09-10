@@ -485,12 +485,13 @@ body.world {
   cursor: progress;
 }
 
-/* walking with a thumb: only on devices driven by touch */
+/* walking with a thumb: only on devices driven by touch. The stick is under
+   the right thumb, the buttons under the left; the rest of the screen looks. */
 
 .touchpad {
   position: fixed;
   z-index: 3;
-  left: 22px;
+  right: 22px;
   bottom: 28px;
   width: 128px;
   height: 128px;
@@ -521,7 +522,7 @@ body.touch .touchpad {
 .touchpad-buttons {
   position: fixed;
   z-index: 3;
-  right: 22px;
+  left: 22px;
   bottom: 28px;
   display: none;
   flex-direction: column;
@@ -543,6 +544,12 @@ body.touch .touchpad-buttons {
   font-size: 11px;
   letter-spacing: 0.06em;
   touch-action: manipulation;
+}
+
+/* on a wide touch screen the claim panel gets out from under the right thumb */
+
+body.touch .hud.claim {
+  bottom: 176px;
 }
 
 /* a narrow screen: the readouts stack at the top, the thumbs have the bottom */

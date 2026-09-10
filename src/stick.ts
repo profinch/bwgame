@@ -1,11 +1,11 @@
 /**
  * Walking with a thumb.
  *
- * On a phone there are no keys, so the left thumb gets a stick: put it down
+ * On a phone there are no keys, so the right thumb gets a stick: put it down
  * anywhere on the pad, push, and you walk that way — further from the centre,
- * faster, and at the rim you run. The right thumb keeps the canvas, which
- * already turns the head when dragged. A jump and the change of view are
- * buttons, because a gesture for either would fight with looking.
+ * faster, and at the rim you run. The left thumb has the jump and the change
+ * of view as buttons, because a gesture for either would fight with looking;
+ * the rest of the screen still turns the head when dragged.
  *
  * Nothing here decides how walking works: it only says how hard and which way
  * the thumb is pushing, and the walker reads that alongside the keys.
