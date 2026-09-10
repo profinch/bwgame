@@ -5,6 +5,27 @@
     "stateMutability": "nonpayable"
   },
   {
+    "type": "fallback",
+    "stateMutability": "payable"
+  },
+  {
+    "type": "receive",
+    "stateMutability": "payable"
+  },
+  {
+    "type": "function",
+    "name": "implementation",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "code",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
     "type": "function",
     "name": "inscribe",
     "inputs": [
@@ -16,6 +37,19 @@
     ],
     "outputs": [],
     "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "isSealed",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
   },
   {
     "type": "function",
@@ -36,12 +70,32 @@
     "inputs": [],
     "outputs": [
       {
-        "name": "",
+        "name": "who",
         "type": "address",
         "internalType": "address"
       }
     ],
     "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "seal",
+    "inputs": [],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "setCode",
+    "inputs": [
+      {
+        "name": "code",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
   },
   {
     "type": "function",
@@ -58,6 +112,19 @@
   },
   {
     "type": "event",
+    "name": "CodeSet",
+    "inputs": [
+      {
+        "name": "implementation",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
     "name": "Inscribed",
     "inputs": [
       {
@@ -67,6 +134,12 @@
         "internalType": "string"
       }
     ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "SealedForGood",
+    "inputs": [],
     "anonymous": false
   },
   {
@@ -90,12 +163,27 @@
   },
   {
     "type": "error",
+    "name": "NoCode",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "NoOwner",
     "inputs": []
   },
   {
     "type": "error",
+    "name": "NotAContract",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "NotOwner",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "Sealed",
     "inputs": []
   }
 ]

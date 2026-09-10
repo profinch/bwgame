@@ -10,9 +10,9 @@ dataSources:
     name: Plots
     network: sepolia
     source:
-      address: "0x4bbfaE0A0BEe0F49F3ecbCCcC638a0235359eb73"
+      address: "0xcEa322619d375B381bff95e53a02Ef92Ea81B5Df"
       abi: Plots
-      startBlock: 11669423
+      startBlock: 11674690
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.9
@@ -54,4 +54,8 @@ templates:
           handler: handleInscribed
         - event: Transferred(indexed address,indexed address)
           handler: handleTransferred
+        - event: CodeSet(indexed address)
+          handler: handleCodeSet
+        - event: SealedForGood()
+          handler: handleSealed
       file: ./src/plot.ts

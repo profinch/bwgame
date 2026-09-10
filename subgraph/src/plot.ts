@@ -1,5 +1,6 @@
 // What happens to a plot after it is claimed: it is written into, and it changes hands.
-import { Inscribed, Transferred } from '../generated/templates/Plot/Plot';
+import { Address } from '@graphprotocol/graph-ts';
+import { CodeSet, Inscribed, SealedForGood, Transferred } from '../generated/templates/Plot/Plot';
 import { Inscription, Plot, Transfer } from '../generated/schema';
 import { ownerOf } from './plots';
 
@@ -44,4 +45,21 @@ export function handleTransferred(event: Transferred): void {
   transfer.block = event.block.number;
   transfer.tx = event.transaction.hash;
   transfer.save();
+}
+
+export function handleCodeSet(event: CodeSet): void {
+  const plot = Plot.load(event.address);
+  if (plot == null) return;
+  // address zero takes the plot back to being just a plot
+  plot.implementation = event.params.implementation.equals(Address.zero()) ? null : event.params.implementation;
+  plot.updatedIn = event.block.number;
+  plot.save();
+}
+
+export function handleSealed(event: SealedForGood): void {
+  const plot = Plot.load(event.address);
+  if (plot == null) return;
+  plot.sealed = true;
+  plot.updatedIn = event.block.number;
+  plot.save();
 }

@@ -12,7 +12,7 @@ its own (a template), so a plot is followed from the moment it is claimed: each
 
 | entity | what |
 |---|---|
-| `Plot` | the address — which is the place — its owner, salt, when and by whom it was claimed, the current `note`, and the address read as coordinates: `x`, `y` (80 bits each), `cell` (first 13 hex digits, the metre of ground in the walkable world) and `tile` (first 9, the 256-metre tile the world files things by) |
+| `Plot` | the address — which is the place — its owner, salt, when and by whom it was claimed, the current `note`, the `implementation` it is pointed at and whether it is `sealed`, and the address read as coordinates: `x`, `y` (80 bits each), `cell` (first 13 hex digits, the metre of ground in the walkable world) and `tile` (first 9, the 256-metre tile the world files things by) |
 | `Owner` | who holds ground: how many plots now, how many ever mined |
 | `Inscription` | every writing into a plot, in order |
 | `Transfer` | every change of hands |

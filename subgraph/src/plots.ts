@@ -23,6 +23,7 @@ export function handleClaimed(event: Claimed): void {
   plot.claimTx = event.transaction.hash;
   plot.updatedIn = event.block.number;
   plot.note = '';
+  plot.sealed = false;
 
   // the address is the place: each hex digit is one step in x and one in y
   const hex = event.params.plot.toHexString().slice(2);

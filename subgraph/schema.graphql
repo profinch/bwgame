@@ -25,6 +25,10 @@ type Plot @entity(immutable: false) {
   "What the owner has written into it. Empty until they do."
   note: String!
   inscribedAt: BigInt
+  "The code the plot is pointed at, if any: what stands here is that contract, at this address."
+  implementation: Bytes
+  "Whether the code is fixed for good."
+  sealed: Boolean!
   "The address as coordinates: eighty bits each."
   x: BigInt!
   y: BigInt!
