@@ -95,6 +95,8 @@ Sepolia: `world.html?chain=sepolia`. A place is a link: `?at=0x…` or `?at=name
 | source, verified | [Sourcify](https://repo.sourcify.dev/11155111/0xcEa322619d375B381bff95e53a02Ef92Ea81B5Df) · `contracts/src/Plot.sol` |
 | subgraph | [`ground-state`](https://thegraph.com/studio/subgraph/ground-state) on Subgraph Studio — [query](https://api.studio.thegraph.com/query/1760017/ground-state/version/latest), source in `subgraph/` |
 | live server | `wss://gs.bwtoken.io/live` — who else is here, and word of a claim as the indexer has it; source in `live/` |
+| names (ENSv2, Sepolia) | `groundstate.eth` on the ENSv2 beta → registry [`0xbef600d2b4b19918ed7543bfecf61f412d8e210c`](https://eth-sepolia.blockscout.com/address/0xbef600d2b4b19918ed7543bfecf61f412d8e210c) (a `UserRegistry` via the VerifiableFactory), resolver and registrar [`Names` `0x2E32A8CE61f46c7276Bc3786e0a7AE32da2E29ED`](https://eth-sepolia.blockscout.com/address/0x2E32A8CE61f46c7276Bc3786e0a7AE32da2E29ED) — `contracts/src/Names.sol` |
+| first named plot | `first.groundstate.eth` → [`0x3095c27de366b76074b604d83c7440d22fa33aad`](https://eth-sepolia.blockscout.com/address/0x3095c27de366b76074b604d83c7440d22fa33aad) |
 
 `Plots.claim(bytes32 salt)` deploys a `Plot` with CREATE2. The first twenty bytes of the salt must
 be the caller's address, so a salt seen in the mempool is worthless to anyone else. `predict(salt)`
@@ -107,6 +109,26 @@ balance and storage. A casino, a gallery, a game lives *here*, at this place; th
 plot as the code it is pointed at. `seal()` fixes the code for good, which is the promise a
 casino's players want to see. The plot keeps its own state in EIP-1967 and namespaced slots, so an
 implementation is written like any ordinary contract.
+
+## Names for places
+
+An address is nowhere anybody can be told to go, so a plot's owner can name it under
+`groundstate.eth` — `well.groundstate.eth` — and the name is how the place is shared. This is
+ENSv2 on Sepolia, on its own terms:
+
+- `groundstate.eth` is registered on the ENSv2 beta and points its **subregistry** at a
+  `PermissionedRegistry` of ours, deployed through the VerifiableFactory. The hierarchy of
+  registries is the same shape as the map: a name under a name, a place under a place.
+- `Names` is the **registrar** for that registry — the only holder of `ROLE_REGISTRAR` and
+  `ROLE_UNREGISTER` on it. A plot's owner calls `name(salt, label)`; the label is registered with
+  a role bitmap of zero, so the token **cannot be transferred on its own**: the name belongs to the
+  place. Renaming gives the old label back. Names never expire.
+- `Names` is also the **wildcard resolver** for the whole subtree (ENSIP-10): `groundstate.eth`
+  names it as resolver, so `anything.groundstate.eth` is answered here — `addr` is the plot,
+  `text(description)` is what the owner wrote into the plot, `text(url)` opens the world there.
+- The world resolves names through `UniversalResolverV2` and lets you travel by them: type
+  `first.groundstate.eth` into the world's address field. The panel at a plot of your own has a
+  field to name it.
 
 Two earlier factories stand in the history: `0x9f76BcE99c0b997af2442FfD65A48fB58f1cA088`
 (08.09.2026, owner written into the code, no `transfer`) and
@@ -121,7 +143,7 @@ npm run dev          # the map at /, the world at /world.html
 npm test             # vitest
 npm run build        # tsc --noEmit + vite build
 npm run wasm         # rebuild src/mine.wasm from wasm/mine.ts (AssemblyScript)
-forge test           # the contracts (Foundry; forge install foundry-rs/forge-std first)
+forge test           # the contracts (Foundry; forge install foundry-rs/forge-std ensdomains/contracts-v2 first)
 ```
 
 The subgraph has its own `package.json` in `subgraph/`; see the README there.
