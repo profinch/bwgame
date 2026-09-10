@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import type { Account } from '../src/chain';
-import { piecesOf, structureOf } from '../src/places';
+import { BOULDER_ACROSS, blocksOf, bouldersOf, piecesOf, structureOf } from '../src/places';
 import { OUTLINED, glassOf, inkOf, strokesOf } from '../src/blueprint';
 import { PLOT_CODE_SIZE, isPlot, plotsIn, plotsInGraph, relicOf } from '../src/plot';
 
@@ -39,16 +39,34 @@ describe('the plots of earlier grounds', () => {
     if (code) expect(relicOf(code)).toBeNull();
   });
 
-  it('stands a relic as a stone of its ground, not as a building', () => {
+  it('stands a relic of the first ground as a boulder with a carved plaque', () => {
     const account: Account = { address: '0x3095c19c9105b97eab5403753f9539a71a701a27', codeSize: 1068, code: 'ab'.repeat(1068), balance: 0n, nonce: 1 };
-    const first = structureOf(account, [], undefined, null, 1);
-    const second = structureOf(account, [], undefined, null, 2);
-    expect(first.kind).toBe('relic');
-    expect(first.relic).toBe(1);
-    expect(first.tall).toBeLessThan(first.wide);
-    expect(second.relic).toBe(2);
-    expect(second.tall).toBeGreaterThan(second.wide * 4);
-    expect(piecesOf(first, 10).length / 9).toBe(1);
+    const stone = structureOf(account, [], undefined, null, 1);
+    expect(stone.kind).toBe('relic');
+    expect(stone.relic).toBe(1);
+    expect(stone.wide).toBeGreaterThan(BOULDER_ACROSS * 0.8);
+    expect(stone.tall).toBeCloseTo(stone.wide * 0.78, 6);
+    // the boulder is one instance of the stone shape; the plaque is many boxes
+    expect(bouldersOf([stone], () => 10).length / 9).toBe(1);
+    expect(piecesOf(stone, 10).length / 9).toBeGreaterThan(20);
+    // and it is walked round as a whole
+    expect(blocksOf(stone, 10)).toHaveLength(1);
+  });
+
+  it('stands a relic of the second ground as a gate you can walk through', () => {
+    const account: Account = { address: '0x3095c19c9105b97eab5403753f9539a71a701a27', codeSize: 1263, code: 'ab'.repeat(1263), balance: 0n, nonce: 1 };
+    const gate = structureOf(account, [], undefined, null, 2);
+    expect(gate.relic).toBe(2);
+    expect(gate.tall).toBeGreaterThan(3.5);
+    expect(gate.wide).toBeGreaterThan(3.5);
+    expect(bouldersOf([gate], () => 10).length).toBe(0);
+    // two piers of carving and a lintel
+    expect(piecesOf(gate, 10).length / 9).toBeGreaterThan(20);
+    const blocks = blocksOf(gate, 10);
+    expect(blocks).toHaveLength(2);
+    // the piers stand apart, with nothing between them
+    expect(Math.hypot(blocks[0]!.x - blocks[1]!.x, blocks[0]!.z - blocks[1]!.z)).toBeGreaterThan(2.5);
+    expect(blocksOf(structureOf({ ...account, code: 'cd'.repeat(2271), codeSize: 2271 }, [], undefined, { note: '' }), 10)).toHaveLength(0);
   });
 });
 

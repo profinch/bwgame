@@ -55,6 +55,8 @@ export interface Structure {
   grown?: number;
   /** For a relic: which earlier ground it is a plot of. */
   relic?: 1 | 2;
+  /** For a plot of this ground: whose it is, what is written into it, what it points at. */
+  plot?: { owner: string | null; note: string; implementation: string | null };
 }
 
 
@@ -569,7 +571,7 @@ export function structureOf(
    * If this is a plot: what has been written into it, which may be nothing, and
    * the code it has been pointed at, if any — which is then what stands here.
    */
-  plot: { note: string; code?: Account | null } | null = null,
+  plot: { note: string; code?: Account | null; owner?: string | null } | null = null,
   /** If this is a plot of an earlier ground: which. */
   relic: 1 | 2 | null = null,
 ): Structure {
@@ -614,6 +616,7 @@ export function structureOf(
   return {
     kind: drawn ? 'framed' : 'built',
     address: account.address,
+    ...(plot ? { plot: { owner: plot.owner ?? null, note: plot.note, implementation: plot.code?.address ?? null } } : {}),
     x: at.x,
     z: at.z,
     wide: (6 + bulk * 26 * (0.7 + byte(0) * 0.6)) * scale,
@@ -630,13 +633,17 @@ export function structureOf(
 /**
  * A plot of an earlier ground.
  *
- * The first ground left foundation stones: a squat dark block, sunk to its
- * shoulders, turned as its address turns it. The second left marker stones: a
- * narrow pale slab standing a little over head height. Neither is sized by its
- * code — a relic is not a building and does not pretend to be one — and both
- * are plainly not the drawings and buildings of the ground that is lived on
- * now. They are what was here first.
+ * The first ground left boulders: rough stones, each big enough to sit on the
+ * shoulder of, with one face dressed flat and cut with the signs that say what
+ * it is — an ancient relic of the first ground. The second left gates: two
+ * piers and a lintel you can walk through, the piers carrying the same words —
+ * because the second ground was the one where a place could pass from hand to
+ * hand, and a gate is a place that is passed through. Neither is sized by its
+ * code: a relic is not a building and does not pretend to be one.
  */
+export const BOULDER_ACROSS = 3.0;
+const GATE = { pier: 0.6, tall: 3.2, apart: 2.8, lintel: 0.6, deep: 0.8 };
+
 function relicOf(
   account: Account,
   at: { x: number; z: number },
@@ -645,18 +652,20 @@ function relicOf(
 ): Structure {
   const turn = byte(3) * Math.PI * 2;
   if (version === 1) {
+    const across = BOULDER_ACROSS * (0.85 + byte(5) * 0.35);
     return {
       kind: 'relic',
       relic: 1,
       address: account.address,
       x: at.x,
       z: at.z,
-      wide: 1.6,
-      deep: 1.6,
-      tall: 1.0,
+      wide: across,
+      deep: across,
+      // the boulder shape is a squashed sphere: about three quarters as high as wide
+      tall: across * 0.78,
       turn,
-      albedo: 0.28,
-      roughness: 0.9,
+      albedo: 0.3,
+      roughness: 0.95,
     };
   }
   return {
@@ -665,13 +674,137 @@ function relicOf(
     address: account.address,
     x: at.x,
     z: at.z,
-    wide: 0.5,
-    deep: 0.24,
-    tall: 2.6,
+    wide: GATE.apart + GATE.pier * 2 + 0.4,
+    deep: GATE.deep,
+    tall: GATE.tall + GATE.lintel,
     turn,
-    albedo: 0.52,
+    albedo: 0.5,
     roughness: 0.7,
   };
+}
+
+/** What is cut into every relic: what it is, and of which ground. */
+function relicWords(version: 1 | 2): string[] {
+  return ['ancient', `relic-${version}`];
+}
+
+/**
+ * A dressed face with words cut into it: a block whose front stops a groove
+ * short, and the stone laid back on in the pieces the strokes leave. The same
+ * carving as a token's post, on any block that has something to say.
+ *
+ * `put` is handed a box in the structure's own frame: centre x, foot y, centre
+ * z, then width, height, depth. The words run down the front (+z) face.
+ */
+function carvedBlock(
+  put: (lx: number, y: number, lz: number, w: number, h: number, d: number) => void,
+  lx: number,
+  foot: number,
+  lz: number,
+  wide: number,
+  tall: number,
+  deep: number,
+  words: readonly string[],
+): void {
+  const { across, down, patches } = carve(words, tall, wide);
+  const cutIn = Math.max(across * 1.6, 0.003);
+  put(lx, foot, lz - cutIn / 2, wide, tall, deep - cutIn);
+  for (const { col, row, cols, rows } of patches) {
+    put(
+      lx + (col + cols / 2 - WALL / 2) * across,
+      foot + tall - (row + rows) * down,
+      lz + deep / 2 - cutIn / 2,
+      cols * across,
+      rows * down,
+      cutIn,
+    );
+  }
+}
+
+/** The boxes a relic is made of: the plaque on a boulder, the whole of a gate. */
+function relicPieces(structure: Structure, base: number, origin: { x: number; z: number }): Float32Array {
+  const cx = structure.x - origin.x;
+  const cz = structure.z - origin.z;
+  const c = Math.cos(structure.turn);
+  const sn = Math.sin(structure.turn);
+  const out: number[] = [];
+  // a box in the relic's own frame, carried round by its turn the way the shader turns it
+  const put = (lx: number, y: number, lz: number, w: number, h: number, d: number) =>
+    out.push(cx + c * lx + sn * lz, y, cz + c * lz - sn * lx, w, h, d, structure.turn, structure.albedo, structure.roughness);
+  const words = relicWords(structure.relic ?? 1);
+
+  if (structure.relic === 1) {
+    // the dressed face: a tall plaque set into the front of the stone, a little
+    // proud of it — tall rather than wide, so seven signs down a column come out
+    // the size of a hand
+    const r = structure.wide / 2;
+    carvedBlock(put, 0, base + 0.5, r * 0.62, 0.9, 1.6, 0.7, words);
+  } else {
+    const half = GATE.apart / 2 + GATE.pier / 2;
+    carvedBlock(put, -half, base, 0, GATE.pier, GATE.tall, GATE.pier, [words[0]!]);
+    carvedBlock(put, half, base, 0, GATE.pier, GATE.tall, GATE.pier, [words[1]!]);
+    put(0, base + GATE.tall, 0, structure.wide, GATE.lintel, GATE.deep);
+  }
+  return new Float32Array(out);
+}
+
+/**
+ * The boulders themselves, as instances of the boulder shape — which is a unit
+ * stone a metre across, so a boulder `wide` across is scaled by half of that.
+ */
+export function bouldersOf(
+  structures: readonly Structure[],
+  baseOf: (s: Structure) => number,
+  origin = { x: 0, z: 0 },
+): Float32Array {
+  const out: number[] = [];
+  for (const structure of structures) {
+    if (structure.kind !== 'relic' || structure.relic !== 1) continue;
+    const half = structure.wide / 2;
+    out.push(
+      structure.x - origin.x, baseOf(structure), structure.z - origin.z,
+      half, half, half,
+      structure.turn, structure.albedo, structure.roughness,
+    );
+  }
+  return new Float32Array(out);
+}
+
+/**
+ * What a walker has to go round: a building is its box, a stone its plate and
+ * its posts, a boulder its footprint, a gate its two piers and nothing between
+ * them — that is what a gate is for. A drawing has no walls.
+ */
+export function blocksOf(
+  structure: Structure,
+  base: number,
+  origin = { x: 0, z: 0 },
+): { x: number; z: number; halfWide: number; halfDeep: number; turn: number; top: number }[] {
+  const cx = structure.x - origin.x;
+  const cz = structure.z - origin.z;
+  if (structure.kind === 'framed') return [];
+  if (structure.kind === 'relic' && structure.relic === 2) {
+    const c = Math.cos(structure.turn);
+    const sn = Math.sin(structure.turn);
+    const half = GATE.apart / 2 + GATE.pier / 2;
+    return [-half, half].map((lx) => ({
+      x: cx + c * lx,
+      z: cz - sn * lx,
+      halfWide: GATE.pier / 2,
+      halfDeep: GATE.pier / 2,
+      turn: structure.turn,
+      top: base + GATE.tall + GATE.lintel,
+    }));
+  }
+  const whole = {
+    x: cx,
+    z: cz,
+    halfWide: structure.wide / 2,
+    halfDeep: structure.deep / 2,
+    turn: structure.turn,
+    top: base + structure.tall,
+  };
+  return [whole, ...standingOn(structure, base, origin)];
 }
 
 /**
@@ -746,6 +879,7 @@ export function standingOn(
 export function piecesOf(structure: Structure, base: number, origin = { x: 0, z: 0 }): Float32Array {
   // a drawing is not made of stone: see blueprint.ts
   if (structure.kind === 'framed') return new Float32Array(0);
+  if (structure.kind === 'relic') return relicPieces(structure, base, origin);
   if (structure.kind !== 'written') return instanceOf(structure, base, origin);
 
   const posts = structure.posts ?? [];

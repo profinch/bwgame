@@ -19,17 +19,18 @@ import { loop } from './engine/loop';
 import { Coverage } from './engine/coverage';
 import { Renderer, once, type Sky } from './engine/renderer';
 import { addressUnder, DEPTH, HOME, levelOff, offsetOf, rawHeightAt } from './engine/land';
-import { box, figure, groundUnder, terrain } from './engine/shapes';
+import { boulder, box, figure, groundUnder, terrain } from './engine/shapes';
 import { Traffic, pollBlocks } from './engine/traffic';
 import { chain } from './chains';
 import { type Account, accountAt, holdingsOf } from './chain';
 import { normalizeAddress } from './coord';
 import { looksLikeName, resolveName } from './ens';
-import { type Structure, instancesOf, standingOn, stands, structureOf } from './places';
+import { type Structure, blocksOf, bouldersOf, instancesOf, stands, structureOf } from './places';
 import { POINT, auger } from './auger';
 import { type Stroke, glassOf, inkOf, strokesOf } from './blueprint';
 import { Chips } from './chips';
-import { claimAt, claimedPlots, formerPlots, implementationOf, isPlot, noteOf, relicOf } from './plot';
+import { claimAt, claimedPlots, formerPlots, implementationOf, isPlot, noteOf, ownerOf, relicOf } from './plot';
+import { ownGround } from './owning';
 import { Live } from './live';
 import { bytesOf, placeOf } from './mine';
 import { Stick, coarse } from './stick';
@@ -44,7 +45,8 @@ const place = document.querySelector<HTMLElement>('.place');
 const badge = document.querySelector<HTMLElement>('.mark');
 const going = document.querySelector<HTMLFormElement>('.go');
 const claiming = document.querySelector<HTMLElement>('.claim');
-if (!canvas || !stat || !place || !badge || !going || !claiming)
+const owning = document.querySelector<HTMLElement>('.own');
+if (!canvas || !stat || !place || !badge || !going || !claiming || !owning)
   throw new Error('the page is missing its parts');
 badge.innerHTML = mark({ size: 20, rows: 7 });
 
@@ -79,6 +81,8 @@ const obstacles: Obstacle[] = [];
 // everything is boxes: buildings, the plates people are written on, and the
 // raised squares that spell an address out across them
 const built = renderer.add(box(), new Float32Array(0), true);
+// except the relics of the first ground, which are stones and not boxes
+const boulders = renderer.add(boulder(2, 1, 0.34), new Float32Array(0), true);
 
 /** Where a structure's floor sits: the lowest ground its footprint covers. */
 function baseOf(structure: Structure): number {
@@ -94,6 +98,10 @@ function baseOf(structure: Structure): number {
     const hill = reliefUnder(structure);
     structure.sink = hill.high - hill.low + 0.1;
     return hill.high + 0.02;
+  }
+  // a boulder sits in the ground, not on it
+  if (structure.kind === 'relic' && structure.relic === 1) {
+    return groundUnder(ground.surfaceAt, x, z, reach, structure.turn) - structure.tall * 0.18;
   }
   return groundUnder(ground.surfaceAt, x, z, reach, structure.turn) - structure.tall * 0.04;
 }
@@ -142,7 +150,22 @@ async function standing(account: Account, vouched = false): Promise<Structure> {
   const pointedAt =
     claimed?.implementation !== undefined ? claimed.implementation : await implementationOf(account.address);
   const code = pointedAt ? await accountAt(pointedAt) : null;
-  return structureOf(account, holdings, chain.coin, { note, code: code && code.codeSize > 0 ? code : null });
+  const owner = claimed?.owner ?? (await ownerOf(account.address));
+  return structureOf(account, holdings, chain.coin, { note, code: code && code.codeSize > 0 ? code : null, owner });
+}
+
+/**
+ * A plot that has just been changed by its owner — written into, pointed at
+ * code, sealed — is taken down and put up again as what it now is. Vouched,
+ * because the receipt is in hand and the indexer may not have heard yet.
+ */
+async function refresh(address: string): Promise<void> {
+  const wanted = address.toLowerCase();
+  const at = structures.findIndex((standing) => standing.address.toLowerCase() === wanted);
+  if (at >= 0) structures.splice(at, 1);
+  const account = await accountAt(address);
+  if (!account || !stands(account)) return settle();
+  raise(await standing(account, true));
 }
 
 /** Put a thing up where it stands. False if it was standing there already. */
@@ -264,22 +287,10 @@ function rebuild(): void {
 function settle(): void {
   obstacles.length = 0;
   for (const structure of structures) {
-    const base = baseOf(structure);
-    // a frame has no walls, so there is nothing to walk into
-    if (structure.kind === 'framed') continue;
-    obstacles.push({
-      x: structure.x - origin.x,
-      z: structure.z - origin.z,
-      halfWide: structure.wide / 2,
-      halfDeep: structure.deep / 2,
-      turn: structure.turn,
-      top: base + structure.tall,
-    });
-    // and its posts, which are stones you can walk into and a transaction can
-    // come down onto
-    for (const post of standingOn(structure, base, origin)) obstacles.push(post);
+    for (const block of blocksOf(structure, baseOf(structure), origin)) obstacles.push(block);
   }
   renderer.update(built, instancesOf(structures, baseOf, origin));
+  renderer.update(boulders, bouldersOf(structures, baseOf, origin));
 }
 
 /**
@@ -326,6 +337,30 @@ function afoot(): { x: number; z: number } {
 const taking = takeGround(claiming, afoot, (plot) => {
   void raiseClaimed(plot);
 });
+
+/** How near you have to stand to a plot of yours to work on it. */
+const WITHIN_REACH = 18;
+
+/**
+ * The plot of yours you are standing at, if any: the nearest plot within reach
+ * whose owner is the wallet in the browser.
+ */
+function ownPlotHere(owner: string): Structure | null {
+  const here = afoot();
+  let nearest: Structure | null = null;
+  let best = Infinity;
+  for (const structure of structures) {
+    if (!structure.plot || structure.plot.owner?.toLowerCase() !== owner.toLowerCase()) continue;
+    const away = Math.hypot(structure.x - here.x, structure.z - here.z) - Math.max(structure.wide, structure.deep) / 2;
+    if (away < WITHIN_REACH && away < best) {
+      best = away;
+      nearest = structure;
+    }
+  }
+  return nearest;
+}
+
+ownGround(owning, ownPlotHere, (plot) => void refresh(plot));
 
 /** How long a plot just claimed takes to be drawn, in seconds. */
 const BUILDS_IN = 10;
