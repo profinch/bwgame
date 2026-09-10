@@ -70,6 +70,15 @@ const NOTE = '0x26d111f5';
 const IMPLEMENTATION = '0x5c60da1b';
 const OWNER = '0x8da5cb5b';
 
+/** `nameOf(address)` on Names. */
+const NAME_OF = '0xf5c57382';
+
+/** What a plot is named under groundstate.eth, or empty. */
+export async function plotNameOf(address: string): Promise<string> {
+  if (!chain.ens) return '';
+  return readString(await call(chain.ens.names, NAME_OF + address.replace(/^0x/, '').toLowerCase().padStart(64, '0'))) ?? '';
+}
+
 /** Whose a plot is, asked of the plot itself. */
 export async function ownerOf(address: string): Promise<string | null> {
   return readAddress(await call(address, OWNER));
@@ -102,6 +111,10 @@ export interface Claimed {
   updatedIn?: number;
   /** The code it is pointed at, if whoever answered knew: null for none, undefined for unknown. */
   implementation?: string | null;
+  /** The salt that made it, if whoever answered knew: what naming it needs. */
+  salt?: string;
+  /** Its name under groundstate.eth, if whoever answered knew. */
+  name?: string;
 }
 
 /** The plots named in a batch of `Claimed` logs. */
@@ -126,6 +139,8 @@ export function plotsInGraph(answer: unknown): { plots: Claimed[]; block: number
     note?: string;
     updatedIn?: string;
     implementation?: string | null;
+    salt?: string;
+    name?: string | null;
   }[]) {
     if (typeof row.id !== 'string' || typeof row.owner?.id !== 'string') continue;
     plots.push({
@@ -134,6 +149,8 @@ export function plotsInGraph(answer: unknown): { plots: Claimed[]; block: number
       note: typeof row.note === 'string' ? row.note : undefined,
       updatedIn: row.updatedIn !== undefined ? Number(row.updatedIn) : undefined,
       implementation: row.implementation === undefined ? undefined : row.implementation,
+      salt: typeof row.salt === 'string' ? row.salt : undefined,
+      name: row.name === undefined ? undefined : (row.name ?? ''),
     });
   }
   return { plots, block: data._meta?.block?.number ?? 0 };
@@ -167,7 +184,7 @@ async function fromGraph(): Promise<Claimed[] | null> {
           query:
             `{ _meta { block { number } } ` +
             `plots(first: ${PAGE}, skip: ${skip}, orderBy: updatedIn, where: { updatedIn_gt: ${graphSeen} }) ` +
-            `{ id owner { id } note updatedIn implementation } }`,
+            `{ id owner { id } note updatedIn implementation salt name } }`,
         }),
       });
       if (!response.ok) return null;

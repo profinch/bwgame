@@ -55,8 +55,8 @@ export interface Structure {
   grown?: number;
   /** For a relic: which earlier ground it is a plot of. */
   relic?: 1 | 2;
-  /** For a plot of this ground: whose it is, what is written into it, what it points at. */
-  plot?: { owner: string | null; note: string; implementation: string | null };
+  /** For a plot of this ground: whose it is, what is written into it, what it points at, what it is called. */
+  plot?: { owner: string | null; note: string; implementation: string | null; salt: string | null; name: string };
 }
 
 
@@ -571,7 +571,7 @@ export function structureOf(
    * If this is a plot: what has been written into it, which may be nothing, and
    * the code it has been pointed at, if any — which is then what stands here.
    */
-  plot: { note: string; code?: Account | null; owner?: string | null } | null = null,
+  plot: { note: string; code?: Account | null; owner?: string | null; salt?: string | null; name?: string } | null = null,
   /** If this is a plot of an earlier ground: which. */
   relic: 1 | 2 | null = null,
 ): Structure {
@@ -616,7 +616,17 @@ export function structureOf(
   return {
     kind: drawn ? 'framed' : 'built',
     address: account.address,
-    ...(plot ? { plot: { owner: plot.owner ?? null, note: plot.note, implementation: plot.code?.address ?? null } } : {}),
+    ...(plot
+      ? {
+          plot: {
+            owner: plot.owner ?? null,
+            note: plot.note,
+            implementation: plot.code?.address ?? null,
+            salt: plot.salt ?? null,
+            name: plot.name ?? '',
+          },
+        }
+      : {}),
     x: at.x,
     z: at.z,
     wide: (6 + bulk * 26 * (0.7 + byte(0) * 0.6)) * scale,

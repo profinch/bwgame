@@ -13,10 +13,18 @@
 import type { Structure } from './places';
 import { connected, landed, onOurChain, send } from './signer';
 
-/** `inscribe(string)`, `setCode(address)` and `seal()`, as the chain hears them. */
+import { chain } from './chains';
+
+/** `inscribe(string)`, `setCode(address)` and `seal()` on a plot; `name(bytes32,string)` on Names. */
 const INSCRIBE = '0x911a6512';
 const SET_CODE = '0x3b1ca3b5';
 const SEAL = '0x3fb27b85';
+const NAME = '0x91ba33aa';
+
+/** A bytes32 and a string, ABI-encoded as the two arguments of a call. */
+export function encodeSaltAndString(salt: string, text: string): string {
+  return salt.replace(/^0x/, '').toLowerCase().padStart(64, '0') + '40'.padStart(64, '0') + encodeString(text).slice(64);
+}
 
 /** A string, ABI-encoded as the one argument of a call. */
 export function encodeString(text: string): string {
@@ -49,6 +57,8 @@ export function ownGround(
   const coding = panel.querySelector<HTMLFormElement>('.own-code')!;
   const codeInput = coding.querySelector<HTMLInputElement>('input')!;
   const sealButton = panel.querySelector<HTMLButtonElement>('.seal')!;
+  const naming = panel.querySelector<HTMLFormElement>('.own-name')!;
+  const nameInput = naming.querySelector<HTMLInputElement>('input')!;
 
   let owner: string | null = null;
   let plot: Structure | null = null;
@@ -67,16 +77,20 @@ export function ownGround(
     }
     panel.hidden = false;
     const what = plot.plot!;
-    said.textContent = sticky || `yours: ${plot.address.slice(0, 10)}…`;
+    said.textContent = sticky || (what.name && chain.ens ? `yours: ${what.name}.${chain.ens.parent}` : `yours: ${plot.address.slice(0, 10)}…`);
     noteLine.textContent =
       (what.note ? `says: ${what.note}` : 'nothing written into it yet') +
       (what.implementation ? `\npoints at ${what.implementation.slice(0, 10)}…` : '\npoints at no code: a drawing until it does');
+    // naming needs the salt the plot was made with, which the indexer knows
+    naming.hidden = !chain.ens;
+    nameInput.disabled = !what.salt;
+    nameInput.placeholder = what.salt ? `a name under ${chain.ens?.parent ?? ''}` : 'a name, once the indexer has this plot';
   };
   void look();
   const looking = setInterval(look, 1000);
 
   /** One transaction to the plot: the wallet's chain, the wallet's signature, the block. */
-  const act = async (data: string, doing: string, done: string) => {
+  const act = async (data: string, doing: string, done: string, to?: string) => {
     if (!plot || !owner || busy) return;
     const at = plot.address;
     const wrong = await onOurChain();
@@ -88,7 +102,7 @@ export function ownGround(
     panel.querySelectorAll('button').forEach((b) => (b.disabled = true));
     said.textContent = `${doing} — sign in the wallet`;
     try {
-      const hash = await send(owner, at, data);
+      const hash = await send(owner, to ?? at, data);
       said.textContent = 'sent. waiting for a block';
       const ok = await landed(hash);
       sticky = ok ? done : 'it did not go through';
@@ -121,6 +135,21 @@ export function ownGround(
     codeInput.setCustomValidity('');
     codeInput.value = '';
     void act(SET_CODE + encodeAddress(code), 'pointing it at that code', 'pointed at it: this place is that code now');
+  });
+
+  naming.addEventListener('submit', (event) => {
+    event.preventDefault();
+    const label = nameInput.value.trim().toLowerCase();
+    const salt = plot?.plot?.salt;
+    if (!chain.ens || !salt) return;
+    if (!/^[a-z0-9-]{1,32}$/.test(label)) {
+      nameInput.setCustomValidity('lowercase letters, digits and hyphens, up to thirty-two');
+      nameInput.reportValidity();
+      return;
+    }
+    nameInput.setCustomValidity('');
+    nameInput.value = '';
+    void act(NAME + encodeSaltAndString(salt, label), `naming it ${label}.${chain.ens.parent}`, `named: ${label}.${chain.ens.parent}`, chain.ens.names);
   });
 
   sealButton.addEventListener('click', () => {

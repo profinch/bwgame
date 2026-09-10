@@ -1,33 +1,31 @@
-import { existsSync, readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import type { Account } from '../src/chain';
 import { BOULDER_ACROSS, blocksOf, bouldersOf, piecesOf, structureOf } from '../src/places';
 import { OUTLINED, glassOf, inkOf, strokesOf } from '../src/blueprint';
 import { PLOT_CODE_SIZE, isPlot, plotsIn, plotsInGraph, relicOf } from '../src/plot';
 
-/** The compiled plot's runtime code, if forge has built it here. */
-const ARTIFACT = 'contracts/out/Plot.sol/Plot.json';
-function compiledPlot(): string | null {
-  if (!existsSync(ARTIFACT)) return null;
-  const artifact = JSON.parse(readFileSync(ARTIFACT, 'utf8')) as { deployedBytecode: { object: string } };
-  return artifact.deployedBytecode.object.slice(2);
-}
-
-const code = compiledPlot();
+/**
+ * A plot's runtime code as it stands on Sepolia — the first plot of the third
+ * factory, read off the chain. Not the compiled artifact: the compiler stamps
+ * its settings into the code's tail, so a build with other remappings comes out
+ * a few bytes different from what the factory actually deploys.
+ */
+const code = readFileSync('test/fixtures/plot-v3.hex', 'utf8').trim().slice(2);
 
 describe('knowing a plot by its code', () => {
-  it.skipIf(!code)('is the compiled plot, exactly', () => {
-    expect(code!.length).toBe(PLOT_CODE_SIZE * 2);
-    expect(isPlot(code!)).toBe(true);
-    expect(isPlot(`0x${code!}`)).toBe(true);
-    expect(isPlot(code!.toUpperCase())).toBe(true);
+  it('is the plot as deployed, exactly', () => {
+    expect(code.length).toBe(PLOT_CODE_SIZE * 2);
+    expect(isPlot(code)).toBe(true);
+    expect(isPlot(`0x${code}`)).toBe(true);
+    expect(isPlot(code.toUpperCase())).toBe(true);
   });
 
   it('is not anything else, whatever its size', () => {
     expect(isPlot('60806040')).toBe(false);
     expect(isPlot('')).toBe(false);
     expect(isPlot('ab'.repeat(PLOT_CODE_SIZE))).toBe(false);
-    if (code) expect(isPlot(code.slice(0, -2) + '00')).toBe(false);
+    expect(isPlot(code.slice(0, -2) + '00')).toBe(false);
   });
 });
 
@@ -36,7 +34,7 @@ describe('the plots of earlier grounds', () => {
     expect(relicOf('ab'.repeat(1068))).toBeNull();
     expect(relicOf('ab'.repeat(1263))).toBeNull();
     expect(relicOf('')).toBeNull();
-    if (code) expect(relicOf(code)).toBeNull();
+    expect(relicOf(code)).toBeNull();
   });
 
   it('stands a relic of the first ground as a boulder with a carved plaque', () => {

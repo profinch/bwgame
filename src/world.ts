@@ -29,7 +29,7 @@ import { DRESSED_AT, type Structure, blocksOf, bouldersOf, instancesOf, stands, 
 import { POINT, auger } from './auger';
 import { type Stroke, glassOf, inkOf, strokesOf } from './blueprint';
 import { Chips } from './chips';
-import { claimAt, claimedPlots, formerPlots, implementationOf, isPlot, noteOf, ownerOf, relicOf } from './plot';
+import { claimAt, claimedPlots, formerPlots, implementationOf, isPlot, noteOf, ownerOf, plotNameOf, relicOf } from './plot';
 import { ownGround } from './owning';
 import { Live } from './live';
 import { bytesOf, placeOf } from './mine';
@@ -151,7 +151,14 @@ async function standing(account: Account, vouched = false): Promise<Structure> {
     claimed?.implementation !== undefined ? claimed.implementation : await implementationOf(account.address);
   const code = pointedAt ? await accountAt(pointedAt) : null;
   const owner = claimed?.owner ?? (await ownerOf(account.address));
-  return structureOf(account, holdings, chain.coin, { note, code: code && code.codeSize > 0 ? code : null, owner });
+  const named = claimed?.name ?? (await plotNameOf(account.address));
+  return structureOf(account, holdings, chain.coin, {
+    note,
+    code: code && code.codeSize > 0 ? code : null,
+    owner,
+    salt: claimed?.salt ?? null,
+    name: named,
+  });
 }
 
 /**

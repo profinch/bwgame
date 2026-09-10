@@ -1,6 +1,8 @@
-import { defineConfig } from 'vite';
+import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
+  // only our tests: the contract libraries under contracts/lib carry their own
+  test: { include: ['test/**/*.test.ts'] },
   build: {
     target: 'es2022',
     rollupOptions: {

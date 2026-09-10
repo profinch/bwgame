@@ -49,6 +49,11 @@ export interface Chain {
    */
   live?: string;
   /**
+   * ENSv2 on this chain: the universal resolver that walks the registries, the
+   * name our plots are named under, and the contract that names them.
+   */
+  ens?: { universalResolver: string; parent: string; names: string };
+  /**
    * A subgraph over the factory, once there is one: every plot, who holds it,
    * what is written into it. Asked first; the factory's own logs are the
    * fallback, and stop being enough once the history outgrows what a public
@@ -127,6 +132,13 @@ export const CHAINS: Record<string, Chain> = {
       { plots: '0x4bbfaE0A0BEe0F49F3ecbCCcC638a0235359eb73', since: 11_669_423 },
     ],
     live: 'wss://gs.bwtoken.io/live',
+    // ENSv2 beta on Sepolia: groundstate.eth points its subregistry at a registry
+    // of ours and its resolver at Names, which names plots under it
+    ens: {
+      universalResolver: '0x4a1817d13e9cf196f471725176355c1234b63c70',
+      parent: 'groundstate.eth',
+      names: '0x2E32A8CE61f46c7276Bc3786e0a7AE32da2E29ED',
+    },
     // the subgraph in subgraph/, deployed to Subgraph Studio; "latest" follows redeploys
     subgraph: 'https://api.studio.thegraph.com/query/1760017/ground-state/version/latest',
     tokens: [

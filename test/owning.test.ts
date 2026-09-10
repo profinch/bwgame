@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { encodeAddress, encodeString } from '../src/owning';
+import { encodeAddress, encodeSaltAndString, encodeString } from '../src/owning';
 
 // what `cast abi-encode` says the same arguments come to
 describe('what a plot is told', () => {
@@ -11,5 +11,9 @@ describe('what a plot is told', () => {
 
   it('encodes an address as one word', () => {
     expect(`0x${encodeAddress('0x784379Da6111c8Ff4A5Ea78f22aED9cB1F938df1')}`).toBe('0x000000000000000000000000784379da6111c8ff4a5ea78f22aed9cb1f938df1');
+  });
+
+  it('encodes a salt and a label as two words, as naming a plot needs', () => {
+    expect(`0x${encodeSaltAndString('0x3095c19c92551bba70bcfa9aafa99d145347b5f8000000000000000000000001', 'well')}`).toBe('0x3095c19c92551bba70bcfa9aafa99d145347b5f80000000000000000000000010000000000000000000000000000000000000000000000000000000000000040000000000000000000000000000000000000000000000000000000000000000477656c6c00000000000000000000000000000000000000000000000000000000');
   });
 });
