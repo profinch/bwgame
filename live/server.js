@@ -25,8 +25,10 @@ const ROOM = process.env.ROOM ?? 'sepolia';
 /** How often the rooms are told where everybody is, and how often the subgraph is asked. */
 const TELLS_EVERY = 100;
 const ASKS_EVERY = 4000;
-/** A person who has said nothing for this long has gone. */
+/** A person who has said nothing for this long has gone. Clients speak at least every few seconds. */
 const GONE_AFTER = 30_000;
+/** How often a socket is pinged, so the edge in front of us does not close it as idle. */
+const PINGS_EVERY = 25_000;
 
 let nextId = 1;
 /** room -> id -> person */
@@ -77,7 +79,7 @@ sockets.on('connection', (socket) => {
       tell(socket, { t: 'you', id });
       return;
     }
-    if (message.t === 'at' && person) {
+    if (message.t === 'at' && person && inRoom) {
       const { x, z, yaw, dig } = message;
       if (!Number.isFinite(x) || !Number.isFinite(z) || !Number.isFinite(yaw)) return;
       person.x = x;
@@ -85,6 +87,8 @@ sockets.on('connection', (socket) => {
       person.yaw = yaw;
       person.dig = Boolean(dig);
       person.seen = Date.now();
+      // somebody who was quiet long enough to be counted gone, and speaks again
+      room(inRoom).set(id, person);
     }
   });
 
@@ -110,6 +114,13 @@ setInterval(() => {
     }
   }
 }, TELLS_EVERY);
+
+// keep the sockets warm: a proxy at the edge closes a quiet one
+setInterval(() => {
+  for (const socket of sockets.clients) {
+    if (socket.readyState === socket.OPEN) socket.ping();
+  }
+}, PINGS_EVERY);
 
 // what has changed, from the subgraph, once for everybody
 let graphSeen = 0;

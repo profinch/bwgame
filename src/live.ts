@@ -38,8 +38,10 @@ export function peersIn(message: unknown): Omit<Peer, 'drawnX' | 'drawnZ' | 'dra
   return out;
 }
 
-/** How often at most a position is sent. */
+/** How often at most a position is sent, and how long at most between two — a
+ * person standing still is still here, and the server counts silence as gone. */
 const SAYS_EVERY = 100;
+const SAYS_AT_LEAST_EVERY = 5000;
 /** How much of the way to where a peer was said to be is covered each second. */
 const EASES_AT = 12;
 
@@ -126,7 +128,7 @@ export class Live {
     const now = performance.now();
     if (now - this.lastSaid < SAYS_EVERY) return;
     const what = `${x.toFixed(2)}:${z.toFixed(2)}:${yaw.toFixed(2)}:${dig ? 1 : 0}`;
-    if (what === this.lastSaidWhat) return;
+    if (what === this.lastSaidWhat && now - this.lastSaid < SAYS_AT_LEAST_EVERY) return;
     this.lastSaid = now;
     this.lastSaidWhat = what;
     socket.send(JSON.stringify({ t: 'at', x, z, yaw, dig }));
