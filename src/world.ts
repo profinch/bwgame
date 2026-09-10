@@ -916,7 +916,8 @@ if (welcome) {
   } catch {
     // no storage: shown every time, which is no harm
   }
-  if (!seen) {
+  // `?welcome` shows it again on purpose: for a recording, or to read it twice
+  if (!seen || new URLSearchParams(location.search).has('welcome')) {
     welcome.hidden = false;
     holdDescent = true;
     welcome.querySelector<HTMLElement>('.mark')!.innerHTML = mark({ size: 18, rows: 7 });
