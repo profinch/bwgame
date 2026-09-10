@@ -9,6 +9,7 @@ export function handleInscribed(event: Inscribed): void {
 
   plot.note = event.params.note;
   plot.inscribedAt = event.block.timestamp;
+  plot.updatedIn = event.block.number;
   plot.save();
 
   const inscription = new Inscription(event.transaction.hash.concatI32(event.logIndex.toI32()));
@@ -32,6 +33,7 @@ export function handleTransferred(event: Transferred): void {
   to.save();
 
   plot.owner = to.id;
+  plot.updatedIn = event.block.number;
   plot.save();
 
   const transfer = new Transfer(event.transaction.hash.concatI32(event.logIndex.toI32()));

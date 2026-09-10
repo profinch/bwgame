@@ -20,6 +20,8 @@ type Plot @entity(immutable: false) {
   claimedAt: BigInt!
   claimedIn: BigInt!
   claimTx: Bytes!
+  "The block it last changed in — claimed, written into or handed on. Ask for what changed since a block with updatedIn_gt."
+  updatedIn: BigInt!
   "What the owner has written into it. Empty until they do."
   note: String!
   inscribedAt: BigInt

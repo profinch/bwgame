@@ -128,22 +128,26 @@ describe('the plots the factory says it made', () => {
 });
 
 describe('the plots the subgraph says there are', () => {
-  it('reads plot, owner and note off an answer, and knows a non-answer', () => {
+  it('reads plot, owner, note and the block off an answer, and knows a non-answer', () => {
     const answer = {
       data: {
+        _meta: { block: { number: 11669532 } },
         plots: [
-          { id: '0x3095c19c9105b97eab5403753f9539a71a701a27', owner: { id: '0x3095c19c92551bba70bcfa9aafa99d145347b5f8' }, note: '' },
-          { id: '0x784379da6111c8ff4a5ea78f22aed9cb1f938df1', owner: { id: '0x9d25b864a22e36ca8fe285237b1a22b33cefbcc5' }, note: 'here' },
+          { id: '0x3095c19c9105b97eab5403753f9539a71a701a27', owner: { id: '0x3095c19c92551bba70bcfa9aafa99d145347b5f8' }, note: '', updatedIn: '11669116' },
+          { id: '0x784379da6111c8ff4a5ea78f22aed9cb1f938df1', owner: { id: '0x9d25b864a22e36ca8fe285237b1a22b33cefbcc5' }, note: 'here', updatedIn: '11669500' },
           { id: 'nonsense' },
         ],
       },
     };
-    expect(plotsInGraph(answer)).toEqual([
-      { plot: '0x3095c19c9105b97eab5403753f9539a71a701a27', owner: '0x3095c19c92551bba70bcfa9aafa99d145347b5f8', note: '' },
-      { plot: '0x784379da6111c8ff4a5ea78f22aed9cb1f938df1', owner: '0x9d25b864a22e36ca8fe285237b1a22b33cefbcc5', note: 'here' },
-    ]);
+    expect(plotsInGraph(answer)).toEqual({
+      block: 11669532,
+      plots: [
+        { plot: '0x3095c19c9105b97eab5403753f9539a71a701a27', owner: '0x3095c19c92551bba70bcfa9aafa99d145347b5f8', note: '', updatedIn: 11669116 },
+        { plot: '0x784379da6111c8ff4a5ea78f22aed9cb1f938df1', owner: '0x9d25b864a22e36ca8fe285237b1a22b33cefbcc5', note: 'here', updatedIn: 11669500 },
+      ],
+    });
     expect(plotsInGraph({ errors: [{ message: 'no' }] })).toBeNull();
     expect(plotsInGraph(null)).toBeNull();
-    expect(plotsInGraph({ data: { plots: [] } })).toEqual([]);
+    expect(plotsInGraph({ data: { plots: [] } })).toEqual({ block: 0, plots: [] });
   });
 });

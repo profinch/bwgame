@@ -56,6 +56,8 @@ export interface Claimed {
   owner: string;
   /** What is written into it, if whoever answered knew. */
   note?: string;
+  /** The block it last changed in, if whoever answered knew. */
+  updatedIn?: number;
 }
 
 /** The plots named in a batch of `Claimed` logs. */
@@ -70,48 +72,78 @@ export function plotsIn(logs: readonly { topics: string[] }[]): Claimed[] {
 }
 
 /** What a subgraph answers, read into plots. Null if it is not an answer at all. */
-export function plotsInGraph(answer: unknown): Claimed[] | null {
-  const data = (answer as { data?: { plots?: unknown } })?.data;
+export function plotsInGraph(answer: unknown): { plots: Claimed[]; block: number } | null {
+  const data = (answer as { data?: { plots?: unknown; _meta?: { block?: { number?: number } } } })?.data;
   if (!data || !Array.isArray(data.plots)) return null;
-  const out: Claimed[] = [];
-  for (const row of data.plots as { id?: string; owner?: { id?: string }; note?: string }[]) {
+  const plots: Claimed[] = [];
+  for (const row of data.plots as { id?: string; owner?: { id?: string }; note?: string; updatedIn?: string }[]) {
     if (typeof row.id !== 'string' || typeof row.owner?.id !== 'string') continue;
-    out.push({ plot: row.id, owner: row.owner.id, note: typeof row.note === 'string' ? row.note : undefined });
+    plots.push({
+      plot: row.id,
+      owner: row.owner.id,
+      note: typeof row.note === 'string' ? row.note : undefined,
+      updatedIn: row.updatedIn !== undefined ? Number(row.updatedIn) : undefined,
+    });
   }
-  return out;
+  return { plots, block: data._meta?.block?.number ?? 0 };
 }
 
 /** The most plots asked for in one query. */
 const PAGE = 1000;
 
+/** The subgraph's block as of the last answer: only what changed after it is asked for next. */
+let graphSeen = 0;
+
 /**
- * Every plot, from the subgraph, or null if it did not answer.
+ * What has changed, from the subgraph, or null if it did not answer.
  *
- * One query says everything the logs would, and more — what is written into
- * each plot, which the logs cannot say without a call per plot — and it costs
- * the same whether the factory is a day old or a year.
+ * The first ask brings every plot; every ask after brings only the plots that
+ * changed since the block the last answer was current at — claimed, written
+ * into or handed on — so asking again costs the same with a thousand plots as
+ * with one. One query says everything the logs would, and more: what is
+ * written into each plot, which the logs cannot say without a call per plot.
  */
 async function fromGraph(): Promise<Claimed[] | null> {
   if (!chain.subgraph) return null;
-  const all: Claimed[] = [];
+  const changed: Claimed[] = [];
+  let current = 0;
   for (let skip = 0; ; skip += PAGE) {
     try {
       const response = await fetch(chain.subgraph, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
-          query: `{ plots(first: ${PAGE}, skip: ${skip}, orderBy: claimedIn) { id owner { id } note } }`,
+          query:
+            `{ _meta { block { number } } ` +
+            `plots(first: ${PAGE}, skip: ${skip}, orderBy: updatedIn, where: { updatedIn_gt: ${graphSeen} }) ` +
+            `{ id owner { id } note updatedIn } }`,
         }),
       });
       if (!response.ok) return null;
       const page = plotsInGraph(await response.json());
       if (page === null) return null;
-      all.push(...page);
-      if (page.length < PAGE) return all;
+      // the block of the first page is the one every page is read as of
+      if (skip === 0) current = page.block;
+      changed.push(...page.plots);
+      if (page.plots.length < PAGE) break;
     } catch {
       return null;
     }
   }
+  graphSeen = Math.max(graphSeen, current);
+  return changed;
+}
+
+/** Fold what changed into what is known: a plot already known is replaced. */
+function fold(into: Claimed[], changed: readonly Claimed[]): Claimed[] {
+  const out = into.slice();
+  for (const plot of changed) {
+    const wanted = plot.plot.toLowerCase();
+    const at = out.findIndex((had) => had.plot.toLowerCase() === wanted);
+    if (at >= 0) out[at] = plot;
+    else out.push(plot);
+  }
+  return out;
 }
 
 let known: Claimed[] = [];
@@ -130,9 +162,9 @@ let seenUpTo = 0;
  */
 export async function claimedPlots(): Promise<Claimed[]> {
   if (!chain.plots) return [];
-  const indexed = await fromGraph();
-  if (indexed) {
-    known = indexed;
+  const changed = await fromGraph();
+  if (changed) {
+    known = fold(known, changed);
     return known;
   }
   const head = await rpc<string>('eth_blockNumber', []);

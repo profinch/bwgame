@@ -172,11 +172,17 @@ async function raiseNearby(growing = false): Promise<void> {
   try {
     const here = { x: origin.x, z: origin.z };
     const plots = await claimedPlots();
-    for (const { plot } of plots) {
+    for (const { plot, note } of plots) {
       if (origin.x !== here.x || origin.z !== here.z) return;
       const at = offsetOf(plot);
       if (Math.abs(at.x - here.x) > GROUND / 2 || Math.abs(at.z - here.z) > GROUND / 2) continue;
-      if (standingAt(plot)) continue;
+      // a drawing that has since been written into is taken down and put up
+      // again as the building it now is; anything else standing is left alone
+      const already = structures.find((standing) => standing.address.toLowerCase() === plot.toLowerCase());
+      if (already) {
+        if (already.kind !== 'framed' || !note) continue;
+        structures.splice(structures.indexOf(already), 1);
+      }
       const account = await accountAt(plot);
       if (!account || !stands(account)) continue;
       if (origin.x !== here.x || origin.z !== here.z) return;

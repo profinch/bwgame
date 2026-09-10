@@ -21,6 +21,7 @@ export function handleClaimed(event: Claimed): void {
   plot.claimedAt = event.block.timestamp;
   plot.claimedIn = event.block.number;
   plot.claimTx = event.transaction.hash;
+  plot.updatedIn = event.block.number;
   plot.note = '';
 
   // the address is the place: each hex digit is one step in x and one in y
