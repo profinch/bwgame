@@ -160,20 +160,52 @@ function standingAt(address: string): boolean {
  * being told, because the factory that made it says so — so on arriving
  * anywhere, every plot within the ground underfoot is asked for and put up.
  * Abandoned if you have gone somewhere else before the answers are in.
+ *
+ * Asked again while you stand there, because a claim made on somebody else's
+ * machine is not sent to yours — there is nothing here to send it — and a page
+ * left open would otherwise show the world as it was when it loaded. What a
+ * later ask turns up is `growing`: it goes up while you watch, the way your own
+ * claim does, because that is when this world learned of it.
  */
-async function raiseNearby(): Promise<void> {
-  const here = { x: origin.x, z: origin.z };
-  const plots = await claimedPlots();
-  for (const { plot } of plots) {
-    if (origin.x !== here.x || origin.z !== here.z) return;
-    const at = offsetOf(plot);
-    if (Math.abs(at.x - here.x) > GROUND / 2 || Math.abs(at.z - here.z) > GROUND / 2) continue;
-    if (standingAt(plot)) continue;
-    const account = await accountAt(plot);
-    if (!account || !stands(account)) continue;
-    if (origin.x !== here.x || origin.z !== here.z) return;
-    raise(await standing(account));
+async function raiseNearby(growing = false): Promise<void> {
+  asking = true;
+  try {
+    const here = { x: origin.x, z: origin.z };
+    const plots = await claimedPlots();
+    for (const { plot } of plots) {
+      if (origin.x !== here.x || origin.z !== here.z) return;
+      const at = offsetOf(plot);
+      if (Math.abs(at.x - here.x) > GROUND / 2 || Math.abs(at.z - here.z) > GROUND / 2) continue;
+      if (standingAt(plot)) continue;
+      const account = await accountAt(plot);
+      if (!account || !stands(account)) continue;
+      if (origin.x !== here.x || origin.z !== here.z) return;
+      const structure = await standing(account);
+      if (growing) startRising(structure);
+      else raise(structure);
+    }
+  } finally {
+    // however it ended — the answers in, the walker gone, a gateway refusing —
+    // the next ask has to be able to go out
+    asking = false;
   }
+}
+
+/** How often the world asks again what has been claimed near here. */
+const ASKS_AGAIN_IN = 20_000;
+/** Whether an ask is already out: two at once would ask the same question twice. */
+let asking = false;
+
+/**
+ * Ask again, unless an ask is already out or nobody is looking.
+ *
+ * A tab out of sight asks nothing at all — a page in the background should cost
+ * the machine and the gateways nothing — and asks once on coming back, so what
+ * you return to is current rather than however old the last answer was.
+ */
+function askAgain(): void {
+  if (asking || document.hidden) return;
+  void raiseNearby(true);
 }
 
 /**
@@ -396,6 +428,8 @@ void accountAt(HOME).then(async (account) => {
   if (account && stands(account)) raise(await standing(account));
 });
 void raiseNearby();
+setInterval(askAgain, ASKS_AGAIN_IN);
+document.addEventListener('visibilitychange', askAgain);
 
 /**
  * The chain overhead. The source is behind an interface on purpose: polling a
