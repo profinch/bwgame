@@ -272,7 +272,3 @@ export function tileName(tx: number, tz: number): string {
   return prefixOf(TILE_DEPTH, base.x + BigInt(tx), base.z + BigInt(tz));
 }
 
-/** Metres to leaf cells, for anything that has to speak to the map. */
-export function metresToCells(metres: number): bigint {
-  return BigInt(Math.round(metres)) * PER_METRE;
-}

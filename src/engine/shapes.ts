@@ -5,7 +5,6 @@
  * are spheres pushed out of shape by noise — both come out of a function, so
  * they cost nothing to store and are the same on every machine.
  */
-import { fbm3 } from './noise';
 import { heightAt } from './land';
 
 export interface Geometry {
@@ -263,110 +262,4 @@ export function addScrew(
       into.indices.push(base, base + 1, base + 2, base, base + 2, base + 3);
     }
   }
-}
-
-const GOLDEN = (1 + Math.sqrt(5)) / 2;
-
-/** An icosahedron, the roundest thing you can start from with twenty faces. */
-function icosahedron(): { points: number[][]; faces: number[][] } {
-  const points = [
-    [-1, GOLDEN, 0], [1, GOLDEN, 0], [-1, -GOLDEN, 0], [1, -GOLDEN, 0],
-    [0, -1, GOLDEN], [0, 1, GOLDEN], [0, -1, -GOLDEN], [0, 1, -GOLDEN],
-    [GOLDEN, 0, -1], [GOLDEN, 0, 1], [-GOLDEN, 0, -1], [-GOLDEN, 0, 1],
-  ].map((p) => {
-    const length = Math.hypot(p[0]!, p[1]!, p[2]!);
-    return [p[0]! / length, p[1]! / length, p[2]! / length];
-  });
-  const faces = [
-    [0, 11, 5], [0, 5, 1], [0, 1, 7], [0, 7, 10], [0, 10, 11],
-    [1, 5, 9], [5, 11, 4], [11, 10, 2], [10, 7, 6], [7, 1, 8],
-    [3, 9, 4], [3, 4, 2], [3, 2, 6], [3, 6, 8], [3, 8, 9],
-    [4, 9, 5], [2, 4, 11], [6, 2, 10], [8, 6, 7], [9, 8, 1],
-  ];
-  return { points, faces };
-}
-
-/**
- * A boulder: a subdivided sphere pushed in and out by noise, resting on y = 0.
- *
- * Normals are averaged across the faces that meet at each vertex, so the light
- * runs over it instead of breaking on every edge — which is the whole
- * difference between a rock and a die.
- */
-export function boulder(subdivisions = 2, seed = 1, roughness = 0.34): Geometry {
-  let { points, faces } = icosahedron();
-  const middles = new Map<string, number>();
-
-  const middle = (a: number, b: number): number => {
-    const key = a < b ? `${a}:${b}` : `${b}:${a}`;
-    const found = middles.get(key);
-    if (found !== undefined) return found;
-    const p = points[a]!;
-    const q = points[b]!;
-    const m = [p[0]! + q[0]!, p[1]! + q[1]!, p[2]! + q[2]!];
-    const length = Math.hypot(m[0]!, m[1]!, m[2]!);
-    points.push([m[0]! / length, m[1]! / length, m[2]! / length]);
-    const index = points.length - 1;
-    middles.set(key, index);
-    return index;
-  };
-
-  for (let step = 0; step < subdivisions; step++) {
-    const next: number[][] = [];
-    for (const [a, b, c] of faces) {
-      const ab = middle(a!, b!);
-      const bc = middle(b!, c!);
-      const ca = middle(c!, a!);
-      next.push([a!, ab, ca], [b!, bc, ab], [c!, ca, bc], [ab, bc, ca]);
-    }
-    faces = next;
-    middles.clear();
-  }
-
-  // push each point along its own direction, then squash and sit it on the floor
-  const displaced = points.map(([x, y, z]) => {
-    const push = 1 + (fbm3(x! * 1.7 + 5, y! * 1.7 + 5, z! * 1.7 + 5, 3, seed) - 0.5) * roughness * 2;
-    return [x! * push, y! * push * 0.78, z! * push];
-  });
-  const lowest = Math.min(...displaced.map((p) => p[1]!));
-
-  const positions = new Float32Array(displaced.length * 3);
-  const normals = new Float32Array(displaced.length * 3);
-  displaced.forEach((p, index) => {
-    positions[index * 3] = p[0]!;
-    positions[index * 3 + 1] = p[1]! - lowest;
-    positions[index * 3 + 2] = p[2]!;
-  });
-
-  // area-weighted vertex normals: sum the face normals that touch each point
-  for (const [a, b, c] of faces) {
-    const pa = displaced[a!]!;
-    const pb = displaced[b!]!;
-    const pc = displaced[c!]!;
-    const ux = pb[0]! - pa[0]!, uy = pb[1]! - pa[1]!, uz = pb[2]! - pa[2]!;
-    const vx = pc[0]! - pa[0]!, vy = pc[1]! - pa[1]!, vz = pc[2]! - pa[2]!;
-    const nx = uy * vz - uz * vy;
-    const ny = uz * vx - ux * vz;
-    const nz = ux * vy - uy * vx;
-    for (const index of [a!, b!, c!]) {
-      normals[index * 3] = (normals[index * 3] ?? 0) + nx;
-      normals[index * 3 + 1] = (normals[index * 3 + 1] ?? 0) + ny;
-      normals[index * 3 + 2] = (normals[index * 3 + 2] ?? 0) + nz;
-    }
-  }
-  for (let index = 0; index < normals.length; index += 3) {
-    const length = Math.hypot(normals[index]!, normals[index + 1]!, normals[index + 2]!) || 1;
-    normals[index] = normals[index]! / length;
-    normals[index + 1] = normals[index + 1]! / length;
-    normals[index + 2] = normals[index + 2]! / length;
-  }
-
-  const indices = new Uint32Array(faces.length * 3);
-  faces.forEach((face, index) => {
-    indices[index * 3] = face[0]!;
-    indices[index * 3 + 1] = face[1]!;
-    indices[index * 3 + 2] = face[2]!;
-  });
-
-  return { positions, normals, indices };
 }
