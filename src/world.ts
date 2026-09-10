@@ -27,7 +27,7 @@ import { normalizeAddress } from './coord';
 import { looksLikeName, resolveName } from './ens';
 import { type Structure, instancesOf, standingOn, stands, structureOf } from './places';
 import { POINT, auger } from './auger';
-import { glassOf, inkOf, strokesOf } from './blueprint';
+import { type Stroke, glassOf, inkOf, strokesOf } from './blueprint';
 import { Chips } from './chips';
 import { claimAt, claimedPlots, isPlot, noteOf } from './plot';
 import { Stick, coarse } from './stick';
@@ -771,6 +771,24 @@ function walk(seconds: number): void {
   player.z = clear.z;
 }
 
+/**
+ * A drawing's strokes, worked out once for where it stands.
+ *
+ * They depend on the plot and on the ground it sits on, neither of which moves
+ * between frames — only the eye does, and the eye is applied when the strokes
+ * are laid as ink. So they are kept, and worked out again only when the ground
+ * under the plot is built anew and its base comes out different.
+ */
+const strokesKept = new WeakMap<Structure, { base: number; strokes: Stroke[] }>();
+
+function strokesFor(structure: Structure, base: number): Stroke[] {
+  const kept = strokesKept.get(structure);
+  if (kept && kept.base === base) return kept.strokes;
+  const strokes = strokesOf(structure, base, origin);
+  strokesKept.set(structure, { base, strokes });
+  return strokes;
+}
+
 // --- the loop -------------------------------------------------------------
 
 let frames = 0;
@@ -888,7 +906,7 @@ loop({
       if (structure.kind !== 'framed') continue;
       const base = baseOf(structure);
       const grown = structure.grown ?? 1;
-      inkOf(strokesOf(structure, base, origin), grown, at, drawn);
+      inkOf(strokesFor(structure, base), grown, at, drawn);
       glassOf(structure, base, origin, grown, drawn);
     }
     const inked = ribbons.count * 4;
