@@ -94,6 +94,7 @@ export function takeGround(
   }
   const factory = chain.plots;
   const home = placeOf(bytesOf(HOME));
+  said.textContent = 'nobody has claimed this ground. dig here to take it: the longer you dig, the closer the plot';
 
   // --- what was found before ------------------------------------------------
 
@@ -218,15 +219,15 @@ export function takeGround(
     if (digging) {
       stop();
       said.textContent = best
-        ? 'stopped. claim what you found, or dig on'
-        : 'this ground is unclaimed';
+        ? `stopped. claim what you found — ${far(best.away)} from here — or dig on to get closer`
+        : 'stopped before anything was found. dig on whenever';
       return;
     }
 
     if (!wallet()) {
       said.textContent =
-        'no wallet in this browser. a salt carries the address it was mined for, ' +
-        'so digging needs one before it starts';
+        'no wallet in this browser: a salt carries the address it is mined for, so digging needs one. ' +
+        'on a phone, open this page inside your wallet app\'s browser';
       return;
     }
     said.textContent = 'asking the wallet for an address';
@@ -252,7 +253,7 @@ export function takeGround(
     best = had ? { salt: had.find.salt, address: had.find.address, ground: had.ground, away: had.away } : null;
     earlier.hidden = true;
     takeButton.hidden = !best;
-    said.textContent = 'digging for a place beside you. stop whenever you like';
+    said.textContent = 'digging for a place beside you. every attempt is a place; the closest is kept. stop whenever you like';
     counted.textContent = 'starting the threads…';
     digButton.textContent = 'stop';
     spec = { factory, owner: granted, home: HOME, codeHash: codeHash.slice(0, 66), target: aim };
@@ -284,7 +285,9 @@ export function takeGround(
       const key = shelfKey();
       if (key) drop(localStorage, key, taking.address);
       stop();
-      said.textContent = `yours: ${taking.address.slice(0, 10)}… ${far(taking.away)} from here`;
+      said.textContent =
+        `yours: ${taking.address.slice(0, 10)}…, ${far(taking.away)} from here. ` +
+        'walk to it — then write into it, name it, or point it at code of your own';
       onClaimed(taking.address);
     } catch (error) {
       said.textContent = (error as { message?: string }).message ?? 'the wallet said no';

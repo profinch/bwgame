@@ -485,6 +485,72 @@ body.world {
   cursor: progress;
 }
 
+/* the first time in: what this is, in four sentences, over the world */
+
+.welcome {
+  position: fixed;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--bg) 55%, transparent);
+  pointer-events: auto;
+}
+
+.welcome-card {
+  max-width: 52ch;
+  margin: 0 18px;
+  padding: 22px 26px;
+  border: 1px solid color-mix(in srgb, var(--line) 30%, transparent);
+  background: color-mix(in srgb, var(--panel) 94%, transparent);
+  display: grid;
+  gap: 12px;
+}
+
+.welcome-card h2 {
+  margin: 0 0 4px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+}
+
+.welcome-card p {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.55;
+  letter-spacing: 0.02em;
+  color: #2a2a28;
+}
+
+.welcome-card .welcome-keys {
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: #4a4a48;
+}
+
+.welcome-card button {
+  justify-self: start;
+  padding: 7px 14px;
+  border: 1px solid var(--fg);
+  background: var(--fg);
+  color: var(--bg);
+  font: inherit;
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+}
+
+.hud .near {
+  font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  color: #4a4a48;
+}
+
 /* the plot of yours you are standing at */
 
 .hud.own {

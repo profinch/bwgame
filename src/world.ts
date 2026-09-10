@@ -46,7 +46,8 @@ const badge = document.querySelector<HTMLElement>('.mark');
 const going = document.querySelector<HTMLFormElement>('.go');
 const claiming = document.querySelector<HTMLElement>('.claim');
 const owning = document.querySelector<HTMLElement>('.own');
-if (!canvas || !stat || !place || !badge || !going || !claiming || !owning)
+const near = document.querySelector<HTMLElement>('.near');
+if (!canvas || !stat || !place || !badge || !going || !claiming || !owning || !near)
   throw new Error('the page is missing its parts');
 badge.innerHTML = mark({ size: 20, rows: 7 });
 
@@ -311,9 +312,24 @@ function settle(): void {
 /** How far off an address you are set down, so you can see what is on it. */
 const ALIGHT = 14;
 
+/**
+ * Arriving is a descent.
+ *
+ * You are not set down on the ground; you come down onto it from far above,
+ * over a few seconds, looking down at where you will stand. On the way the
+ * rule of the map is in view — the dark ground, the small lit clearing you are
+ * about to be in — and the landing says where you are. Any look of your own
+ * ends it.
+ */
+const DESCENT_FROM = 380;
+/** The first arrival is the page opening; it waits while the welcome is read. */
+let descent = DESCENT_FROM;
+let holdDescent = false;
+
 function arriveAt(x: number, z: number): void {
   origin.x = x;
   origin.z = z;
+  descent = DESCENT_FROM;
   // beside the address rather than on it: arriving dead on one puts you inside
   // whatever stands there, and the inside of a building is not drawn
   player.x = 0;
@@ -433,6 +449,12 @@ let turning: { yaw: number; pitch: number } | null = null;
 const TURNS_AT = 3.2;
 
 function turn(seconds: number): void {
+  // coming down: fast at first, gently at the end, done in about six seconds
+  if (descent > 0 && !holdDescent) {
+    descent *= Math.exp(-1.1 * seconds);
+    descent -= 6 * seconds;
+    if (descent < 0.3) descent = 0;
+  }
   if (!turning) return;
   // the short way round, whichever side it is
   let dyaw = turning.yaw - player.yaw;
@@ -719,8 +741,9 @@ canvas.addEventListener('pointerdown', (event) => {
 
 canvas.addEventListener('pointermove', (event) => {
   if (!looking) return;
-  // looking for yourself ends any turn the world was making for you
+  // looking for yourself ends any turn the world was making for you, and any descent
   turning = null;
+  descent = 0;
   player.yaw -= (event.clientX - looking.x) * 0.004;
   player.pitch = Math.max(-1.2, Math.min(1.2, player.pitch - (event.clientY - looking.y) * 0.003));
   looking = { x: event.clientX, y: event.clientY };
@@ -860,6 +883,58 @@ function strokesFor(structure: Structure, base: number): Stroke[] {
   return strokes;
 }
 
+/**
+ * What there is to go and see: the plots standing on this ground, nearest
+ * first, by name where they have one. An empty world gives nobody a reason to
+ * walk; this line is the reason.
+ */
+function whatIsNear(on: { x: number; z: number }): string {
+  const plots = structures
+    .filter((structure) => structure.plot)
+    .map((structure) => ({ structure, away: Math.hypot(structure.x - on.x, structure.z - on.z) }))
+    .sort((a, b) => a.away - b.away)
+    .slice(0, 3);
+  if (plots.length === 0) return 'no plots on this ground yet — it is yours to take';
+  const said = plots.map(({ structure, away }) => {
+    const label = structure.plot!.name && chain.ens ? `${structure.plot!.name}.${chain.ens.parent}` : `${structure.address.slice(0, 10)}…`;
+    const what = structure.kind === 'framed' ? 'drawn' : 'built';
+    return `${label} ${away >= 1000 ? `${(away / 1000).toFixed(1)} km` : `${Math.round(away)} m`}, ${what}`;
+  });
+  return `near: ${said.join(' · ')}`;
+}
+
+/**
+ * The first time in: what this is, over the world, until they step into it.
+ * Once seen, not shown again on this browser; the world itself is the rest of
+ * the explanation.
+ */
+const welcome = document.querySelector<HTMLElement>('.welcome');
+if (welcome) {
+  let seen = false;
+  try {
+    seen = localStorage.getItem('gs:welcomed') === 'yes';
+  } catch {
+    // no storage: shown every time, which is no harm
+  }
+  if (!seen) {
+    welcome.hidden = false;
+    holdDescent = true;
+    welcome.querySelector<HTMLElement>('.mark')!.innerHTML = mark({ size: 18, rows: 7 });
+    welcome.querySelector<HTMLElement>('.welcome-keys')!.textContent = touch
+      ? 'stick to walk · drag to look · type an address or a name to go there'
+      : 'wasd to walk · shift to run · drag to look · type an address or a name to go there';
+    welcome.querySelector<HTMLButtonElement>('.welcome-go')!.addEventListener('click', () => {
+      welcome.hidden = true;
+      holdDescent = false;
+      try {
+        localStorage.setItem('gs:welcomed', 'yes');
+      } catch {
+        // then it is shown again next time
+      }
+    });
+  }
+}
+
 // --- the loop -------------------------------------------------------------
 
 let frames = 0;
@@ -917,6 +992,7 @@ loop({
         `${taking.digging ? 'digging: stop to walk · ' : touch ? 'stick to walk, ' : 'wasd to walk, shift to run, space to jump, '}` +
         `${touch ? '' : 'home to go back, '}v for ${overShoulder ? 'first person' : 'third person'}, drag to look`;
       const on = afoot();
+      near.textContent = whatIsNear(on);
       const away = Math.round(Math.hypot(on.x, on.z));
       place.textContent =
         `${chain.name} · depth ${DEPTH} · 0x${addressUnder(on.x, on.z)} · ${away} m from ${HOME.slice(0, 8)}… ${HOME === '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48' ? ' (usdc)' : ''}`;
@@ -964,13 +1040,19 @@ loop({
     ];
 
     // over the shoulder: step back along the look and up by whatever the
-    // ground behind you asked for, which `ride` works out and smooths
-    const at: [number, number, number] = overShoulder
+    // ground behind you asked for, which `ride` works out and smooths —
+    // unless you are still coming down, in which case the eye is up there,
+    // a little behind, looking at where you will stand
+    let at: [number, number, number] = overShoulder
       ? [eyes[0] - look[0] * BEHIND, eyes[1] - look[1] * BEHIND + 1.1 + lift, eyes[2] - look[2] * BEHIND]
       : eyes;
-    const ahead: [number, number, number] = overShoulder
+    let ahead: [number, number, number] = overShoulder
       ? eyes
       : [at[0] + look[0], at[1] + look[1], at[2] + look[2]];
+    if (descent > 0) {
+      at = [at[0], at[1] + descent, at[2] + descent * 0.35];
+      ahead = [player.x, feet(), player.z];
+    }
     const aspect = canvas.clientWidth / Math.max(1, canvas.clientHeight);
     const camera: Mat4 = multiply(perspective(1.15, aspect, 0.2, 2600), lookAt(at, ahead));
 
