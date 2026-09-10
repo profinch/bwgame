@@ -502,6 +502,11 @@ body.world {
   cursor: progress;
 }
 
+/* hidden means hidden, whatever display a thing was given */
+[hidden] {
+  display: none !important;
+}
+
 /* the first time in: what this is, in four sentences, over the world */
 
 .welcome {
