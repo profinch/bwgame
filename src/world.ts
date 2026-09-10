@@ -871,7 +871,11 @@ function clearOf(startX: number, startZ: number): { x: number; z: number } {
  * nothing here is either/or.
  */
 const touch = coarse();
-if (touch) document.body.classList.add('touch');
+if (touch) {
+  document.body.classList.add('touch');
+  // a phone draws at up to one and a half device pixels a CSS pixel
+  renderer.pixelRatio = 1.5;
+}
 const stick = new Stick(
   document.querySelector<HTMLElement>('.touchpad')!,
   document.querySelector<HTMLElement>('.touchpad .knob')!,

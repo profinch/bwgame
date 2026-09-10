@@ -66,6 +66,12 @@ export class Renderer {
   private readonly streakBuffer: WebGLBuffer;
   private streakRoom = 0;
   private streakCount = 0;
+  /**
+   * How many device pixels a CSS pixel may cost, at most. Two is plenty for a
+   * screen; a phone reports three, and three times the pixels for a picture of
+   * grey ground is a warm phone and a slow one.
+   */
+  pixelRatio = 2;
 
   constructor(canvas: HTMLCanvasElement) {
     const gl = context(canvas);
@@ -259,7 +265,7 @@ export class Renderer {
     }
 
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-    resize(gl);
+    resize(gl, this.pixelRatio);
     // the shadow pass left the viewport at the size of the depth map, and
     // resize() only touches it when the canvas itself changed
     const canvas = gl.canvas as HTMLCanvasElement;
