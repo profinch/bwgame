@@ -452,8 +452,8 @@ function turn(seconds: number): void {
   // coming down: fast at first, gently at the end, done in about six seconds
   if (descent > 0 && !holdDescent) {
     descent *= Math.exp(-1.1 * seconds);
-    descent -= 6 * seconds;
-    if (descent < 0.3) descent = 0;
+    descent -= 1.5 * seconds;
+    if (descent < 0.05) descent = 0;
   }
   if (!turning) return;
   // the short way round, whichever side it is
@@ -1051,8 +1051,16 @@ loop({
       ? eyes
       : [at[0] + look[0], at[1] + look[1], at[2] + look[2]];
     if (descent > 0) {
+      // high up the eye looks at the feet; over the last stretch the look is
+      // carried across to where it will rest, so the landing does not snap
+      const feetAt: [number, number, number] = [player.x, feet(), player.z];
+      const w = Math.min(1, descent / 40);
       at = [at[0], at[1] + descent, at[2] + descent * 0.35];
-      ahead = [player.x, feet(), player.z];
+      ahead = [
+        ahead[0] + (feetAt[0] - ahead[0]) * w,
+        ahead[1] + (feetAt[1] - ahead[1]) * w,
+        ahead[2] + (feetAt[2] - ahead[2]) * w,
+      ];
     }
     const aspect = canvas.clientWidth / Math.max(1, canvas.clientHeight);
     const camera: Mat4 = multiply(perspective(1.15, aspect, 0.2, 2600), lookAt(at, ahead));
