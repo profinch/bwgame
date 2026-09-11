@@ -957,6 +957,33 @@ function strokesFor(structure: Structure, base: number): Stroke[] {
 }
 
 /**
+ * Black or white. The whole page turns over — the world included, since the
+ * sky and the ground are drawn in tones and a tone has an opposite — and the
+ * choice is kept in this browser, under the same key as on bwtoken.io.
+ */
+{
+  const tg = document.querySelector<HTMLElement>('#tg');
+  const pair = document.querySelector<HTMLElement>('#pair');
+  if (tg && pair) {
+    const root = document.documentElement;
+    let rot = root.dataset.t === 'dark' ? 180 : 0;
+    pair.style.transform = `rotate(${rot}deg)`;
+    tg.setAttribute('aria-checked', String(root.dataset.t === 'dark'));
+    tg.addEventListener('click', () => {
+      rot += 180;
+      pair.style.transform = `rotate(${rot}deg)`;
+      root.dataset.t = root.dataset.t === 'dark' ? 'light' : 'dark';
+      tg.setAttribute('aria-checked', String(root.dataset.t === 'dark'));
+      try {
+        localStorage.setItem('bw-theme', root.dataset.t);
+      } catch {
+        // then it is white again next time
+      }
+    });
+  }
+}
+
+/**
  * Which world this is, and the others: the chain is not a setting but the
  * ground you stand on, so it is said in the header and changed by walking out
  * of one world into another — the page reloads, nothing carries over, as

@@ -4,12 +4,14 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>Ground State — engine</title>
+    <script>try{var _t=localStorage.getItem('bw-theme');if(_t)document.documentElement.dataset.t=_t;}catch(e){}</script>
   </head>
   <body class="world">
     <canvas id="view"></canvas>
-    <header class="hud">
+    <header class="hud top">
       <h1><span class="mark"></span>ground state</h1>
       <p class="hint"><span class="hint-words">the world is dark until you stand in it · </span><a class="map-link" href="/map.html" target="_blank" rel="noopener">the map</a> · <span class="chains"></span></p>
+      <div class="tg" id="tg" role="switch" aria-label="black or white" title="black / white"><div class="pair" id="pair"><span class="mini m1"></span><span class="mini m2"></span></div></div>
     </header>
     <section class="welcome" hidden>
       <div class="welcome-card">

@@ -386,6 +386,66 @@ body.world {
   pointer-events: none;
 }
 
+/* the header: one bar the width of the page, the world showing through */
+.hud.top {
+  top: 12px;
+  left: 12px;
+  right: 12px;
+  padding: 10px 16px;
+  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--line) 18%, transparent);
+  background: color-mix(in srgb, var(--panel) 72%, transparent);
+  backdrop-filter: blur(6px);
+  gap: 8px 18px;
+}
+
+.hud.top .hint {
+  flex: 1;
+  min-width: 0;
+}
+
+/* black or white: the same two stones as on bwtoken.io, turning over */
+.tg {
+  width: 52px;
+  height: 24px;
+  cursor: pointer;
+  position: relative;
+  pointer-events: auto;
+  flex: none;
+}
+
+.pair {
+  position: absolute;
+  inset: 0;
+  transition: transform 0.7s cubic-bezier(0.7, 0, 0.2, 1);
+}
+
+.mini {
+  position: absolute;
+  top: 50%;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  transform: translateY(-50%);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+}
+
+.m1 {
+  left: 0;
+  background: radial-gradient(circle at 36% 30%, #6a6a6a, #040404);
+}
+
+.m2 {
+  right: 0;
+  background: radial-gradient(circle at 36% 30%, #fff, #bdbcb8);
+}
+
+/* the dark: everything turned over, the world included */
+html[data-t="dark"] {
+  filter: invert(1);
+  background: #070707;
+}
+
 .hud.bottom {
   top: auto;
   bottom: 18px;
@@ -738,6 +798,7 @@ body.touch .touchpad-buttons {
   }
 
   .hud,
+  .hud.top,
   .hud.bottom,
   .hud.claim,
   .hud.own {
@@ -746,6 +807,20 @@ body.touch .touchpad-buttons {
     max-width: none;
     margin: 8px 10px 0;
     gap: 6px;
+  }
+
+  .hud.top {
+    flex-wrap: wrap;
+    padding: 10px 12px;
+  }
+
+  .hud.top .hint {
+    flex: 1 1 100%;
+    order: 3;
+  }
+
+  .hud.top .tg {
+    margin-left: auto;
   }
 
   .hud .hint-words,
