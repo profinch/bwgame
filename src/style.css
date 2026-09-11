@@ -534,7 +534,7 @@ html[data-t="dark"] {
 
 .hud.bottom {
   top: auto;
-  bottom: 18px;
+  bottom: 84px; /* above the jump panel */
   flex-direction: column;
   align-items: flex-start;
   gap: 4px;
@@ -555,17 +555,31 @@ html[data-t="dark"] {
 
 /* going somewhere, from inside the world */
 
+/* the jump panel: an address or a name, and you are there. Dressed as the
+   claim panel is, at the left as the claim panel is at the right. */
+.hud.jump {
+  top: auto;
+  left: 24px;
+  right: auto;
+  bottom: 20px;
+  pointer-events: auto;
+  padding: 12px 16px;
+  border-radius: 22px;
+  border: 1px solid color-mix(in srgb, var(--line) 8%, transparent);
+  background: color-mix(in srgb, var(--bg) 58%, transparent);
+}
+
 .hud .go {
   pointer-events: auto;
-  margin-top: 4px;
+  margin: 0;
 }
 
 .hud .go input {
   width: 34ch;
   max-width: 100%;
   padding: 6px 9px;
-  border: 1px solid color-mix(in srgb, var(--line) 22%, transparent);
-  background: color-mix(in srgb, var(--panel) 70%, transparent);
+  border: 1px solid color-mix(in srgb, var(--line) 30%, transparent);
+  background: transparent;
   color: var(--fg);
   font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
   font-size: 12px;
@@ -860,7 +874,8 @@ body.listopen .subarrow {
 }
 
 /* a panel put away is not on the page at all */
-body.off-readings .hud.bottom,
+body.off-metrics .hud.bottom,
+body.off-jump .hud.jump,
 body.off-claim .hud.claim,
 body.off-owner .hud.own {
   display: none !important;
@@ -914,9 +929,10 @@ body.off-owner .hud.own {
   pointer-events: auto;
 }
 
-/* on the map the world's panels — the readings, the claim, the owner's, the
+/* on the map the world's panels — the metrics, the jump, the claim, the owner's, the
    thumb controls — fade away with it; the header and the welcome stay */
 .hud.bottom,
+.hud.jump,
 .hud.claim,
 .hud.own,
 .touchpad,
@@ -925,6 +941,7 @@ body.off-owner .hud.own {
 }
 
 body.onmap .hud.bottom,
+body.onmap .hud.jump,
 body.onmap .hud.claim,
 body.onmap .hud.own,
 body.onmap .touchpad,
@@ -1028,16 +1045,21 @@ body.embedded #app {
   opacity: 0.55;
 }
 
+/* the rest, counted: a line of text with the dotted underline of a link, as in the key drawer */
 .hud.own .own-rest {
+  justify-self: start;
   border: 0;
   padding: 4px 0;
   text-align: left;
   white-space: normal;
-  opacity: 0.55;
+  text-decoration: underline dotted;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+  opacity: 0.7;
 }
 
 .hud.own .own-rest:hover {
-  opacity: 0.85;
+  opacity: 1;
 }
 
 /* the list scrolls when it is long, with a scrollbar drawn like the rest: a
@@ -1206,6 +1228,7 @@ body.touch .touchpad-buttons {
   .hud,
   .hud.top,
   .hud.bottom,
+  .hud.jump,
   .hud.claim,
   .hud.own {
     position: static;

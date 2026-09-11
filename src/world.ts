@@ -1290,13 +1290,13 @@ loop({
         `block ${traffic.block || '…'}, ` +
         `${traffic.flying} passing, ${traffic.queued} to come · ` +
         `${arrived ? `at ${arrived} · ` : ''}` +
-        `${taking.digging ? 'digging: stop to walk · ' : touch ? 'stick to walk, ' : 'wasd to walk, shift to run, space to jump, '}` +
-        `${touch ? '' : 'home to go back, '}v for ${overShoulder ? 'first person' : 'third person'}, drag to look`;
+        `${taking.digging ? 'digging: stop to walk · ' : ''}` +
+        `${overShoulder ? 'over the shoulder' : 'first person'}`;
       const on = afoot();
       near.textContent = whatIsNear(on);
       const away = Math.round(Math.hypot(on.x, on.z));
       place.textContent =
-        `${chain.name} · depth ${DEPTH} · 0x${addressUnder(on.x, on.z)} · ${away} m from ${HOME.slice(0, 8)}… ${HOME === '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48' ? ' (usdc)' : ''}`;
+        `${chain.name} · depth ${DEPTH} · 0x${addressUnder(on.x, on.z)} · ${away} m from ${HOME.slice(0, 10)}…${HOME.slice(-4)}${HOME === '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48' ? ' (usdc)' : ''}`;
     }
   },
   draw() {

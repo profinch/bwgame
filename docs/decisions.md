@@ -41,8 +41,8 @@ What was decided, and why. What was refused, and why. Dated where the date matte
 - **The owner's panel is the way to your ground** (12.09.2026): it stays while it is wanted; with no
   wallet it offers to connect one, off your ground it lists every plot of yours with a button that
   takes you there, on your ground it is the forms.
-- **Panels are a filter**, *panels* in the menu with the site's sub-bar under it: readings, claim,
-  owner, each put away or brought back, kept in the browser. The
+- **Panels are a filter**, *panels* in the menu with the site's sub-bar under it: metrics, jump,
+  claim, owner, each put away or brought back, kept in the browser. The
   other players and the sky are not panels: they are the world, and stay.
 - **No shadows** on the header, the bars, the stones or the panels: in a world of tones and turned
   over for the dark, a shadow reads as a glow.

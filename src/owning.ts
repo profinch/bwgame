@@ -137,7 +137,7 @@ export function ownGround(
           const rest = document.createElement('button');
           rest.type = 'button';
           rest.className = 'own-rest';
-          rest.textContent = `and ${unnamed.length - LISTS_UNNAMED} more unnamed — a named plot is always listed`;
+          rest.textContent = `${unnamed.length - LISTS_UNNAMED} more unnamed`;
           rest.addEventListener('click', () => {
             rest.replaceWith(...unnamed.slice(LISTS_UNNAMED).map(rowOf));
           });
@@ -163,7 +163,10 @@ export function ownGround(
     nameInput.disabled = !what.salt;
     nameInput.placeholder = what.salt ? `a name under ${chain.ens?.parent ?? ''}` : 'a name, once the indexer has this plot';
   };
-  void look();
+  // the panel is not shown until it has something to say: no empty box first
+  void look().then(() => {
+    panel.hidden = false;
+  });
   const looking = setInterval(look, 1000);
 
   /** One transaction to the plot: the wallet's chain, the wallet's signature, the block. */

@@ -7,8 +7,10 @@
  * block overhead are not panels and are never put away: they are the world.
  */
 export const PANELS: readonly { key: string }[] = [
-  // where you stand, what is near, the block overhead, the field to go by
-  { key: 'readings' },
+  // where you stand, what is near, the block overhead
+  { key: 'metrics' },
+  // an address or a name, and you are there
+  { key: 'jump' },
   // digging where you stand, and the one transaction that makes it yours
   { key: 'claim' },
   // your own plot, when you stand on it: write, point at code, name, seal
