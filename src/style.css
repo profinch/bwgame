@@ -391,7 +391,8 @@ body.world {
   top: 12px;
   left: 12px;
   right: 12px;
-  padding: 10px 16px;
+  padding: 14px 16px;
+  overflow: hidden;
   border-radius: 14px;
   border: 1px solid color-mix(in srgb, var(--line) 18%, transparent);
   background: color-mix(in srgb, var(--panel) 72%, transparent);
@@ -404,10 +405,12 @@ body.world {
   min-width: 0;
 }
 
-/* black or white: the same two stones as on bwtoken.io, turning over */
+/* black or white: the same two stones as on bwtoken.io, turning over. The box
+   is as tall as it is wide, so the stones' swing stays inside the bar. */
 .tg {
   width: 52px;
-  height: 24px;
+  height: 52px;
+  margin: -14px 0;
   cursor: pointer;
   position: relative;
   pointer-events: auto;
@@ -416,7 +419,7 @@ body.world {
 
 .pair {
   position: absolute;
-  inset: 0;
+  inset: 14px 0;
   transition: transform 0.7s cubic-bezier(0.7, 0, 0.2, 1);
 }
 
