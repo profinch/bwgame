@@ -23,9 +23,11 @@ describe('a note on a building', () => {
     const pieces = piecesOf(noted('profinch was here'), 10);
     const count = pieces.length / INSTANCE_FLOATS;
     expect(count).toBeGreaterThan(20);
-    // the body is pulled in by the cut, and every sign stands on the front face
-    expect(pieces[5]).toBeLessThan(5);
-    for (let i = INSTANCE_FLOATS; i < pieces.length; i += INSTANCE_FLOATS) expect(pieces[i + 2]).toBeGreaterThan(2.4);
+    // the cut is 1.6 cells deep, a cell being a thirtieth of the wall: the body
+    // is pulled in by it, and every sign stands out to the front face
+    const cutIn = 1.6 * (6 / 30);
+    expect(pieces[5]).toBeCloseTo(5 - cutIn, 5);
+    for (let i = INSTANCE_FLOATS; i < pieces.length; i += INSTANCE_FLOATS) expect(pieces[i + 2]).toBeCloseTo(2.5 - cutIn / 2, 5);
   });
   it('a plain building is one box', () => {
     expect(piecesOf(noted(''), 10).length / INSTANCE_FLOATS).toBe(1);
