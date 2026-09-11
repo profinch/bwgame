@@ -1087,9 +1087,10 @@ body.embedded #app {
      reaches 8px into the panel's 16px padding, the bar is 4px, the rows end
      8px before it — bar centred 10px in, rows ending 20px in */
   margin-right: -8px;
-  padding-right: 8px;
-  scrollbar-width: thin;
-  scrollbar-color: color-mix(in srgb, var(--fg) 50%, transparent) transparent;
+  padding-right: 12px;
+  /* no scrollbar-width or scrollbar-color here: with either set, Chrome
+     ignores the ::-webkit-scrollbar rules below and falls back to the
+     system's overlay bar, which only shows while scrolling */
 }
 
 .hud.own .own-list::-webkit-scrollbar {
