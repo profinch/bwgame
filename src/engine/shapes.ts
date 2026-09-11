@@ -169,6 +169,56 @@ export function box(): Geometry {
   };
 }
 
+/**
+ * A box whose faces are cut into a grid, for a building whose walls move.
+ *
+ * The plain box has four corners a face; a wall can only lean with those. Cut
+ * into `segments` squares a side, a face has enough points for the vertex
+ * shader to bend it on a wave, and the edges stay closed because both faces
+ * meeting there hold the same points and are bent by the same field.
+ */
+export function facade(segments = 6): Geometry {
+  const positions: number[] = [];
+  const normals: number[] = [];
+  const indices: number[] = [];
+  // each face: its normal, and the two axes that span it (in the box frame)
+  const faces: [number[], number[], number[]][] = [
+    [[0, 0, 1], [1, 0, 0], [0, 1, 0]],
+    [[0, 0, -1], [-1, 0, 0], [0, 1, 0]],
+    [[1, 0, 0], [0, 0, -1], [0, 1, 0]],
+    [[-1, 0, 0], [0, 0, 1], [0, 1, 0]],
+    [[0, 1, 0], [1, 0, 0], [0, 0, -1]],
+    [[0, -1, 0], [1, 0, 0], [0, 0, 1]],
+  ];
+  for (const [normal, along, up] of faces) {
+    const first = positions.length / 3;
+    for (let j = 0; j <= segments; j++) {
+      for (let i = 0; i <= segments; i++) {
+        const a = i / segments - 0.5;
+        const b = j / segments - 0.5;
+        // the box stands on y = 0 and rises to y = 1; it is centred in x and z
+        const x = normal[0]! * 0.5 + along[0]! * a + up[0]! * b;
+        const y = (normal[1]! * 0.5 + along[1]! * a + up[1]! * b) + 0.5;
+        const z = normal[2]! * 0.5 + along[2]! * a + up[2]! * b;
+        positions.push(x, y, z);
+        normals.push(...normal);
+      }
+    }
+    const row = segments + 1;
+    for (let j = 0; j < segments; j++) {
+      for (let i = 0; i < segments; i++) {
+        const o = first + j * row + i;
+        indices.push(o, o + 1, o + row + 1, o, o + row + 1, o + row);
+      }
+    }
+  }
+  return {
+    positions: new Float32Array(positions),
+    normals: new Float32Array(normals),
+    indices: new Uint32Array(indices),
+  };
+}
+
 /** Append one axis-aligned box, given its two corners, to a growing mesh. */
 export function addBox(
   into: { positions: number[]; normals: number[]; indices: number[] },

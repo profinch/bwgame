@@ -12,6 +12,28 @@
  * so smooth gradients band visibly; a fraction of a level of ordered noise
  * before quantisation removes the bands and cannot be seen.
  */
+/**
+ * Space bending round a building: a slow field over the box, rooted at the
+ * ground, moving every point of the walls by about a hundredth of the
+ * footprint. It is a function of the point alone, so the two faces meeting at
+ * an edge move together and the box stays closed. Shared by the colour pass
+ * and the shadow pass so a building's shadow bends with it.
+ */
+const WARP = `
+vec3 warp(vec3 position, vec3 size, vec3 offset, float time) {
+  float ph = fract(dot(offset, vec3(0.113, 0.071, 0.097))) * 6.2832;
+  float y = position.y;
+  float amp = 0.012 * min(size.x, size.z);
+  vec3 d = vec3(
+    sin(y * 5.0 + time * 0.5 + ph) + 0.5 * sin(position.z * 7.0 + time * 0.8 + ph),
+    0.4 * sin(position.x * 6.0 - time * 0.6 + ph) * sin(position.z * 6.0 + time * 0.45),
+    cos(y * 4.0 - time * 0.42 + ph) + 0.5 * sin(position.x * 7.0 - time * 0.7 + ph));
+  return d * amp * smoothstep(0.0, 0.25, y);
+}
+float phaseOf(vec3 offset) {
+  return fract(dot(offset, vec3(0.113, 0.071, 0.097))) * 6.2832;
+}`;
+
 export const VERTEX = `#version 300 es
 precision highp float;
 
@@ -22,12 +44,15 @@ layout(location = 3) in vec3 size;       // how big it is
 layout(location = 4) in vec4 material;   // turn, albedo, roughness, pattern
 
 uniform mat4 viewProjection;
+uniform float time;
 
 out vec3 vWorld;
 out vec3 vNormal;
 out vec3 vMaterial;
 out vec3 vLocal;   // where on the box this is, before the turn: for what is drawn on its faces
 out vec3 vFace;    // which face, in the box's own frame
+out float vPhase;  // this instance's own moment in the waves
+${WARP}
 
 void main() {
   float turn = material.x;
@@ -36,6 +61,8 @@ void main() {
   mat2 spin = mat2(c, -s, s, c);
 
   vec3 scaled = position * size;
+  vec3 local = scaled;
+  if (material.w > 0.5) scaled += warp(position, size, offset, time);
   scaled.xz = spin * scaled.xz;
   vec3 world = scaled + offset;
 
@@ -46,8 +73,9 @@ void main() {
   vWorld = world;
   vNormal = normalize(n);
   vMaterial = material.yzw;
-  vLocal = scaled;
+  vLocal = local;
   vFace = normal;
+  vPhase = phaseOf(offset);
   gl_Position = viewProjection * vec4(world, 1.0);
 }`;
 
@@ -59,6 +87,7 @@ in vec3 vNormal;
 in vec3 vMaterial;
 in vec3 vLocal;
 in vec3 vFace;
+in float vPhase;
 
 uniform float time;
 uniform vec3 eye;
@@ -174,19 +203,29 @@ void main() {
   float light = albedo * (ambient * 0.34 + direct * 1.15)
               + ggx(n, v, l, roughness) * direct * 0.5;
 
-  // windows: the mark's grid of dots laid over the walls of a building, the
-  // dots larger toward one corner and smaller toward the other as on the mark,
-  // and breathing a little, slowly, so a building is never quite still
+  // the mesh from bwtoken.io laid over the walls of a building: a square grid
+  // of fine lines with a diagonal in every other cell and a point at every
+  // node, its nodes drifting on slow waves so the grid is never quite still
   if (vMaterial.z > 0.5 && abs(vFace.y) < 0.5) {
     float u = abs(vFace.x) > 0.5 ? vLocal.z : vLocal.x;
-    float pitch = 1.6;
-    vec2 cell = floor(vec2(u, vLocal.y) / pitch);
-    vec2 inCell = fract(vec2(u, vLocal.y) / pitch) - 0.5;
-    float along = cell.x + cell.y;
-    float breath = 0.5 + 0.5 * sin(time * 0.7 + along * 0.55);
-    float radius = 0.14 + 0.22 * breath;
-    float dot_ = smoothstep(radius, radius - 0.06, length(inCell));
-    light *= mix(1.0, 0.45, dot_);
+    vec2 p = vec2(u, vLocal.y);
+    float pitch = 1.25;
+    p += pitch * 0.16 * vec2(
+      sin(p.y * 2.1 - time * 0.5 + vPhase) + 0.5 * sin(p.x * 1.3 + time * 0.35),
+      sin(p.x * 2.4 + time * 0.7 + vPhase + p.y * 0.6));
+    vec2 g = p / pitch;
+    vec2 cell = floor(g);
+    vec2 f = fract(g);
+    float thin = 0.018 + 0.7 * fwidth(g.x + g.y);
+    vec2 toLine = min(f, 1.0 - f);
+    float line = 1.0 - smoothstep(thin, thin * 2.2, min(toLine.x, toLine.y));
+    float diagonal = 0.0;
+    if (mod(cell.x + cell.y, 2.0) < 0.5) {
+      diagonal = 1.0 - smoothstep(thin, thin * 2.2, abs(f.x - f.y) * 0.7071);
+    }
+    float node = 1.0 - smoothstep(0.05, 0.05 + thin * 2.0, length(f - round(f)));
+    float ink = max(max(line, diagonal * 0.8), node);
+    light *= mix(1.0, 0.6, ink);
   }
 
   // distance thins into the air, which is what gives depth without colour
@@ -209,14 +248,17 @@ precision highp float;
 layout(location = 0) in vec3 position;
 layout(location = 2) in vec3 offset;
 layout(location = 3) in vec3 size;
-layout(location = 4) in vec3 material;
+layout(location = 4) in vec4 material;
 
 uniform mat4 lightViewProjection;
+uniform float time;
+${WARP}
 
 void main() {
   float c = cos(material.x);
   float s = sin(material.x);
   vec3 scaled = position * size;
+  if (material.w > 0.5) scaled += warp(position, size, offset, time);
   scaled.xz = mat2(c, -s, s, c) * scaled.xz;
   gl_Position = lightViewProjection * vec4(scaled + offset, 1.0);
 }`;

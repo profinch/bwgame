@@ -13,6 +13,7 @@
 import { keccak_256 } from '@noble/hashes/sha3';
 import type { Account } from './chain';
 import { offsetOf } from './engine/land';
+import { INSTANCE_FLOATS } from './engine/renderer';
 
 /**
  * What kind of thing stands here.
@@ -986,14 +987,32 @@ export function instancesOf(
   structures: readonly Structure[],
   baseOf: (s: Structure) => number,
   origin = { x: 0, z: 0 },
-): Float32Array {
+): { plain: Float32Array; patterned: Float32Array } {
   const parts = structures.map((structure) => piecesOf(structure, baseOf(structure), origin));
-  const out = new Float32Array(parts.reduce((sum, part) => sum + part.length, 0));
+  const all = new Float32Array(parts.reduce((sum, part) => sum + part.length, 0));
   let at = 0;
   for (const part of parts) {
-    out.set(part, at);
+    all.set(part, at);
     at += part.length;
   }
-  return out;
+  // a building whose walls carry the mesh is drawn from a finer box than the
+  // rest, so the two go to different batches
+  let patternedCount = 0;
+  for (let i = 9; i < all.length; i += INSTANCE_FLOATS) if (all[i]! > 0.5) patternedCount++;
+  const plain = new Float32Array(all.length - patternedCount * INSTANCE_FLOATS);
+  const patterned = new Float32Array(patternedCount * INSTANCE_FLOATS);
+  let p = 0;
+  let q = 0;
+  for (let i = 0; i < all.length; i += INSTANCE_FLOATS) {
+    const piece = all.subarray(i, i + INSTANCE_FLOATS);
+    if (piece[9]! > 0.5) {
+      patterned.set(piece, q);
+      q += INSTANCE_FLOATS;
+    } else {
+      plain.set(piece, p);
+      p += INSTANCE_FLOATS;
+    }
+  }
+  return { plain, patterned };
 }
 

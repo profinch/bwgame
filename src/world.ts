@@ -19,7 +19,7 @@ import { loop } from './engine/loop';
 import { Coverage } from './engine/coverage';
 import { INSTANCE_FLOATS, Renderer, once, type Sky } from './engine/renderer';
 import { addressUnder, DEPTH, HOME, levelOff, offsetOf, rawHeightAt, withinWorld } from './engine/land';
-import { boulder, box, figure, groundUnder, terrain } from './engine/shapes';
+import { boulder, box, facade, figure, groundUnder, terrain } from './engine/shapes';
 import { Traffic, pollBlocks } from './engine/traffic';
 import { CHAINS, chain } from './chains';
 import { type Account, accountAt, holdingsOf } from './chain';
@@ -82,6 +82,8 @@ const obstacles: Obstacle[] = [];
 // everything is boxes: buildings, the plates people are written on, and the
 // raised squares that spell an address out across them
 const built = renderer.add(box(), new Float32Array(0), true);
+// contracts' buildings are drawn from a box cut fine enough for its walls to bend
+const buildings = renderer.add(facade(), new Float32Array(0), true);
 // except the relics of the first ground, which are stones and not boxes
 const boulders = renderer.add(boulder(2, 1, 0.34, DRESSED_AT), new Float32Array(0), true);
 
@@ -303,8 +305,15 @@ function settle(): void {
   for (const structure of structures) {
     for (const block of blocksOf(structure, baseOf(structure), origin)) obstacles.push(block);
   }
-  renderer.update(built, instancesOf(structures, baseOf, origin));
+  placeStones();
   renderer.update(boulders, bouldersOf(structures, baseOf, origin));
+}
+
+/** Every box of every structure into its batch: plain stone, or a building whose walls move. */
+function placeStones(): void {
+  const { plain, patterned } = instancesOf(structures, baseOf, origin);
+  renderer.update(built, plain);
+  renderer.update(buildings, patterned);
 }
 
 /**
@@ -1094,7 +1103,7 @@ loop({
         structure.grown = Math.min(1, (structure.grown ?? 0) + seconds / BUILDS_IN);
         if (structure.grown >= 1) rising.splice(i, 1);
       }
-      renderer.update(built, instancesOf(structures, baseOf, origin));
+      placeStones();
     }
     // the auger turns with the work: a little on its own, more as the rate
     // climbs — and the ground comes up round it in proportion

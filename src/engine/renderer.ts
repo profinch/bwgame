@@ -265,6 +265,8 @@ export class Renderer {
   ): void {
     const gl = this.gl;
 
+    // one clock for both passes, so a wall and its shadow bend together
+    const now = (performance.now() / 1000) % 3600;
     // what the sun can see, written down once per frame
     if (lightSpan) {
       gl.bindFramebuffer(gl.FRAMEBUFFER, this.shadowBuffer);
@@ -272,6 +274,7 @@ export class Renderer {
       gl.clear(gl.DEPTH_BUFFER_BIT);
       gl.useProgram(this.depthProgram);
       gl.uniformMatrix4fv(this.depthWhere.get('lightViewProjection')!, false, lightViewProjection);
+      gl.uniform1f(this.depthWhere.get('time')!, now);
       // draw the far sides instead of the near ones: the bias then has less to fix
       gl.cullFace(gl.FRONT);
       this.drawBatches();
@@ -294,7 +297,7 @@ export class Renderer {
     gl.uniform3fv(set.get('sun')!, sky.sun);
     gl.uniform1f(set.get('exposure')!, sky.exposure);
     gl.uniform1f(set.get('fogDensity')!, sky.fogDensity);
-    gl.uniform1f(set.get('time')!, (performance.now() / 1000) % 3600);
+    gl.uniform1f(set.get('time')!, now);
     gl.uniform1i(set.get('shadowsOn')!, lightSpan ? 1 : 0);
     gl.uniform1f(set.get('shadowTexel')!, 1 / SHADOW_SIZE);
     gl.uniform1f(set.get('shadowMetres')!, lightSpan?.metres ?? 1);
