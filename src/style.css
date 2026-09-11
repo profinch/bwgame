@@ -394,7 +394,7 @@ body.world {
   top: 20px;
   left: 24px;
   right: 24px;
-  height: 36px;
+  height: 37px;
   padding: 5px 12px;
   overflow: hidden;
   border-radius: 22px;
@@ -406,8 +406,10 @@ body.world {
   gap: 0 14px;
 }
 
+/* the row is 25px tall, as the nav's links are there, so the stones sit at
+   the same half pixel */
 .hud.top h1 {
-  line-height: 24px;
+  line-height: 25px;
   white-space: nowrap;
 }
 
