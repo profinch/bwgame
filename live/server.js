@@ -116,10 +116,15 @@ setInterval(() => {
         person.socket.close();
       }
     }
-    if (people.size < 2) continue;
+    // everybody is told what changed for them — including that the room has
+    // emptied: left untold, the one who stayed would keep seeing the one who
+    // left, standing where they last stood
     const everyone = [...people.values()].map((p) => ({ id: p.id, x: p.x, z: p.z, yaw: p.yaw, dig: p.dig }));
     for (const person of people.values()) {
-      tell(person.socket, { t: 'peers', peers: everyone.filter((p) => p.id !== person.id) });
+      const word = JSON.stringify({ t: 'peers', peers: everyone.filter((p) => p.id !== person.id) });
+      if (word === person.told) continue;
+      person.told = word;
+      if (person.socket.readyState === 1) person.socket.send(word);
     }
   }
 }, TELLS_EVERY);
