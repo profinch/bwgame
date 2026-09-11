@@ -405,19 +405,65 @@ body.world {
   gap: 0 14px;
 }
 
-/* what sets the bar's height is not the title but a gauge: an empty, unseen
-   flex item set exactly as the nav's links are there — 13px regular in the
-   same face, the line height the browser's own, 5px above and below — so the
-   bar comes out the height of the nav in whichever browser, whatever its font
-   metrics, and the stones sit at the same half pixel */
-.hud.top .gauge {
+/* the menu, as on bwtoken.io: the same links block, so the bar comes out the
+   nav's height in any browser — its links set it — and the corners frame the
+   section you are in */
+.navlinks {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 6px;
+  font-size: 13px;
+  letter-spacing: 0.16em;
+  text-transform: lowercase;
+  pointer-events: auto;
   flex: none;
-  width: 0;
-  margin-right: -14px;
-  padding: 5px 0;
-  font: 400 13px/normal 'Helvetica Neue', Helvetica, Arial, sans-serif;
-  visibility: hidden;
 }
+
+.navlinks a {
+  position: relative;
+  padding: 5px 9px;
+  text-decoration: none;
+  color: var(--fg);
+  opacity: 0.55;
+  transition: opacity 0.3s;
+  white-space: nowrap;
+}
+
+.navlinks a:hover {
+  opacity: 0.85;
+}
+
+.navlinks a.active {
+  opacity: 1;
+}
+
+.frame {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+  transition:
+    left 0.55s cubic-bezier(0.7, 0, 0.2, 1),
+    top 0.55s cubic-bezier(0.7, 0, 0.2, 1),
+    width 0.55s cubic-bezier(0.7, 0, 0.2, 1),
+    height 0.55s cubic-bezier(0.7, 0, 0.2, 1);
+}
+
+.frame .c {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border-color: color-mix(in srgb, var(--line) 55%, transparent);
+}
+
+.frame .c.tl { top: 0; left: 0; border-top: 1px solid; border-left: 1px solid; }
+.frame .c.tr { top: 0; right: 0; border-top: 1px solid; border-right: 1px solid; }
+.frame .c.bl { bottom: 0; left: 0; border-bottom: 1px solid; border-left: 1px solid; }
+.frame .c.br { bottom: 0; right: 0; border-bottom: 1px solid; border-right: 1px solid; }
 
 .hud.top h1 {
   line-height: normal;
@@ -671,14 +717,14 @@ html[data-t="dark"] {
   pointer-events: auto;
 }
 
-/* which chain, and the map: the sub-bar from bwtoken.io, hanging under the
-   right end of the header. Closed it says where you are; open it lists the
-   other worlds and the map, one row each, and closes again on any click. */
+/* which blockchain: the sub-bar from bwtoken.io, hanging under the menu, as
+   wide as the menu, put there by script. Closed it says where you are; open
+   it lists the worlds, one row each, and closes again on any click. */
 .subbar {
   position: fixed;
   z-index: 2;
   top: 57px;
-  right: 24px;
+  left: 0;
   width: 168px;
   height: 32px;
   overflow: hidden;
@@ -952,15 +998,14 @@ body.touch .touchpad-buttons {
     gap: 0 10px;
   }
 
-  .hud.top .gauge {
-    margin-right: -10px;
-  }
-
-  .hud.top .hint {
+  /* the mark alone: the name and the line make the menu wrap on a phone */
+  .hud.top .hint,
+  .hud.top h1 .name {
     display: none;
   }
 
-  .hud.top .tg {
+  /* the menu keeps to the stones, as there; the mark stays at the left */
+  .hud.top .navlinks {
     margin-left: auto;
   }
 
@@ -968,11 +1013,13 @@ body.touch .touchpad-buttons {
     display: none;
   }
 
-  /* under the header's right end, as on a wide screen, but in the flow */
-  .subbar {
-    position: static;
-    align-self: flex-end;
-    margin: 0 8px 0 auto;
+  .navlinks {
+    gap: 2px;
+    letter-spacing: 0.1em;
+  }
+
+  .navlinks a {
+    padding: 5px 7px;
   }
 
   .hud .hint {
@@ -1041,5 +1088,22 @@ body.touch .touchpad-buttons {
   .welcome-card button {
     min-height: 44px;
     font-size: 14px;
+  }
+}
+
+@media (max-width: 360px) {
+  .hud.top {
+    gap: 0 5px;
+    padding: 4px 6px;
+  }
+
+  .navlinks {
+    gap: 0;
+    font-size: 11px;
+    letter-spacing: 0.05em;
+  }
+
+  .navlinks a {
+    padding: 5px 5px;
   }
 }

@@ -1000,17 +1000,22 @@ function strokesFor(structure: Structure, base: number): Stroke[] {
 
 /**
  * Which world this is, and the others: the chain is not a setting but the
- * ground you stand on, so it hangs under the header the way the sub-bar does
- * on bwtoken.io — closed, it says where you are; open, it lists the other
- * worlds and the map. Another world is entered by walking out of this one:
+ * ground you stand on, so it hangs under the menu the way the sub-bar does on
+ * bwtoken.io — as wide as the menu, closed it says where you are, open it
+ * lists the worlds. The corners frame the section you are in, which here is
+ * always the blockchain. Another world is entered by walking out of this one:
  * the page reloads, nothing carries over, as nothing should.
  */
 {
+  const header = document.querySelector<HTMLElement>('.hud.top');
+  const menu = document.querySelector<HTMLElement>('.navlinks');
+  const frame = document.querySelector<HTMLElement>('.navlinks .frame');
+  const section = document.querySelector<HTMLElement>('#blockchain');
   const bar = document.querySelector<HTMLElement>('#subbar');
   const sel = document.querySelector<HTMLElement>('#wsel');
   const cur = document.querySelector<HTMLElement>('#wcur');
   const list = document.querySelector<HTMLElement>('#wlist');
-  if (bar && sel && cur && list) {
+  if (header && menu && frame && section && bar && sel && cur && list) {
     cur.textContent = chain.name;
     const rows: HTMLElement[] = [];
     for (const other of Object.values(CHAINS)) {
@@ -1026,14 +1031,24 @@ function strokesFor(structure: Structure, base: number): Stroke[] {
       }
       rows.push(row);
     }
-    const map = document.createElement('a');
-    map.className = 'wopt';
-    map.textContent = 'the map ↗';
-    map.href = '/map.html';
-    map.target = '_blank';
-    map.rel = 'noopener';
-    rows.push(map);
     list.replaceChildren(...rows);
+
+    // the corners round the section, and the bar under the whole menu: both
+    // measured, as on the site, so they follow the text whatever the font
+    const align = () => {
+      const at = menu.getBoundingClientRect();
+      const on = section.getBoundingClientRect();
+      frame.style.left = `${on.left - at.left - 2}px`;
+      frame.style.top = `${on.top - at.top - 1}px`;
+      frame.style.width = `${on.width + 4}px`;
+      frame.style.height = `${on.height + 2}px`;
+      const links = menu.querySelectorAll('a');
+      const first = links[0]!.getBoundingClientRect();
+      const last = links[links.length - 1]!.getBoundingClientRect();
+      bar.style.left = `${Math.round(first.left)}px`;
+      bar.style.width = `${Math.round(last.right - first.left)}px`;
+      bar.style.top = `${Math.round(header.getBoundingClientRect().bottom)}px`;
+    };
 
     const ROW = 28;
     const PAD = 4;
@@ -1042,11 +1057,16 @@ function strokesFor(structure: Structure, base: number): Stroke[] {
       sel.setAttribute('aria-expanded', String(open));
       bar.style.height = `${PAD + (open ? rows.length : 1) * ROW}px`;
     };
+    align();
     show(false);
-    sel.addEventListener('click', (event) => {
+    addEventListener('resize', align);
+    const toggle = (event: Event) => {
+      event.preventDefault();
       event.stopPropagation();
       show(!document.body.classList.contains('listopen'));
-    });
+    };
+    sel.addEventListener('click', toggle);
+    section.addEventListener('click', toggle);
     list.addEventListener('click', (event) => event.stopPropagation());
     document.addEventListener('click', () => show(false));
   }

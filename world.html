@@ -9,12 +9,16 @@
   <body class="world">
     <canvas id="view"></canvas>
     <header class="hud top">
-      <span class="gauge" aria-hidden="true">&nbsp;</span>
-      <h1><span class="mark"></span>ground state</h1>
-      <p class="hint">the chain, on foot</p>
+      <h1><span class="mark"></span><span class="name">ground state</span></h1>
+      <p class="hint">the chain on foot</p>
+      <nav class="navlinks" aria-label="menu">
+        <a href="/map.html" target="_blank" rel="noopener">map</a>
+        <a class="active" href="#blockchain" id="blockchain">blockchain</a>
+        <span class="frame"><span class="c tl"></span><span class="c tr"></span><span class="c bl"></span><span class="c br"></span></span>
+      </nav>
       <div class="tg" id="tg" role="switch" aria-label="black or white" title="black / white"><div class="pair" id="pair"><span class="mini m1"></span><span class="mini m2"></span></div></div>
     </header>
-    <div class="subbar" id="subbar" aria-label="which chain, and the map">
+    <div class="subbar" id="subbar" aria-label="which blockchain">
       <div class="subinner">
         <div class="wsel" id="wsel" role="button" aria-expanded="false"><span class="wcur" id="wcur"></span></div>
         <div class="wlist" id="wlist"></div>

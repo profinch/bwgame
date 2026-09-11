@@ -39,8 +39,8 @@ What was decided, and why. What was refused, and why. Dated where the date matte
   set on the highest ground under it and reaches down to the lowest, so hills can be as steep as
   they like without breaking what stands on them.
 - **The header is bwtoken.io's nav to the pixel**, so a tab switch between the two moves nothing;
-  the chain and the map hang under it in the site's sub-bar. The line by the mark: *the chain, on
-  foot*.
+  the menu is the site's — *map*, *blockchain* with the corners round it — and the chains hang
+  under it in the site's sub-bar. The line by the mark: *the chain on foot*.
 - **English in code, comments, commits and UI, lowercase in UI.** One contributor in the history.
 
 ## Refused
