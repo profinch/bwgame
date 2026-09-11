@@ -179,10 +179,15 @@ async function standing(account: Account, vouched = false): Promise<Structure> {
 async function refresh(address: string): Promise<void> {
   const wanted = address.toLowerCase();
   const at = structures.findIndex((standing) => standing.address.toLowerCase() === wanted);
+  const wasDrawn = at >= 0 && structures[at]!.kind === 'framed';
   if (at >= 0) structures.splice(at, 1);
   const account = await accountAt(address);
   if (!account || !stands(account)) return settle();
-  raise(await standing(account, true));
+  const now = await standing(account, true);
+  // a drawing that has become a building goes up out of the ground; a
+  // building that has changed is simply itself again
+  if (wasDrawn && now.kind !== 'framed') startRising(now);
+  else raise(now);
 }
 
 /** Put a thing up where it stands. False if it was standing there already. */
@@ -231,15 +236,18 @@ async function raiseNearby(growing = false): Promise<void> {
       // down and put up again as the building it now is; anything else standing
       // is left alone
       const already = structures.find((standing) => standing.address.toLowerCase() === plot.toLowerCase());
+      let wasDrawn = false;
       if (already) {
         if (already.kind !== 'framed' || !(note || implementation)) continue;
         structures.splice(structures.indexOf(already), 1);
+        wasDrawn = true;
       }
       const account = await accountAt(plot);
       if (!account || !stands(account)) continue;
       if (origin.x !== here.x || origin.z !== here.z) return;
       const structure = await standing(account);
-      if (growing) startRising(structure);
+      // new to this world, or a drawing become a building: it goes up while you watch
+      if (growing || (wasDrawn && structure.kind !== 'framed')) startRising(structure);
       else raise(structure);
     }
   } finally {

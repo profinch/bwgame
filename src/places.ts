@@ -734,6 +734,53 @@ function carvedBlock(
   }
 }
 
+/** How much of a note is cut into a wall: this many words, this many signs each. */
+const NOTE_WORDS = 4;
+const NOTE_SIGNS = 10;
+
+/**
+ * A building with a note written into it carries the note on its front wall,
+ * in runes, a word a column — the same cutting as the relics' and the
+ * posts', so what is written reads the same everywhere. The wall is pulled
+ * in by the depth of the cut and the signs stand out to the wall's face. A
+ * building going up shows the signs its height has reached.
+ */
+function notedBuilding(structure: Structure, base: number, origin: { x: number; z: number }): Float32Array {
+  const cx = structure.x - origin.x;
+  const cz = structure.z - origin.z;
+  const c = Math.cos(structure.turn);
+  const sn = Math.sin(structure.turn);
+  const out: number[] = [];
+  const put = (lx: number, y: number, lz: number, w: number, h: number, d: number) =>
+    out.push(cx + c * lx + sn * lz, y, cz + c * lz - sn * lx, w, h, d, structure.turn, structure.albedo, structure.roughness, 0);
+
+  const sink = structure.sink ?? 0;
+  const grown = structure.grown ?? 1;
+  const reached = structure.tall * grown;
+  const words = (structure.plot?.note ?? '')
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, NOTE_WORDS)
+    .map((word) => word.slice(0, NOTE_SIGNS));
+  const { across, down, patches } = carve(words, structure.tall, structure.wide);
+  const cutIn = Math.max(across * 1.6, 0.003);
+  put(0, base - sink, -cutIn / 2, structure.wide, sink + reached, structure.deep - cutIn);
+  for (const { col, row, cols, rows } of patches) {
+    const top = structure.tall - row * down;
+    if (top > reached + 1e-6) continue;
+    put(
+      (col + cols / 2 - WALL / 2) * across,
+      base + structure.tall - (row + rows) * down,
+      structure.deep / 2 - cutIn / 2,
+      cols * across,
+      rows * down,
+      cutIn,
+    );
+  }
+  return new Float32Array(out);
+}
+
 /** The boxes a relic is made of: the plaque on a boulder, the whole of a gate. */
 function relicPieces(structure: Structure, base: number, origin: { x: number; z: number }): Float32Array {
   const cx = structure.x - origin.x;
@@ -854,14 +901,15 @@ export function blocksOf(
 export const MESHED_WALLS = false;
 
 export function instanceOf(structure: Structure, base: number, origin = { x: 0, z: 0 }): Float32Array {
-  // a building on a slope reaches down to the lowest ground under it
+  // a building on a slope reaches down to the lowest ground under it; one
+  // going up is as tall as it has grown
   const sink = structure.sink ?? 0;
   return new Float32Array([
     structure.x - origin.x,
     base - sink,
     structure.z - origin.z,
     structure.wide,
-    structure.tall + sink,
+    sink + structure.tall * (structure.grown ?? 1),
     structure.deep,
     structure.turn,
     structure.albedo,
@@ -924,6 +972,7 @@ export function piecesOf(structure: Structure, base: number, origin = { x: 0, z:
   // a drawing is not made of stone: see blueprint.ts
   if (structure.kind === 'framed') return new Float32Array(0);
   if (structure.kind === 'relic') return relicPieces(structure, base, origin);
+  if (structure.kind === 'built' && structure.plot?.note) return notedBuilding(structure, base, origin);
   if (structure.kind !== 'written') return instanceOf(structure, base, origin);
 
   const posts = structure.posts ?? [];
