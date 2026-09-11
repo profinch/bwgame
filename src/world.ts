@@ -791,7 +791,11 @@ window.addEventListener('keyup', (event) => {
 window.addEventListener('blur', () => held.clear());
 
 // whatever was uncovered should still be uncovered tomorrow
-window.addEventListener('pagehide', () => coverage.save());
+window.addEventListener('pagehide', () => {
+  coverage.save();
+  // out of the room before the page goes, so nobody is left standing here
+  live?.close();
+});
 
 let looking: { x: number; y: number } | null = null;
 

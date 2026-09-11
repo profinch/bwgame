@@ -150,8 +150,15 @@ export class Live {
     }
   }
 
+  /**
+   * Leave the room, saying so: a closing socket may take the edge in front of
+   * the server half a minute to notice, and until it did you stood there still
+   * — and came back to yourself as somebody else.
+   */
   close(): void {
     this.closed = true;
-    this.socket?.close();
+    const socket = this.socket;
+    if (socket && socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ t: 'bye' }));
+    socket?.close();
   }
 }

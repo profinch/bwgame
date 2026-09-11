@@ -25,8 +25,8 @@ const ROOM = process.env.ROOM ?? 'sepolia';
 /** How often the rooms are told where everybody is, and how often the subgraph is asked. */
 const TELLS_EVERY = 100;
 const ASKS_EVERY = 4000;
-/** A person who has said nothing for this long has gone. Clients speak at least every few seconds. */
-const GONE_AFTER = 30_000;
+/** A person who has said nothing for this long has gone. Clients speak at least every five seconds. */
+const GONE_AFTER = 12_000;
 /** How often a socket is pinged, so the edge in front of us does not close it as idle. */
 const PINGS_EVERY = 25_000;
 
@@ -77,6 +77,15 @@ sockets.on('connection', (socket) => {
       person = { id, x: 0, z: 0, yaw: 0, dig: false, seen: Date.now(), socket };
       room(inRoom).set(id, person);
       tell(socket, { t: 'you', id });
+      return;
+    }
+    // leaving, said out loud: gone at once, however long the edge in front of
+    // us takes to notice the socket has closed
+    if (message.t === 'bye') {
+      if (inRoom) room(inRoom).delete(id);
+      inRoom = null;
+      person = null;
+      socket.close();
       return;
     }
     if (message.t === 'at' && person && inRoom) {
