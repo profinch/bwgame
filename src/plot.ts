@@ -175,7 +175,29 @@ let graphSeen = 0;
  * with one. One query says everything the logs would, and more: what is
  * written into each plot, which the logs cannot say without a call per plot.
  */
+/**
+ * What has changed, from the live server's copy of the subgraph's answer —
+ * the same rows, read once by one server for everybody, since Studio
+ * throttles the subgraph as a whole. Null if the server did not answer.
+ */
+async function fromFeed(): Promise<Claimed[] | null> {
+  if (!chain.plotsFeed) return null;
+  try {
+    const response = await fetch(`${chain.plotsFeed}?since=${graphSeen}`);
+    if (!response.ok) return null;
+    const answer = (await response.json()) as { block?: number; plots?: unknown };
+    const page = plotsInGraph({ data: { _meta: { block: { number: answer.block ?? 0 } }, plots: answer.plots } });
+    if (page === null) return null;
+    graphSeen = Math.max(graphSeen, page.block);
+    return page.plots;
+  } catch {
+    return null;
+  }
+}
+
 async function fromGraph(): Promise<Claimed[] | null> {
+  const fed = await fromFeed();
+  if (fed) return fed;
   if (!chain.subgraph) return null;
   const changed: Claimed[] = [];
   let current = 0;
@@ -278,6 +300,9 @@ export async function claimedPlots(): Promise<Claimed[]> {
     known = fold(known, changed);
     return known;
   }
+  // nothing answered: what was known stays known — the logs, read off a
+  // public gateway, can say less than the index already has
+  if (known.length) return known;
   known = fold(known, await readClaims(current));
   return known;
 }

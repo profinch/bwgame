@@ -64,6 +64,8 @@ export interface Chain {
    * gateway will search.
    */
   subgraph?: string;
+  /** The live server's copy of the subgraph's answer, asked first: one asker for everybody. */
+  plotsFeed?: string;
   /**
    * An indexer that can say what a wallet holds.
    *
@@ -148,6 +150,9 @@ export const CHAINS: Record<string, Chain> = {
     // pinned: Studio throttles `version/latest` to a trickle (429 for everyone,
     // 12.09.2026), a numbered version it does not. Bump it on every deploy.
     subgraph: 'https://api.studio.thegraph.com/query/1760017/ground-state/v0.5.0',
+    // Studio throttles the subgraph as a whole, so pages read the live
+    // server's copy of its answer, and only that server asks Studio
+    plotsFeed: 'https://gs.bwtoken.io/live/plots',
     tokens: [
       { at: '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238', symbol: 'usdc', decimals: 6 },
       { at: '0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14', symbol: 'weth', decimals: 18 },

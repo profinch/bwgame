@@ -33,6 +33,12 @@ every four seconds. Rebuild the image and recreate the container to update.
 
 ## The subgraph
 
+Studio throttles a subgraph as a whole: on 12.09.2026 every version answered 429 to everyone. So
+only the live server asks Studio (every 30 s, backing off to 10 min when refused), keeps every row
+it has ever been given, and serves them at `https://gs.bwtoken.io/live/plots?since=<block>`; pages
+read that feed first, Studio only if the feed is down, and the factory's logs last — and never
+replace what they already know with less.
+
 ```bash
 cd subgraph && npm install
 npm run codegen && npm run build

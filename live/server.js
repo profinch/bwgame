@@ -24,7 +24,14 @@ const ROOM = process.env.ROOM ?? 'sepolia';
 
 /** How often the rooms are told where everybody is, and how often the subgraph is asked. */
 const TELLS_EVERY = 100;
-const ASKS_EVERY = 4000;
+/**
+ * The subgraph is asked from here and nowhere else: Subgraph Studio throttles
+ * a subgraph as a whole (429 to everyone, 12.09.2026), so one asker every
+ * half minute, backing off when refused, and every page reads the answer from
+ * this server's feed instead.
+ */
+const ASKS_EVERY = 30_000;
+const ASKS_AT_MOST_EVERY = 600_000;
 /** A person who has said nothing for this long has gone. Clients speak at least every five seconds. */
 const GONE_AFTER = 12_000;
 /** How often a socket is pinged, so the edge in front of us does not close it as idle. */
@@ -48,11 +55,24 @@ function tell(socket, message) {
 }
 
 const http = createServer((request, response) => {
+  const url = new URL(request.url ?? '/', 'http://x');
+  // the feed: every plot the subgraph has said, or those changed since a block
+  if (url.pathname.endsWith('/plots')) {
+    const since = Number(url.searchParams.get('since') ?? 0) || 0;
+    const rows = [...plots.values()].filter((p) => Number(p.updatedIn) > since);
+    response.writeHead(graphBlock ? 200 : 503, {
+      'content-type': 'application/json',
+      'cache-control': 'no-store',
+      'access-control-allow-origin': '*',
+    });
+    response.end(JSON.stringify({ block: graphBlock, plots: rows }));
+    return;
+  }
   // a plain request gets a plain answer, so a health check has something to read
   response.writeHead(200, { 'content-type': 'application/json' });
   const counts = {};
   for (const [name, people] of rooms) counts[name] = people.size;
-  response.end(JSON.stringify({ rooms: counts }));
+  response.end(JSON.stringify({ rooms: counts, plots: plots.size, block: graphBlock }));
 });
 
 const sockets = new WebSocketServer({ server: http, maxPayload: 4096 });
@@ -138,6 +158,13 @@ setInterval(() => {
 
 // what has changed, from the subgraph, once for everybody
 let graphSeen = 0;
+/** The block the subgraph's last answer was current at: what the feed says it is as of. */
+let graphBlock = 0;
+/** Every plot the subgraph has said, by address, as the subgraph shapes a row. */
+const plots = new Map();
+/** How long until the next ask: the usual, or longer after a refusal. */
+let asksIn = ASKS_EVERY;
+
 async function askTheGraph() {
   if (!SUBGRAPH) return;
   try {
@@ -148,26 +175,35 @@ async function askTheGraph() {
         query:
           `{ _meta { block { number } } ` +
           `plots(first: 1000, orderBy: updatedIn, where: { updatedIn_gt: ${graphSeen} }) ` +
-          `{ id owner { id } note updatedIn } }`,
+          `{ id owner { id } note updatedIn implementation salt name } }`,
       }),
     });
-    if (!response.ok) return;
+    if (!response.ok) {
+      // refused: ask less often, up to ten minutes apart, until it answers again
+      asksIn = Math.min(ASKS_AT_MOST_EVERY, asksIn * 2);
+      console.error(`${new Date().toISOString()} the subgraph refused (${response.status}); asking again in ${asksIn / 1000}s`);
+      return;
+    }
+    asksIn = ASKS_EVERY;
     const answer = await response.json();
-    const plots = answer?.data?.plots;
+    const rows = answer?.data?.plots;
     const block = answer?.data?._meta?.block?.number ?? 0;
-    if (!Array.isArray(plots)) return;
+    if (!Array.isArray(rows)) return;
+    for (const row of rows) if (typeof row?.id === 'string') plots.set(row.id.toLowerCase(), row);
     const first = graphSeen === 0;
     graphSeen = Math.max(graphSeen, block);
+    graphBlock = Math.max(graphBlock, block);
     // the first answer is the whole world as it stands; nobody needs telling
-    if (first || plots.length === 0) return;
-    const changed = plots.map((p) => ({ plot: p.id, owner: p.owner?.id, note: p.note, updatedIn: Number(p.updatedIn) }));
+    if (first || rows.length === 0) return;
+    const changed = rows.map((p) => ({ plot: p.id, owner: p.owner?.id, note: p.note, updatedIn: Number(p.updatedIn) }));
     for (const person of room(ROOM).values()) tell(person.socket, { t: 'changed', plots: changed });
     console.log(`${new Date().toISOString()} told ${room(ROOM).size} about ${changed.length} changed plot(s)`);
   } catch (error) {
     console.error('the subgraph did not answer:', error?.message ?? error);
+  } finally {
+    setTimeout(askTheGraph, asksIn);
   }
 }
-setInterval(askTheGraph, ASKS_EVERY);
 void askTheGraph();
 
 http.listen(PORT, () => console.log(`live on :${PORT}, watching ${SUBGRAPH || 'nothing'} for ${ROOM}`));
