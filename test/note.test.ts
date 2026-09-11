@@ -23,20 +23,30 @@ describe('a note on a building', () => {
     const pieces = piecesOf(noted('profinch was here'), 10);
     const count = pieces.length / INSTANCE_FLOATS;
     expect(count).toBeGreaterThan(20);
-    // the cut is 1.6 cells deep, a cell being a thirtieth of the wall: the body
-    // is pulled in by it, and every sign stands out to the front face
-    const cutIn = 1.6 * (6 / 30);
-    expect(pieces[5]).toBeCloseTo(5 - cutIn, 5);
-    for (let i = INSTANCE_FLOATS; i < pieces.length; i += INSTANCE_FLOATS) expect(pieces[i + 2]).toBeCloseTo(2.5 - cutIn / 2, 5);
+    // the wall is left as it is; the signs, a post's cells in size, stand out
+    // of the front face by a finger's breadth, low on the wall
+    const across = 0.5 / 30;
+    const cutIn = 1.6 * across;
+    expect(pieces[5]).toBeCloseTo(5, 5);
+    for (let i = INSTANCE_FLOATS; i < pieces.length; i += INSTANCE_FLOATS) {
+      expect(pieces[i + 2]).toBeCloseTo(2.5 + cutIn / 2, 5);
+      expect(pieces[i + 1]!).toBeGreaterThanOrEqual(10 + 0.3);
+      expect(pieces[i + 1]! + pieces[i + 4]!).toBeLessThan(10 + 3);
+      // a stroke is never wider than a sign
+      expect(pieces[i + 3]!).toBeLessThanOrEqual(across * 9 + 1e-6);
+    }
   });
   it('a plain building is one box', () => {
     expect(piecesOf(noted(''), 10).length / INSTANCE_FLOATS).toBe(1);
   });
   it('going up, the wall shows the signs its height has reached', () => {
-    const low = piecesOf(noted('profinch was here', 0.2), 10).length;
-    const half = piecesOf(noted('profinch was here', 0.6), 10).length;
+    // the writing is low on the wall: at a fifth of the height none of it has
+    // come up yet, at a third all of it has
+    const low = piecesOf(noted('profinch was here', 0.02), 10).length;
+    const half = piecesOf(noted('profinch was here', 0.15), 10).length;
     const whole = piecesOf(noted('profinch was here', 1), 10).length;
-    expect(low).toBeLessThan(half);
+    expect(low).toBe(INSTANCE_FLOATS);
+    expect(half).toBeGreaterThan(low);
     expect(half).toBeLessThan(whole);
     expect(piecesOf(noted('profinch was here', 0.2), 10)[4]).toBeCloseTo(9 * 0.2, 5);
   });

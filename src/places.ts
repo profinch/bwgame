@@ -408,7 +408,7 @@ export const CELLS_ACROSS = WALL;
  * The writing hangs from the top of the wall unless `foot` is set, in which
  * case it stands on the bottom edge.
  */
-export function carve(words: readonly string[], tall: number, wide: number, foot = false) {
+export function carve(words: readonly string[], tall: number, wide: number, foot = false, raised = false) {
   const columns = words.map((word) => [...word]);
   const lines = Math.max(1, ...columns.map((column) => column.length));
   const across = wide / WALL;
@@ -439,6 +439,9 @@ export function carve(words: readonly string[], tall: number, wide: number, foot
     }
   }
 
+  // cut, the patches are the stone left standing between the strokes; raised,
+  // they are the strokes themselves, to stand out of a wall left as it is
+  if (raised) for (let i = 0; i < cut.length; i++) cut[i] = cut[i] === 1 ? 0 : 1;
   return { columns, lines, size, across, down, high, patches: mergeOf(cut, WALL, high) };
 }
 
@@ -737,13 +740,17 @@ function carvedBlock(
 /** How much of a note is cut into a wall: this many words, this many signs each. */
 const NOTE_WORDS = 4;
 const NOTE_SIGNS = 10;
+/** How high above the ground the note's foot is, and how high the writing may reach. */
+const NOTE_FOOT = 0.3;
 
 /**
- * A building with a note written into it carries the note on its front wall,
- * in runes, a word a column — the same cutting as the relics' and the
- * posts', so what is written reads the same everywhere. The wall is pulled
- * in by the depth of the cut and the signs stand out to the wall's face. A
- * building going up shows the signs its height has reached.
+ * A building with a note written into it carries the note low on its front
+ * wall, in small runes — the size of the signs on a wallet's posts, a word a
+ * column, the columns side by side as posts stand — cut the same way as all
+ * writing here, so it reads the same everywhere — raised rather than cut, so
+ * the wall itself is left as it is and the strokes stand out of it by a
+ * finger's breadth. A building going up shows the signs its height has
+ * reached.
  */
 function notedBuilding(structure: Structure, base: number, origin: { x: number; z: number }): Float32Array {
   const cx = structure.x - origin.x;
@@ -757,27 +764,31 @@ function notedBuilding(structure: Structure, base: number, origin: { x: number; 
   const sink = structure.sink ?? 0;
   const grown = structure.grown ?? 1;
   const reached = structure.tall * grown;
+  put(0, base - sink, 0, structure.wide, sink + reached, structure.deep);
+
+  // as many words as the wall has room for, a post's width each
+  const room = Math.max(0, Math.floor((structure.wide - POST) / POST));
   const words = (structure.plot?.note ?? '')
     .toLowerCase()
     .split(/\s+/)
     .filter(Boolean)
-    .slice(0, NOTE_WORDS)
+    .slice(0, Math.min(NOTE_WORDS, room))
     .map((word) => word.slice(0, NOTE_SIGNS));
-  const { across, down, patches } = carve(words, structure.tall, structure.wide);
+  const across = POST / WALL;
   const cutIn = Math.max(across * 1.6, 0.003);
-  put(0, base - sink, -cutIn / 2, structure.wide, sink + reached, structure.deep - cutIn);
-  for (const { col, row, cols, rows } of patches) {
-    const top = structure.tall - row * down;
-    if (top > reached + 1e-6) continue;
-    put(
-      (col + cols / 2 - WALL / 2) * across,
-      base + structure.tall - (row + rows) * down,
-      structure.deep / 2 - cutIn / 2,
-      cols * across,
-      rows * down,
-      cutIn,
-    );
-  }
+  const foot = base + NOTE_FOOT;
+  words.forEach((word, i) => {
+    // a column tall enough for the word, standing on its foot
+    const lines = [...word].length;
+    const tall = Math.min(structure.tall - NOTE_FOOT, (lines * 11 + 2 * EDGE + 2) * across);
+    const { down, patches } = carve([word], tall, POST, true, true);
+    const at = -structure.wide / 2 + POST * (i + 1);
+    for (const { col, row, cols, rows } of patches) {
+      const top = NOTE_FOOT + tall - row * down;
+      if (top > reached + 1e-6) continue;
+      put(at + (col + cols / 2 - WALL / 2) * across, foot + tall - (row + rows) * down, structure.deep / 2 + cutIn / 2, cols * across, rows * down, cutIn);
+    }
+  });
   return new Float32Array(out);
 }
 
