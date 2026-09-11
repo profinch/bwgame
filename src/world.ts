@@ -1008,7 +1008,8 @@ function strokesFor(structure: Structure, base: number): Stroke[] {
 /**
  * The menu, as on bwtoken.io. The corners frame the whole of it until a
  * section is chosen. "map" brings the map up in this page under this header,
- * and frames itself. "blockchain" frames itself and slides the sub-bar down
+ * and frames itself. "panels" frames itself and slides down a row a panel,
+ * each put away or brought back with a press. "blockchain" frames itself and slides the sub-bar down
  * with the worlds listed, this one bright, the one to take ground on first;
  * choosing another world is walking out of this one — the page reloads,
  * nothing carries over, as nothing should — and a click elsewhere or on this
@@ -1019,6 +1020,7 @@ function strokesFor(structure: Structure, base: number): Stroke[] {
   const menu = document.querySelector<HTMLElement>('.navlinks');
   const frame = document.querySelector<HTMLElement>('.navlinks .frame');
   const mapLink = document.querySelector<HTMLAnchorElement>('#map');
+  const panelsLink = document.querySelector<HTMLAnchorElement>('#panels');
   const chainLink = document.querySelector<HTMLAnchorElement>('#blockchain');
   const clip = document.querySelector<HTMLElement>('#subclip');
   const bar = document.querySelector<HTMLElement>('#subbar');
@@ -1026,11 +1028,11 @@ function strokesFor(structure: Structure, base: number): Stroke[] {
   const cur = document.querySelector<HTMLElement>('#wcur');
   const list = document.querySelector<HTMLElement>('#wlist');
   const mapView = document.querySelector<HTMLIFrameElement>('#mapview');
-  const panelClip = document.querySelector<HTMLElement>('#panelclip');
   const panelBar = document.querySelector<HTMLElement>('#panelbar');
   const panelSel = document.querySelector<HTMLElement>('#psel');
-  if (header && menu && frame && mapLink && chainLink && clip && bar && sel && cur && list && mapView
-    && panelClip && panelBar && panelSel) {
+  const panelList = document.querySelector<HTMLElement>('#plist');
+  if (header && menu && frame && mapLink && panelsLink && chainLink && clip && bar && sel && cur && list && mapView
+    && panelBar && panelSel && panelList) {
     cur.textContent = chain.name;
     // sepolia first: the world where ground is taken
     const worlds = [CHAINS.sepolia, CHAINS.mainnet].filter((it) => it !== undefined);
@@ -1084,22 +1086,29 @@ function strokesFor(structure: Structure, base: number): Stroke[] {
       clip.style.width = `${Math.round(last.right - first.left) + 2 * ROOM}px`;
       const under = Math.round(header.getBoundingClientRect().bottom);
       clip.style.top = `${under}px`;
-      // the panels' bar under the left end, as wide as the title, never narrower than the list needs
-      const bar0 = header.getBoundingClientRect().left + 13;
-      const title = header.querySelector<HTMLElement>('h1')!.getBoundingClientRect();
-      const wide = Math.max(160, Math.round(title.width));
-      panelClip.style.left = `${Math.round(bar0) - ROOM}px`;
-      panelClip.style.width = `${wide + 2 * ROOM}px`;
-      panelClip.style.top = `${under}px`;
     };
 
-    let section: 'map' | 'blockchain' | null = null;
+    // the panels: down with the menu's "panels", a row a panel behind the arrow
+    const panels = new Panels(panelList);
+    const foldPanels = (open: boolean) => {
+      document.body.classList.toggle('plistopen', open);
+      panelSel.setAttribute('aria-expanded', String(open));
+      panelBar.style.height = `${PAD + (open ? panels.count : 1) * ROW}px`;
+    };
+    foldPanels(false);
+    clip.style.height = `${PAD + Math.max(rows.length, panels.count) * ROW + ROOM}px`;
+
+    let section: 'map' | 'panels' | 'blockchain' | null = null;
     const show = (next: typeof section) => {
       section = next;
       unfold(false);
+      foldPanels(false);
       document.body.classList.toggle('subopen', next === 'blockchain');
+      document.body.classList.toggle('panelsopen', next === 'panels');
       mapLink.classList.toggle('active', next === 'map');
+      panelsLink.classList.toggle('active', next === 'panels');
       chainLink.classList.toggle('active', next === 'blockchain');
+      panelsLink.setAttribute('aria-expanded', String(next === 'panels'));
       chainLink.setAttribute('aria-expanded', String(next === 'blockchain'));
       document.body.classList.toggle('onmap', next === 'map');
       // the map fades in as the site's pages do — the first time only once
@@ -1115,34 +1124,16 @@ function strokesFor(structure: Structure, base: number): Stroke[] {
         mapView.classList.remove('on');
       }
       history.replaceState(null, '', next === 'map' ? '#map' : location.pathname + location.search);
-      place(next === 'map' ? mapLink : next === 'blockchain' ? chainLink : 'group');
+      place(next === 'map' ? mapLink : next === 'panels' ? panelsLink : next === 'blockchain' ? chainLink : 'group');
     };
-    // the panels: a row a panel behind the arrow
-    {
-      const panels = new Panels(document.querySelector<HTMLElement>('#plist')!);
-      const fold = (open: boolean) => {
-        document.body.classList.toggle('panelsopen', open);
-        panelSel.setAttribute('aria-expanded', String(open));
-        panelBar.style.height = `${PAD + (open ? panels.count : 1) * ROW}px`;
-      };
-      panelClip.style.height = `${PAD + panels.count * ROW + ROOM}px`;
-      fold(false);
-      const foldOrUnfold = (event: Event) => {
-        event.stopPropagation();
-        fold(!document.body.classList.contains('panelsopen'));
-      };
-      panelSel.addEventListener('click', foldOrUnfold);
-      panelBar.querySelector<HTMLElement>('.subarrow')!.addEventListener('click', foldOrUnfold);
-      panelBar.addEventListener('click', (event) => event.stopPropagation());
-      document.addEventListener('click', () => fold(false));
-    }
+    const framed = () => (section === 'map' ? mapLink : section === 'panels' ? panelsLink : section === 'blockchain' ? chainLink : 'group');
 
     // the corners' first placing is not a move: no transition until they are placed
     frame.style.transition = 'none';
     show(location.hash === '#map' ? 'map' : null);
     void frame.offsetWidth;
     frame.style.transition = '';
-    addEventListener('resize', () => place(section === 'map' ? mapLink : section === 'blockchain' ? chainLink : 'group'));
+    addEventListener('resize', () => place(framed()));
 
     mapLink.addEventListener('click', (event) => {
       event.preventDefault();
@@ -1155,6 +1146,19 @@ function strokesFor(structure: Structure, base: number): Stroke[] {
       // pressed again: the bar goes back up, and the corners round the menu
       show(section === 'blockchain' ? null : 'blockchain');
     });
+    panelsLink.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      show(section === 'panels' ? null : 'panels');
+    });
+    // a row pressed keeps the bar down: several may be put away in a row
+    panelBar.addEventListener('click', (event) => event.stopPropagation());
+    const unfoldOrFoldPanels = (event: Event) => {
+      event.stopPropagation();
+      foldPanels(!document.body.classList.contains('plistopen'));
+    };
+    panelSel.addEventListener('click', unfoldOrFoldPanels);
+    panelBar.querySelector<HTMLElement>('.subarrow')!.addEventListener('click', unfoldOrFoldPanels);
     const unfoldOrFold = (event: Event) => {
       event.stopPropagation();
       unfold(!document.body.classList.contains('listopen'));
@@ -1169,7 +1173,8 @@ function strokesFor(structure: Structure, base: number): Stroke[] {
     document.addEventListener('click', () => {
       // a click elsewhere folds the list first, and sends the bar up next
       if (document.body.classList.contains('listopen')) unfold(false);
-      else if (section === 'blockchain') show(null);
+      else if (document.body.classList.contains('plistopen')) foldPanels(false);
+      else if (section === 'blockchain' || section === 'panels') show(null);
     });
   }
 }

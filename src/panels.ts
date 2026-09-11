@@ -1,8 +1,7 @@
 /**
- * Which panels are on the screen: a filter under the left end of the header,
- * in the sub-bar of bwtoken.io. Closed it says "panels"; the arrow unfolds a
- * row a panel, bright when it is shown, dim when it is not. The choice is kept
- * in this browser.
+ * Which panels are on the screen: "panels" in the menu, and under it, in the
+ * sub-bar of bwtoken.io, a row a panel — bright when it is shown, dim when it
+ * is not. The choice is kept in this browser.
  *
  * A panel put away is hidden by a class on the body. The other players and the
  * block overhead are not panels and are never put away: they are the world.

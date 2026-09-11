@@ -765,7 +765,7 @@ html[data-t="dark"] {
 }
 
 body.subopen #subbar,
-#panelbar {
+body.panelsopen #panelbar {
   transform: translateY(0);
   pointer-events: auto;
   visibility: visible;
@@ -848,24 +848,18 @@ body.listopen .subarrow {
   transform: translateY(0) rotate(-135deg);
 }
 
-/* the left bar folds on its own body class, the right one on the site's */
-#panelbar .wlist,
-#panelbar .wsel,
-#panelbar .subarrow {
-  transition-property: opacity, transform;
-}
-
-body.panelsopen #panelbar .wlist {
+/* the panels' bar unfolds on its own class, the worlds' on the site's */
+body.plistopen #panelbar .wlist {
   opacity: 1;
   pointer-events: auto;
 }
 
-body.panelsopen #panelbar .wsel {
+body.plistopen #panelbar .wsel {
   opacity: 0;
   pointer-events: none;
 }
 
-body.panelsopen #panelbar .subarrow {
+body.plistopen #panelbar .subarrow {
   transform: translateY(0) rotate(-135deg);
 }
 

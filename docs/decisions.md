@@ -38,7 +38,7 @@ What was decided, and why. What was refused, and why. Dated where the date matte
 - **Buildings stand on foundations, the ground is not flattened** (11.09.2026): a structure is
   set on the highest ground under it and reaches down to the lowest, so hills can be as steep as
   they like without breaking what stands on them.
-- **Panels are a filter**, in the site's sub-bar under the left end of the header: readings, claim,
+- **Panels are a filter**, *panels* in the menu with the site's sub-bar under it: readings, claim,
   owner, each put away or brought back, kept in the browser. The
   other players and the sky are not panels: they are the world, and stay.
 - **No shadows** on the header, the bars, the stones or the panels: in a world of tones and turned
