@@ -391,6 +391,7 @@ body.world {
    the sides, 36px tall, the stones 12px in from the right edge — so switching
    tabs between the two sites moves nothing. */
 .hud.top {
+  z-index: 3;
   top: 20px;
   left: 24px;
   right: 24px;
@@ -729,7 +730,7 @@ html[data-t="dark"] {
    taller than the header. */
 .subclip {
   position: fixed;
-  z-index: 1;
+  z-index: 2; /* over the map, under the header it slides behind */
   top: 57px;
   left: 0;
   width: 216px;
