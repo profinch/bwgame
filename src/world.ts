@@ -376,15 +376,15 @@ function sideInside(atX: number, atZ: number, off: number): number {
   return Math.atan2(middle.x / 2 - atX, middle.z / 2 - atZ);
 }
 
-function arriveAt(x: number, z: number): void {
+function arriveAt(x: number, z: number, off = ALIGHT): void {
   origin.x = x;
   origin.z = z;
   descent = DESCENT_FROM;
   // beside the address rather than on it: arriving dead on one puts you inside
   // whatever stands there, and the inside of a building is not drawn
-  alightAngle = sideInside(x, z, ALIGHT);
-  player.x = Math.sin(alightAngle) * ALIGHT;
-  player.z = Math.cos(alightAngle) * ALIGHT;
+  alightAngle = sideInside(x, z, off);
+  player.x = Math.sin(alightAngle) * off;
+  player.z = Math.cos(alightAngle) * off;
   // forward is -z at yaw zero; facing the address means facing back along the radius
   player.yaw = Math.atan2(player.x, player.z);
   player.pitch = -0.2;
@@ -601,12 +601,13 @@ const spray = renderer.add(box(), new Float32Array(chips.instances.length), true
  * The first stand is somewhere on a ring round home, a different somewhere
  * each time, so two people opening the page do not open it inside each other.
  */
-const firstAngle = sideInside(0, 0, 150);
+const FIRST_RING = 150;
+const firstAngle = sideInside(0, 0, FIRST_RING);
 const player = {
-  x: Math.sin(firstAngle) * 150,
-  z: Math.cos(firstAngle) * 150,
+  x: Math.sin(firstAngle) * FIRST_RING,
+  z: Math.cos(firstAngle) * FIRST_RING,
   y: 0,
-  yaw: Math.atan2(Math.sin(firstAngle) * 150, Math.cos(firstAngle) * 150),
+  yaw: Math.atan2(Math.sin(firstAngle) * FIRST_RING, Math.cos(firstAngle) * FIRST_RING),
   pitch: -0.03,
   rise: 0,
 };
@@ -1540,11 +1541,15 @@ going.addEventListener('submit', async (event) => {
 });
 
 window.addEventListener('keydown', (event) => {
-  // h is home: a Mac keyboard has no Home key, and one key is one word to learn
+  // h is home: a Mac keyboard has no Home key, and one key is one word to learn.
+  // Home is where the first time in begins — somewhere on the ring round the
+  // factory, facing it — not the spot beside it a travel ends on
   if (event.code !== 'KeyH' || document.activeElement === where) return;
   if (event.metaKey || event.ctrlKey || event.altKey) return;
   event.preventDefault();
-  void travelTo(HOME);
+  taking.stop();
+  arriveAt(0, 0, FIRST_RING);
+  void raiseNearby();
   arrived = '';
 });
 
