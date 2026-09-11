@@ -115,6 +115,8 @@ export interface Claimed {
   salt?: string;
   /** Its name under groundstate.eth, if whoever answered knew. */
   name?: string;
+  /** Which factory made it (1, 2, 3), if whoever answered knew. */
+  generation?: number;
 }
 
 /** The plots named in a batch of `Claimed` logs. */
@@ -141,6 +143,7 @@ export function plotsInGraph(answer: unknown): { plots: Claimed[]; block: number
     implementation?: string | null;
     salt?: string;
     name?: string | null;
+    generation?: number;
   }[]) {
     if (typeof row.id !== 'string' || typeof row.owner?.id !== 'string') continue;
     plots.push({
@@ -151,6 +154,7 @@ export function plotsInGraph(answer: unknown): { plots: Claimed[]; block: number
       implementation: row.implementation === undefined ? undefined : row.implementation,
       salt: typeof row.salt === 'string' ? row.salt : undefined,
       name: row.name === undefined ? undefined : (row.name ?? ''),
+      generation: typeof row.generation === 'number' ? row.generation : undefined,
     });
   }
   return { plots, block: data._meta?.block?.number ?? 0 };
@@ -278,6 +282,9 @@ export async function claimedPlots(): Promise<Claimed[]> {
  * put, and nothing more to this world — but the ground shows what stands on it.
  */
 export async function formerPlots(): Promise<Claimed[]> {
+  // the subgraph indexes the earlier factories too, and unlike a public
+  // gateway it does not quietly answer "no logs" for blocks it never kept
+  if (graphSeen > 0) return [];
   const out: Claimed[] = [];
   for (const reader of former) out.push(...(await readClaims(reader)));
   return out;

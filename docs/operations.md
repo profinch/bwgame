@@ -40,9 +40,14 @@ npx graph auth <deploy key>                       # once
 npx graph deploy ground-state --version-label vX.Y.Z --node https://api.studio.thegraph.com/deploy/
 ```
 
-Clients and the live server query `version/latest`, so a new version needs no change elsewhere.
+Clients (`subgraph` in `src/chains.ts`) and the live server (`SUBGRAPH` in its environment) query
+a **numbered** version, not `version/latest`: Studio throttles `version/latest` and answered 429 to
+everyone on 12.09.2026, while numbered versions answered. After a deploy, change both and recreate
+the live container.
 When the factory or `Names` is redeployed, change the addresses and start blocks in
-`subgraph/subgraph.yaml` and deploy a new version.
+`subgraph/subgraph.yaml` (an old factory stays as a `Plots*` data source: its plots are relics)
+and deploy a new version. Public gateways are not trusted for old logs: publicnode answered an
+empty list for the first factory's `Claimed` events three days after they happened.
 
 ## Contracts
 

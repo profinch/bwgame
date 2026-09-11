@@ -144,8 +144,10 @@ export const CHAINS: Record<string, Chain> = {
       parent: 'groundstate.eth',
       names: '0x2E32A8CE61f46c7276Bc3786e0a7AE32da2E29ED',
     },
-    // the subgraph in subgraph/, deployed to Subgraph Studio; "latest" follows redeploys
-    subgraph: 'https://api.studio.thegraph.com/query/1760017/ground-state/version/latest',
+    // the subgraph in subgraph/, deployed to Subgraph Studio. A version is
+    // pinned: Studio throttles `version/latest` to a trickle (429 for everyone,
+    // 12.09.2026), a numbered version it does not. Bump it on every deploy.
+    subgraph: 'https://api.studio.thegraph.com/query/1760017/ground-state/v0.5.0',
     tokens: [
       { at: '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238', symbol: 'usdc', decimals: 6 },
       { at: '0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14', symbol: 'weth', decimals: 18 },

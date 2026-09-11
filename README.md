@@ -113,7 +113,7 @@ link: `?at=0x…` or `?at=name.eth`; `?chain=mainnet` walks the mainnet instead.
 |---|---|
 | plot factory (Sepolia) | [`0xcEa322619d375B381bff95e53a02Ef92Ea81B5Df`](https://eth-sepolia.blockscout.com/address/0xcEa322619d375B381bff95e53a02Ef92Ea81B5Df), deployed in block 11674690 |
 | source, verified | [Sourcify](https://repo.sourcify.dev/11155111/0xcEa322619d375B381bff95e53a02Ef92Ea81B5Df) · `contracts/src/Plot.sol` |
-| subgraph | [`ground-state`](https://thegraph.com/studio/subgraph/ground-state) on Subgraph Studio — [query](https://api.studio.thegraph.com/query/1760017/ground-state/version/latest), source in `subgraph/` |
+| subgraph | [`ground-state`](https://thegraph.com/studio/subgraph/ground-state) on Subgraph Studio — [query](https://api.studio.thegraph.com/query/1760017/ground-state/v0.5.0), source in `subgraph/` |
 | live server | `wss://gs.bwtoken.io/live` — who else is here, and word of a claim as the indexer has it; source in `live/` |
 | names (ENSv2, Sepolia) | `groundstate.eth` on the ENSv2 beta → registry [`0xbef600d2b4b19918ed7543bfecf61f412d8e210c`](https://eth-sepolia.blockscout.com/address/0xbef600d2b4b19918ed7543bfecf61f412d8e210c) (a `UserRegistry` via the VerifiableFactory), resolver and registrar [`Names` `0x2E32A8CE61f46c7276Bc3786e0a7AE32da2E29ED`](https://eth-sepolia.blockscout.com/address/0x2E32A8CE61f46c7276Bc3786e0a7AE32da2E29ED) — `contracts/src/Names.sol` |
 | first named plot | `first.groundstate.eth` → [`0x3095c27de366b76074b604d83c7440d22fa33aad`](https://eth-sepolia.blockscout.com/address/0x3095c27de366b76074b604d83c7440d22fa33aad) |

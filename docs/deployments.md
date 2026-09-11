@@ -38,6 +38,6 @@ busiest place on the chain.
 | what | where |
 |---|---|
 | the world | https://gs.bwtoken.io (root: the world on Sepolia; `/map.html`: the map; `/world.html` redirects to the root) |
-| subgraph | Subgraph Studio `ground-state`, v0.4.0 — https://api.studio.thegraph.com/query/1760017/ground-state/version/latest |
+| subgraph | Subgraph Studio `ground-state`, v0.5.0 (all three factories) — https://api.studio.thegraph.com/query/1760017/ground-state/v0.5.0 |
 | live server | `wss://gs.bwtoken.io/live` |
 | source | https://github.com/profinch/bwgame |

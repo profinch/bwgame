@@ -12,7 +12,7 @@ when the subgraph reports a plot claimed, written into or handed on.
 
 ```bash
 npm install
-SUBGRAPH=https://api.studio.thegraph.com/query/1760017/ground-state/version/latest npm start
+SUBGRAPH=https://api.studio.thegraph.com/query/1760017/ground-state/v0.5.0 npm start
 ```
 
 On the server it runs as the `gs-live` container on the `hosting` network, and
