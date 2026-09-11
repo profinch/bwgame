@@ -386,31 +386,45 @@ body.world {
   pointer-events: none;
 }
 
-/* the header: one bar the width of the page, the world showing through */
+/* the header: one bar the width of the page, the world showing through. Its
+   geometry is bwtoken.io's nav to the pixel — 20px from the top, 24px from
+   the sides, 36px tall, the stones 12px in from the right edge — so switching
+   tabs between the two sites moves nothing. */
 .hud.top {
-  top: 12px;
-  left: 12px;
-  right: 12px;
-  padding: 14px 16px;
+  top: 20px;
+  left: 24px;
+  right: 24px;
+  height: 36px;
+  padding: 5px 12px;
   overflow: hidden;
-  border-radius: 14px;
-  border: 1px solid color-mix(in srgb, var(--line) 18%, transparent);
-  background: color-mix(in srgb, var(--panel) 72%, transparent);
-  backdrop-filter: blur(6px);
-  gap: 8px 18px;
+  border-radius: 22px;
+  border: 1px solid color-mix(in srgb, var(--line) 8%, transparent);
+  background: color-mix(in srgb, var(--bg) 82%, transparent);
+  backdrop-filter: blur(13px);
+  -webkit-backdrop-filter: blur(13px);
+  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.1);
+  gap: 0 14px;
+}
+
+.hud.top h1 {
+  line-height: 24px;
+  white-space: nowrap;
 }
 
 .hud.top .hint {
   flex: 1;
   min-width: 0;
+  line-height: 24px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-/* black or white: the same two stones as on bwtoken.io, turning over. The box
-   is as tall as it is wide, so the stones' swing stays inside the bar. */
+/* black or white: the same two stones as on bwtoken.io, the same size, turning
+   over; the bar clips their swing exactly as the nav there does */
 .tg {
   width: 52px;
-  height: 52px;
-  margin: -14px 0;
+  height: 24px;
   cursor: pointer;
   position: relative;
   pointer-events: auto;
@@ -419,7 +433,7 @@ body.world {
 
 .pair {
   position: absolute;
-  inset: 14px 0;
+  inset: 0;
   transition: transform 0.7s cubic-bezier(0.7, 0, 0.2, 1);
 }
 
@@ -817,9 +831,14 @@ body.touch .touchpad-buttons {
     gap: 6px;
   }
 
+  /* bwtoken.io narrow: the nav 24px from the top, 8px from the sides, the
+     stones 9px in from the right; the hint drops to a second line under */
   .hud.top {
     flex-wrap: wrap;
-    padding: 10px 12px;
+    height: auto;
+    margin: 24px 8px 0;
+    padding: 5px 9px;
+    gap: 0 10px;
   }
 
   .hud.top .hint {
