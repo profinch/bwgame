@@ -21,6 +21,32 @@ import { WebSocketServer } from 'ws';
 const PORT = Number(process.env.PORT ?? 8790);
 const SUBGRAPH = process.env.SUBGRAPH ?? '';
 const ROOM = process.env.ROOM ?? 'sepolia';
+/**
+ * The chain itself, read off Blockscout, for when the subgraph will not
+ * answer: the factories' claims, each plot's own events, the names. The same
+ * rows come out as the subgraph gives, so nobody downstream can tell.
+ */
+const BLOCKSCOUT = process.env.BLOCKSCOUT ?? 'https://eth-sepolia.blockscout.com';
+const FACTORIES = (
+  process.env.FACTORIES ??
+  '0x9f76BcE99c0b997af2442FfD65A48fB58f1cA088,0x4bbfaE0A0BEe0F49F3ecbCCcC638a0235359eb73,0xcEa322619d375B381bff95e53a02Ef92Ea81B5Df'
+)
+  .split(',')
+  .map((it) => it.trim())
+  .filter(Boolean);
+const NAMES = process.env.NAMES ?? '0x2E32A8CE61f46c7276Bc3786e0a7AE32da2E29ED';
+const TOPIC = {
+  claimed: '0xc32f9ef6676124cd4f64af9a81204b2f81c2dcd73e9f170cd114df97eb7c8fe4',
+  inscribed: '0x680e8292592f2ba33b810e666857c949c7968c50957e7b4b4b2b7f7935564808',
+  transferred: '0xa1c3c7ba08cdab9542dfbb1f9606093e828bca6c2678c82942703ec4e2237902',
+  codeSet: '0xcd97b75ea1b5217143c4471556bcf3ff3d9ee05eba2913028a1b3d74374142bf',
+  sealed: '0x2aa218dc3f649885182934318cf0f5c4966c70a67fad288bab6859b77bf8d094',
+  named: '0x418b43aaaf6e778e64a1e00a6dcf49679517d0a2ed54df922ec5e6ad3f21da4c',
+  unnamed: '0x716fe3c2abaeeab2657968647db646cc99fb457a562b9bb4c6162c34bbe2bbb2',
+};
+/** How long the subgraph has to be silent before the chain is read instead, and how often then. */
+const CHAIN_AFTER = 120_000;
+const CHAIN_EVERY = 600_000;
 
 /** How often the rooms are told where everybody is, and how often the subgraph is asked. */
 const TELLS_EVERY = 100;
@@ -164,6 +190,98 @@ let graphBlock = 0;
 const plots = new Map();
 /** How long until the next ask: the usual, or longer after a refusal. */
 let asksIn = ASKS_EVERY;
+/** When the subgraph last answered, and when the chain was last read instead. */
+let graphAnsweredAt = Date.now();
+let chainReadAt = 0;
+let readingChain = false;
+
+/** The tail of a topic as an address. */
+const addressIn = (topic) => `0x${String(topic).slice(-40)}`.toLowerCase();
+
+/** An ABI-encoded string, the one argument in a log's data. */
+function stringIn(data) {
+  const hex = String(data).replace(/^0x/, '');
+  const offset = parseInt(hex.slice(0, 64), 16) * 2;
+  const length = parseInt(hex.slice(offset, offset + 64), 16) * 2;
+  return Buffer.from(hex.slice(offset + 64, offset + 64 + length), 'hex').toString('utf8');
+}
+
+/** Every log of an address off Blockscout, oldest first. */
+async function logsOf(address) {
+  const out = [];
+  let next = null;
+  for (let page = 0; page < 20; page++) {
+    const url = new URL(`${BLOCKSCOUT}/api/v2/addresses/${address}/logs`);
+    if (next) for (const [k, v] of Object.entries(next)) url.searchParams.set(k, String(v));
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`blockscout ${response.status} for ${address}`);
+    const answer = await response.json();
+    for (const it of answer.items ?? []) out.push(it);
+    next = answer.next_page_params;
+    if (!next) break;
+  }
+  return out.sort((a, b) => a.block_number - b.block_number || (a.index ?? 0) - (b.index ?? 0));
+}
+
+/**
+ * The world as the chain says it, read the long way round, when the subgraph
+ * has been silent: the factories' claims, then each plot's own events, then
+ * the names. Rows come out shaped as the subgraph shapes them.
+ */
+async function readTheChain() {
+  if (readingChain) return;
+  readingChain = true;
+  try {
+    const rows = new Map();
+    let top = 0;
+    for (const factory of FACTORIES) {
+      for (const log of await logsOf(factory)) {
+        if (log.topics?.[0] !== TOPIC.claimed) continue;
+        const id = addressIn(log.topics[1]);
+        rows.set(id, {
+          id,
+          owner: { id: addressIn(log.topics[2]) },
+          note: '',
+          updatedIn: String(log.block_number),
+          implementation: null,
+          salt: `0x${String(log.data).replace(/^0x/, '').slice(0, 64)}`,
+          name: null,
+        });
+        top = Math.max(top, log.block_number);
+      }
+    }
+    for (const row of rows.values()) {
+      for (const log of await logsOf(row.id)) {
+        const topic = log.topics?.[0];
+        if (topic === TOPIC.inscribed) row.note = stringIn(log.data);
+        else if (topic === TOPIC.transferred) row.owner = { id: addressIn(log.topics[2]) };
+        else if (topic === TOPIC.codeSet) {
+          const code = addressIn(log.topics[1]);
+          row.implementation = /^0x0{40}$/.test(code) ? null : code;
+        } else continue;
+        row.updatedIn = String(Math.max(Number(row.updatedIn), log.block_number));
+        top = Math.max(top, log.block_number);
+      }
+    }
+    for (const log of await logsOf(NAMES)) {
+      const topic = log.topics?.[0];
+      if (topic !== TOPIC.named && topic !== TOPIC.unnamed) continue;
+      const row = rows.get(addressIn(log.topics[1]));
+      if (!row) continue;
+      row.name = topic === TOPIC.named ? stringIn(log.data) : null;
+      row.updatedIn = String(Math.max(Number(row.updatedIn), log.block_number));
+      top = Math.max(top, log.block_number);
+    }
+    for (const [id, row] of rows) if (!plots.has(id) || Number(plots.get(id).updatedIn) <= Number(row.updatedIn)) plots.set(id, row);
+    graphBlock = Math.max(graphBlock, top);
+    chainReadAt = Date.now();
+    console.log(`${new Date().toISOString()} read the chain instead: ${rows.size} plot(s) as of block ${top}`);
+  } catch (error) {
+    console.error('the chain could not be read:', error?.message ?? error);
+  } finally {
+    readingChain = false;
+  }
+}
 
 async function askTheGraph() {
   if (!SUBGRAPH) return;
@@ -182,9 +300,12 @@ async function askTheGraph() {
       // refused: ask less often, up to ten minutes apart, until it answers again
       asksIn = Math.min(ASKS_AT_MOST_EVERY, asksIn * 2);
       console.error(`${new Date().toISOString()} the subgraph refused (${response.status}); asking again in ${asksIn / 1000}s`);
+      // silent long enough: the chain is read the long way round instead
+      if (Date.now() - graphAnsweredAt > CHAIN_AFTER && Date.now() - chainReadAt > CHAIN_EVERY) void readTheChain();
       return;
     }
     asksIn = ASKS_EVERY;
+    graphAnsweredAt = Date.now();
     const answer = await response.json();
     const rows = answer?.data?.plots;
     const block = answer?.data?._meta?.block?.number ?? 0;
@@ -205,5 +326,9 @@ async function askTheGraph() {
   }
 }
 void askTheGraph();
+// nothing known at the start and the subgraph not answering: the chain, at once
+setTimeout(() => {
+  if (plots.size === 0) void readTheChain();
+}, 5000);
 
 http.listen(PORT, () => console.log(`live on :${PORT}, watching ${SUBGRAPH || 'nothing'} for ${ROOM}`));
