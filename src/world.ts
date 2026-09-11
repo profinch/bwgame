@@ -709,8 +709,13 @@ function fall(seconds: number): void {
 /**
  * The dark, behind a switch. Passing no coverage map means nothing is hidden,
  * so turning it off is one word rather than a pile of dead code.
+ *
+ * Off for now, by the owner's decision of 11.09.2026: until the uncovered
+ * ground is shared between people (a server that keeps the tiles), the dark
+ * is one person's diary and reads as a bug to a newcomer. It comes back with
+ * that server. `?veil=on` shows it meanwhile.
  */
-const VEILED = !location.search.includes('veil=off');
+const VEILED = location.search.includes('veil=on');
 
 /**
  * Cast shadows, behind their own switch. They are correct now — the bias is
