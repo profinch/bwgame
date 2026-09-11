@@ -1080,11 +1080,12 @@ body.embedded #app {
 /* the list scrolls when it is long, with a scrollbar drawn like the rest: a
    thin dark line on nothing */
 .hud.own .own-list {
-  max-height: 38vh;
+  /* five rows; the rest scroll, the panel does not grow */
+  max-height: 176px;
   overflow-y: auto;
   padding-right: 6px;
   scrollbar-width: thin;
-  scrollbar-color: color-mix(in srgb, var(--fg) 35%, transparent) transparent;
+  scrollbar-color: color-mix(in srgb, var(--fg) 50%, transparent) transparent;
 }
 
 .hud.own .own-list::-webkit-scrollbar {
@@ -1096,7 +1097,7 @@ body.embedded #app {
 }
 
 .hud.own .own-list::-webkit-scrollbar-thumb {
-  background: color-mix(in srgb, var(--fg) 35%, transparent);
+  background: color-mix(in srgb, var(--fg) 50%, transparent);
   border-radius: 2px;
 }
 
