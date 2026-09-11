@@ -440,10 +440,15 @@ body.world {
   background: radial-gradient(circle at 36% 30%, #fff, #bdbcb8);
 }
 
-/* the dark: everything turned over, the world included */
+/* the dark: everything turned over, the world included, as slowly as the
+   stones turn on bwtoken.io */
+html {
+  filter: invert(0);
+  transition: filter 0.7s cubic-bezier(0.7, 0, 0.2, 1);
+}
+
 html[data-t="dark"] {
   filter: invert(1);
-  background: #070707;
 }
 
 .hud.bottom {
