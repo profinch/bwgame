@@ -581,7 +581,8 @@ html[data-t="dark"] {
 
 /* taking ground, from inside the world */
 
-/* dressed as the header is — the same corners, edge and blur — at its own opacity */
+/* dressed as the header is — the same corners and edge — but thinner and less
+   blurred, so the world shows through a panel where it does not through the bar */
 .hud.claim {
   top: auto;
   left: auto;
@@ -592,9 +593,9 @@ html[data-t="dark"] {
   padding: 12px 16px;
   border-radius: 22px;
   border: 1px solid color-mix(in srgb, var(--line) 8%, transparent);
-  background: color-mix(in srgb, var(--bg) 82%, transparent);
-  backdrop-filter: blur(13px);
-  -webkit-backdrop-filter: blur(13px);
+  background: color-mix(in srgb, var(--bg) 52%, transparent);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   display: grid;
   gap: 6px;
 }
@@ -968,9 +969,9 @@ body.embedded #app {
   padding: 12px 16px;
   border-radius: 22px;
   border: 1px solid color-mix(in srgb, var(--line) 8%, transparent);
-  background: color-mix(in srgb, var(--bg) 82%, transparent);
-  backdrop-filter: blur(13px);
-  -webkit-backdrop-filter: blur(13px);
+  background: color-mix(in srgb, var(--bg) 52%, transparent);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   display: grid;
   gap: 6px;
 }
