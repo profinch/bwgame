@@ -671,19 +671,113 @@ html[data-t="dark"] {
   pointer-events: auto;
 }
 
-.hud .chains a {
+/* which chain, and the map: the sub-bar from bwtoken.io, hanging under the
+   right end of the header. Closed it says where you are; open it lists the
+   other worlds and the map, one row each, and closes again on any click. */
+.subbar {
+  position: fixed;
+  z-index: 2;
+  top: 57px;
+  right: 24px;
+  width: 168px;
+  height: 32px;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--bg) 84%, transparent);
+  backdrop-filter: blur(13px);
+  -webkit-backdrop-filter: blur(13px);
+  border: 1px solid color-mix(in srgb, var(--line) 8%, transparent);
+  border-top: 0;
+  border-radius: 0 0 16px 16px;
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.09);
+  transition: height 0.45s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.subinner {
+  position: relative;
+  padding-top: 4px;
+}
+
+.wsel {
+  position: relative;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: opacity 0.25s;
+}
+
+.wcur,
+.wopt {
+  font-size: 11.5px;
+  letter-spacing: 0.15em;
+  text-transform: lowercase;
+  color: var(--fg);
+}
+
+.wlist {
+  position: absolute;
+  top: 4px;
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s;
+}
+
+body.listopen .wlist {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+body.listopen .wsel {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.wopt {
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  background: none;
+  border: 0;
+  font-family: inherit;
   text-decoration: none;
-  opacity: 0.55;
+  opacity: 0.4;
+  cursor: pointer;
+  transition: opacity 0.25s;
 }
 
-.hud .chains a:hover {
+.wopt:hover {
+  opacity: 0.75;
+}
+
+.wopt.on {
   opacity: 1;
 }
 
-.hud .chains .here {
-  opacity: 1;
-  text-decoration: underline;
-  cursor: default;
+.subarrow {
+  position: absolute;
+  top: 12px;
+  right: 11px;
+  width: 5px;
+  height: 5px;
+  border-right: 1.5px solid var(--fg);
+  border-bottom: 1.5px solid var(--fg);
+  transform: translateY(-2px) rotate(45deg);
+  opacity: 0.45;
+  transition: transform 0.45s cubic-bezier(0.45, 0, 0.15, 1);
+  pointer-events: none;
+  z-index: 2;
+}
+
+body.listopen .subarrow {
+  transform: translateY(0) rotate(-135deg);
 }
 
 .hud .near {
@@ -863,17 +957,22 @@ body.touch .touchpad-buttons {
   }
 
   .hud.top .hint {
-    flex: 1 1 100%;
-    order: 3;
+    display: none;
   }
 
   .hud.top .tg {
     margin-left: auto;
   }
 
-  .hud .hint-words,
   .hud .stat {
     display: none;
+  }
+
+  /* under the header's right end, as on a wide screen, but in the flow */
+  .subbar {
+    position: static;
+    align-self: flex-end;
+    margin: 0 8px 0 auto;
   }
 
   .hud .hint {

@@ -1000,24 +1000,55 @@ function strokesFor(structure: Structure, base: number): Stroke[] {
 
 /**
  * Which world this is, and the others: the chain is not a setting but the
- * ground you stand on, so it is said in the header and changed by walking out
- * of one world into another — the page reloads, nothing carries over, as
- * nothing should.
+ * ground you stand on, so it hangs under the header the way the sub-bar does
+ * on bwtoken.io — closed, it says where you are; open, it lists the other
+ * worlds and the map. Another world is entered by walking out of this one:
+ * the page reloads, nothing carries over, as nothing should.
  */
-const chains = document.querySelector<HTMLElement>('.chains');
-if (chains) {
-  for (const other of Object.values(CHAINS)) {
-    const link = document.createElement('a');
-    link.textContent = other.name;
-    if (other.key === chain.key) {
-      link.className = 'here';
-    } else {
-      const to = new URL(location.href);
-      to.search = `?chain=${other.key}`;
-      link.href = to.toString();
+{
+  const bar = document.querySelector<HTMLElement>('#subbar');
+  const sel = document.querySelector<HTMLElement>('#wsel');
+  const cur = document.querySelector<HTMLElement>('#wcur');
+  const list = document.querySelector<HTMLElement>('#wlist');
+  if (bar && sel && cur && list) {
+    cur.textContent = chain.name;
+    const rows: HTMLElement[] = [];
+    for (const other of Object.values(CHAINS)) {
+      const row = document.createElement(other.key === chain.key ? 'button' : 'a');
+      row.className = other.key === chain.key ? 'wopt on' : 'wopt';
+      row.textContent = other.name;
+      if (row instanceof HTMLAnchorElement) {
+        const to = new URL(location.href);
+        to.search = `?chain=${other.key}`;
+        row.href = to.toString();
+      } else {
+        row.setAttribute('type', 'button');
+      }
+      rows.push(row);
     }
-    chains.append(link);
-    if (other !== Object.values(CHAINS).at(-1)) chains.append(document.createTextNode(' '));
+    const map = document.createElement('a');
+    map.className = 'wopt';
+    map.textContent = 'the map ↗';
+    map.href = '/map.html';
+    map.target = '_blank';
+    map.rel = 'noopener';
+    rows.push(map);
+    list.replaceChildren(...rows);
+
+    const ROW = 28;
+    const PAD = 4;
+    const show = (open: boolean) => {
+      document.body.classList.toggle('listopen', open);
+      sel.setAttribute('aria-expanded', String(open));
+      bar.style.height = `${PAD + (open ? rows.length : 1) * ROW}px`;
+    };
+    show(false);
+    sel.addEventListener('click', (event) => {
+      event.stopPropagation();
+      show(!document.body.classList.contains('listopen'));
+    });
+    list.addEventListener('click', (event) => event.stopPropagation());
+    document.addEventListener('click', () => show(false));
   }
 }
 

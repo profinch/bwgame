@@ -11,9 +11,16 @@
     <header class="hud top">
       <span class="gauge" aria-hidden="true">&nbsp;</span>
       <h1><span class="mark"></span>ground state</h1>
-      <p class="hint"><span class="hint-words">the world is dark until you stand in it · </span><a class="map-link" href="/map.html" target="_blank" rel="noopener">the map</a> · <span class="chains"></span></p>
+      <p class="hint">the chain, on foot</p>
       <div class="tg" id="tg" role="switch" aria-label="black or white" title="black / white"><div class="pair" id="pair"><span class="mini m1"></span><span class="mini m2"></span></div></div>
     </header>
+    <div class="subbar" id="subbar" aria-label="which chain, and the map">
+      <div class="subinner">
+        <div class="wsel" id="wsel" role="button" aria-expanded="false"><span class="wcur" id="wcur"></span></div>
+        <div class="wlist" id="wlist"></div>
+        <span class="subarrow"></span>
+      </div>
+    </div>
     <section class="welcome" hidden>
       <div class="welcome-card">
         <h2><span class="mark"></span>ground state</h2>
