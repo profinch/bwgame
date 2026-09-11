@@ -8,7 +8,9 @@
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-    <script>try{var _t=localStorage.getItem('bw-theme');if(_t)document.documentElement.dataset.t=_t;}catch(e){}</script>
+    <script>try{var _t=localStorage.getItem('bw-theme');if(_t)document.documentElement.dataset.t=_t;}catch(e){}
+    // opened on the map: the world is not shown first, not even for a frame
+    if(location.hash==='#map')document.documentElement.classList.add('mapfirst');</script>
   </head>
   <body class="world">
     <canvas id="view"></canvas>

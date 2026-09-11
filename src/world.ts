@@ -1107,6 +1107,8 @@ function strokesFor(structure: Structure, base: number): Stroke[] {
       panelsLink.setAttribute('aria-expanded', String(next === 'panels'));
       chainLink.setAttribute('aria-expanded', String(next === 'blockchain'));
       document.body.classList.toggle('onmap', next === 'map');
+      // back from a page opened on the map, the world shows and fades run as usual
+      if (next !== 'map') document.documentElement.classList.remove('mapfirst');
       // the map fades in as the site's pages do — the first time only once
       // it has loaded, so that what fades in is the map and not a blank page
       if (next === 'map') {

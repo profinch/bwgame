@@ -929,6 +929,21 @@ body.off-owner .hud.own {
   pointer-events: auto;
 }
 
+/* the page opened on the map: the map is there from the first frame, without
+   the fade, and nothing of the world shows behind it while it loads */
+html.mapfirst .mapview {
+  opacity: 1;
+  pointer-events: auto;
+  transition: none;
+}
+
+html.mapfirst #view,
+html.mapfirst .hud:not(.top),
+html.mapfirst .touchpad,
+html.mapfirst .touchpad-buttons {
+  visibility: hidden;
+}
+
 /* on the map the world's panels — the metrics, the jump, the claim, the owner's, the
    thumb controls — fade away with it; the header and the welcome stay */
 .hud.bottom,
