@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import type { Account } from '../src/chain';
+import { INSTANCE_FLOATS } from '../src/engine/renderer';
 import { BOULDER_ACROSS, blocksOf, bouldersOf, piecesOf, structureOf } from '../src/places';
 import { OUTLINED, glassOf, inkOf, strokesOf } from '../src/blueprint';
 import { PLOT_CODE_SIZE, isPlot, plotsIn, plotsInGraph, relicOf } from '../src/plot';
@@ -45,8 +46,8 @@ describe('the plots of earlier grounds', () => {
     expect(stone.wide).toBeGreaterThan(BOULDER_ACROSS * 0.8);
     expect(stone.tall).toBeCloseTo(stone.wide * 0.78, 6);
     // the boulder is one instance of the stone shape; the plaque is many boxes
-    expect(bouldersOf([stone], () => 10).length / 9).toBe(1);
-    expect(piecesOf(stone, 10).length / 9).toBeGreaterThan(20);
+    expect(bouldersOf([stone], () => 10).length / INSTANCE_FLOATS).toBe(1);
+    expect(piecesOf(stone, 10).length / INSTANCE_FLOATS).toBeGreaterThan(20);
     // and it is walked round as a whole
     expect(blocksOf(stone, 10)).toHaveLength(1);
   });
@@ -59,7 +60,7 @@ describe('the plots of earlier grounds', () => {
     expect(gate.wide).toBeGreaterThan(3.5);
     expect(bouldersOf([gate], () => 10).length).toBe(0);
     // two piers of carving and a lintel
-    expect(piecesOf(gate, 10).length / 9).toBeGreaterThan(20);
+    expect(piecesOf(gate, 10).length / INSTANCE_FLOATS).toBeGreaterThan(20);
     const blocks = blocksOf(gate, 10);
     expect(blocks).toHaveLength(2);
     // the piers stand apart, with nothing between them

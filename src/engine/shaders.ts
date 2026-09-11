@@ -19,13 +19,15 @@ layout(location = 0) in vec3 position;
 layout(location = 1) in vec3 normal;
 layout(location = 2) in vec3 offset;     // where the instance stands
 layout(location = 3) in vec3 size;       // how big it is
-layout(location = 4) in vec3 material;   // turn, albedo, roughness
+layout(location = 4) in vec4 material;   // turn, albedo, roughness, pattern
 
 uniform mat4 viewProjection;
 
 out vec3 vWorld;
 out vec3 vNormal;
-out vec2 vMaterial;
+out vec3 vMaterial;
+out vec3 vLocal;   // where on the box this is, before the turn: for what is drawn on its faces
+out vec3 vFace;    // which face, in the box's own frame
 
 void main() {
   float turn = material.x;
@@ -43,7 +45,9 @@ void main() {
 
   vWorld = world;
   vNormal = normalize(n);
-  vMaterial = material.yz;
+  vMaterial = material.yzw;
+  vLocal = scaled;
+  vFace = normal;
   gl_Position = viewProjection * vec4(world, 1.0);
 }`;
 
@@ -52,8 +56,11 @@ precision highp float;
 
 in vec3 vWorld;
 in vec3 vNormal;
-in vec2 vMaterial;
+in vec3 vMaterial;
+in vec3 vLocal;
+in vec3 vFace;
 
+uniform float time;
 uniform vec3 eye;
 uniform vec3 sun;        // direction toward the light
 uniform float exposure;
@@ -166,6 +173,21 @@ void main() {
 
   float light = albedo * (ambient * 0.34 + direct * 1.15)
               + ggx(n, v, l, roughness) * direct * 0.5;
+
+  // windows: the mark's grid of dots laid over the walls of a building, the
+  // dots larger toward one corner and smaller toward the other as on the mark,
+  // and breathing a little, slowly, so a building is never quite still
+  if (vMaterial.z > 0.5 && abs(vFace.y) < 0.5) {
+    float u = abs(vFace.x) > 0.5 ? vLocal.z : vLocal.x;
+    float pitch = 1.6;
+    vec2 cell = floor(vec2(u, vLocal.y) / pitch);
+    vec2 inCell = fract(vec2(u, vLocal.y) / pitch) - 0.5;
+    float along = cell.x + cell.y;
+    float breath = 0.5 + 0.5 * sin(time * 0.7 + along * 0.55);
+    float radius = 0.14 + 0.22 * breath;
+    float dot_ = smoothstep(radius, radius - 0.06, length(inCell));
+    light *= mix(1.0, 0.45, dot_);
+  }
 
   // distance thins into the air, which is what gives depth without colour
   float depth = length(eye - vWorld);

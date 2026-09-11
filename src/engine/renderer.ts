@@ -18,8 +18,8 @@ import {
 import type { Geometry } from './shapes';
 import type { Mat4 } from './mat4';
 
-/** offset xyz, scale xyz, turn, albedo, roughness */
-export const INSTANCE_FLOATS = 9;
+/** offset xyz, scale xyz, turn, albedo, roughness, pattern (0 plain, 1 windows) */
+export const INSTANCE_FLOATS = 10;
 
 export interface Sky {
   /** direction toward the sun */
@@ -43,7 +43,7 @@ interface Batch {
 
 /** A single instance, standing still, unturned, for things that are one of a kind. */
 export function once(albedo: number, roughness: number): Float32Array {
-  return new Float32Array([0, 0, 0, 1, 1, 1, 0, albedo, roughness]);
+  return new Float32Array([0, 0, 0, 1, 1, 1, 0, albedo, roughness, 0]);
 }
 
 /** How wide the depth map is. Bigger is sharper and slower, in that order. */
@@ -185,7 +185,7 @@ export class Renderer {
     };
     slot(2, 3, 0); // offset
     slot(3, 3, 12); // scale
-    slot(4, 3, 24); // turn, albedo, roughness
+    slot(4, 4, 24); // turn, albedo, roughness, pattern
 
     const elements = gl.createBuffer();
     if (!elements) throw new Error('no element buffer');
@@ -294,6 +294,7 @@ export class Renderer {
     gl.uniform3fv(set.get('sun')!, sky.sun);
     gl.uniform1f(set.get('exposure')!, sky.exposure);
     gl.uniform1f(set.get('fogDensity')!, sky.fogDensity);
+    gl.uniform1f(set.get('time')!, (performance.now() / 1000) % 3600);
     gl.uniform1i(set.get('shadowsOn')!, lightSpan ? 1 : 0);
     gl.uniform1f(set.get('shadowTexel')!, 1 / SHADOW_SIZE);
     gl.uniform1f(set.get('shadowMetres')!, lightSpan?.metres ?? 1);

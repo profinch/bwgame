@@ -91,6 +91,7 @@ export class Chips {
       this.instances[at + 6] = chip.turn;
       this.instances[at + 7] = 0.34; // the ground, as the ground is drawn
       this.instances[at + 8] = 1;
+      this.instances[at + 9] = 0;
     }
   }
 
