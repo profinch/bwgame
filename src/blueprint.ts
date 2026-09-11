@@ -41,7 +41,13 @@ const NIB = 0.22;
 /** What share of the drawing is the outline; the glass comes up in the rest. */
 const OUTLINED_AT = 0.75;
 
-/** The corners of the drawing: the plan just above the ground, and the roof. */
+/**
+ * The corners of the drawing: the plan just above the ground, and the roof.
+ *
+ * On a slope the building is drawn as it will be built — from the lowest
+ * ground under it, the foundation included (`sink`), to its roof — or its
+ * downhill side would hang in the air.
+ */
 function cornersOf(structure: Structure, base: number, origin = { x: 0, z: 0 }): { plan: Point[]; top: Point[] } {
   const cx = structure.x - origin.x;
   const cz = structure.z - origin.z;
@@ -52,7 +58,7 @@ function cornersOf(structure: Structure, base: number, origin = { x: 0, z: 0 }):
   const hw = structure.wide / 2;
   const hd = structure.deep / 2;
   const ring = (y: number): Point[] => [corner(-hw, -hd, y), corner(hw, -hd, y), corner(hw, hd, y), corner(-hw, hd, y)];
-  return { plan: ring(base + 0.04), top: ring(base + structure.tall) };
+  return { plan: ring(base - (structure.sink ?? 0) + 0.04), top: ring(base + structure.tall) };
 }
 
 /**
