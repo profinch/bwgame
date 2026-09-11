@@ -15,7 +15,7 @@ import {
   zoomAt,
 } from './camera';
 import { looksLikeName, lookupName, resolveName } from './ens';
-import { favicon, mark } from './logo';
+import { mark } from './logo';
 import {
   type Cluster,
   addMark,
@@ -77,12 +77,6 @@ const jump = app.querySelector<HTMLFormElement>('.jump')!;
 const field = jump.querySelector<HTMLInputElement>('input')!;
 const keyButton = app.querySelector<HTMLButtonElement>('.key')!;
 const drawer = app.querySelector<HTMLElement>('.drawer')!;
-
-const icon = document.createElement('link');
-icon.rel = 'icon';
-icon.type = 'image/svg+xml';
-icon.href = favicon();
-document.head.append(icon);
 
 const world = createWorld();
 let camera: Camera = wholeWorld();
