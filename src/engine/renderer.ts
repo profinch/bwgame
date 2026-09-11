@@ -56,6 +56,8 @@ export class Renderer {
   private readonly depthProgram: WebGLProgram;
   private readonly depthWhere: Map<string, WebGLUniformLocation>;
   private readonly shadowMap: WebGLTexture;
+  /** A texture for the coverage sampler to hold while the veil is off. */
+  private readonly blank: WebGLTexture;
   private readonly shadowBuffer: WebGLFramebuffer;
   private readonly batches: Batch[] = [];
 
@@ -86,6 +88,18 @@ export class Renderer {
     const buffer = gl.createFramebuffer();
     if (!texture || !buffer) throw new Error('no room for a shadow map');
     this.shadowMap = texture;
+
+    // Two samplers of different types may not share a texture unit, and a
+    // sampler that is never pointed anywhere sits on unit zero with the shadow
+    // map. So the coverage sampler always has a texture of its own type to
+    // hold: this one, a single texel, while the veil is off.
+    const blank = gl.createTexture();
+    if (!blank) throw new Error('no blank texture');
+    gl.bindTexture(gl.TEXTURE_2D, blank);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.R8, 1, 1, 0, gl.RED, gl.UNSIGNED_BYTE, new Uint8Array([255]));
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+    this.blank = blank;
     this.shadowBuffer = buffer;
 
     gl.bindTexture(gl.TEXTURE_2D, texture);
@@ -286,11 +300,12 @@ export class Renderer {
     gl.uniform1f(set.get('shadowRange')!, lightSpan?.range ?? 1);
 
     gl.uniform1i(set.get('veiled')!, coverage ? 1 : 0);
+    // the coverage sampler is on unit one either way: the map, or the blank
+    gl.activeTexture(gl.TEXTURE1);
+    gl.bindTexture(gl.TEXTURE_2D, coverage ? coverage.texture : this.blank);
+    gl.uniform1i(set.get('coverage')!, 1);
     if (coverage) {
       coverage.upload();
-      gl.activeTexture(gl.TEXTURE1);
-      gl.bindTexture(gl.TEXTURE_2D, coverage.texture);
-      gl.uniform1i(set.get('coverage')!, 1);
       // the coverage map is kept in the world's coordinates and sampled in the
       // patch's, so its corner has to be brought across
       gl.uniform2f(
