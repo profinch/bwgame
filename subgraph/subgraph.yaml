@@ -29,6 +29,54 @@ dataSources:
         - event: Claimed(indexed address,indexed address,bytes32)
           handler: handleClaimed
       file: ./src/plots.ts
+  # The factories before it. Their plots are relics, and a public gateway
+  # cannot be trusted to hand back their logs; the index keeps them.
+  - kind: ethereum
+    name: PlotsFirst
+    network: sepolia
+    source:
+      address: "0x9f76BcE99c0b997af2442FfD65A48fB58f1cA088"
+      abi: Plots
+      startBlock: 11661029
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.9
+      language: wasm/assemblyscript
+      entities:
+        - Plot
+        - Owner
+      abis:
+        - name: Plots
+          file: ./abis/Plots.json
+        - name: Plot
+          file: ./abis/Plot.json
+      eventHandlers:
+        - event: Claimed(indexed address,indexed address,bytes32)
+          handler: handleClaimed
+      file: ./src/plots.ts
+  - kind: ethereum
+    name: PlotsSecond
+    network: sepolia
+    source:
+      address: "0x4bbfaE0A0BEe0F49F3ecbCCcC638a0235359eb73"
+      abi: Plots
+      startBlock: 11669423
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.9
+      language: wasm/assemblyscript
+      entities:
+        - Plot
+        - Owner
+      abis:
+        - name: Plots
+          file: ./abis/Plots.json
+        - name: Plot
+          file: ./abis/Plot.json
+      eventHandlers:
+        - event: Claimed(indexed address,indexed address,bytes32)
+          handler: handleClaimed
+      file: ./src/plots.ts
   # Names: what plots are called under groundstate.eth (ENSv2 on Sepolia).
   - kind: ethereum
     name: Names

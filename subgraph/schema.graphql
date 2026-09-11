@@ -11,6 +11,10 @@ standing somewhere can ask for every plot in their tile with one query.
 type Plot @entity(immutable: false) {
   "The address, which is the place."
   id: Bytes!
+  "Which factory made it: 1 and 2 are the earlier grounds, whose plots stand as relics; 3 is the ground lived on now."
+  generation: Int!
+  "The factory that made it."
+  factory: Bytes!
   "Who holds it now."
   owner: Owner!
   "Who mined it."

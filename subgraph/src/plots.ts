@@ -8,6 +8,19 @@ import { Plot as PlotTemplate } from '../generated/templates';
 const CELL_DIGITS = 13;
 const TILE_DIGITS = 9;
 
+/** The factories, oldest first: the generation of a plot is which of them made it. */
+const FACTORIES = [
+  '0x9f76bce99c0b997af2442ffd65a48fb58f1ca088',
+  '0x4bbfae0a0bee0f49f3ecbcccc638a0235359eb73',
+  '0xcea322619d375b381bff95e53a02ef92ea81b5df',
+];
+
+function generationOf(factory: Bytes): i32 {
+  const hex = factory.toHexString().toLowerCase();
+  for (let i = 0; i < FACTORIES.length; i++) if (FACTORIES[i] == hex) return i + 1;
+  return 0;
+}
+
 export function handleClaimed(event: Claimed): void {
   const owner = ownerOf(event.params.owner);
   owner.held += 1;
@@ -15,6 +28,8 @@ export function handleClaimed(event: Claimed): void {
   owner.save();
 
   const plot = new Plot(event.params.plot);
+  plot.generation = generationOf(event.address);
+  plot.factory = event.address;
   plot.owner = owner.id;
   plot.claimedBy = event.params.owner;
   plot.salt = event.params.salt;

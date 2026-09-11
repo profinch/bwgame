@@ -45,4 +45,5 @@ npm run build
    into `subgraph` for `sepolia` in `src/chains.ts`.
 
 The factory it indexes, and the block it starts from, are in `subgraph.yaml`.
-When the factory is redeployed, change both and deploy a new version.
+When the factory is redeployed, add the old one as another `Plots*` data source (its plots become
+relics of one more generation), point the main one at the new address, and deploy a new version.
