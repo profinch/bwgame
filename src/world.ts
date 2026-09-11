@@ -1103,8 +1103,9 @@ function strokesFor(structure: Structure, base: number): Stroke[] {
       section = next;
       unfold(false);
       // the panels come down already unfolded: the list is the point of them;
-      // the arrow folds it to the word, a click elsewhere is back to the game
-      foldPanels(next === 'panels');
+      // the arrow folds it to the word, a click elsewhere is back to the game,
+      // and going up the bar keeps whatever it showed
+      if (next === 'panels') foldPanels(true);
       document.body.classList.toggle('subopen', next === 'blockchain');
       document.body.classList.toggle('panelsopen', next === 'panels');
       mapLink.classList.toggle('active', next === 'map');
@@ -1174,8 +1175,9 @@ function strokesFor(structure: Structure, base: number): Stroke[] {
     });
     document.addEventListener('click', () => {
       // a click elsewhere folds the list first, and sends the bar up next
+      // the worlds' bar folds to this world first and goes up next; the panels'
+      // bar, whose open state is the list, goes straight up as it is
       if (document.body.classList.contains('listopen')) unfold(false);
-      else if (document.body.classList.contains('plistopen')) foldPanels(false);
       else if (section === 'blockchain' || section === 'panels') show(null);
     });
   }
