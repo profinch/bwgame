@@ -1081,6 +1081,7 @@ body.embedded #app {
    thin dark line on nothing */
 .hud.own .own-list {
   /* five rows; the rest scroll, the panel does not grow */
+  margin-top: 6px;
   max-height: 176px;
   overflow-y: auto;
   /* the bar runs halfway between the rows and the panel's edge: the list

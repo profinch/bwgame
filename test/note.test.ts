@@ -30,7 +30,7 @@ describe('a note on a building', () => {
     expect(pieces[5]).toBeCloseTo(5, 5);
     for (let i = INSTANCE_FLOATS; i < pieces.length; i += INSTANCE_FLOATS) {
       expect(pieces[i + 2]).toBeCloseTo(2.5 + cutIn / 2, 5);
-      expect(pieces[i + 1]!).toBeGreaterThanOrEqual(10 + 0.3);
+      expect(pieces[i + 1]!).toBeGreaterThanOrEqual(10 + 0.15);
       expect(pieces[i + 1]! + pieces[i + 4]!).toBeLessThan(10 + 3);
       // a stroke is never wider than a sign
       expect(pieces[i + 3]!).toBeLessThanOrEqual(across * 9 + 1e-6);

@@ -741,12 +741,12 @@ function carvedBlock(
 const NOTE_WORDS = 4;
 const NOTE_SIGNS = 10;
 /** How high above the ground the note's foot is, and how high the writing may reach. */
-const NOTE_FOOT = 0.3;
+const NOTE_FOOT = 0.15;
 
 /**
  * A building with a note written into it carries the note low on its front
  * wall, in small runes — the size of the signs on a wallet's posts, a word a
- * column, the columns side by side as posts stand — cut the same way as all
+ * column starting level, the columns side by side as posts stand — cut the same way as all
  * writing here, so it reads the same everywhere — raised rather than cut, so
  * the wall itself is left as it is and the strokes stand out of it by a
  * finger's breadth. A building going up shows the signs its height has
@@ -777,11 +777,12 @@ function notedBuilding(structure: Structure, base: number, origin: { x: number; 
   const across = POST / WALL;
   const cutIn = Math.max(across * 1.6, 0.003);
   const foot = base + NOTE_FOOT;
+  // one height for every column, that of the longest word, and the writing
+  // hangs from the top of it: the words start level and end where they end
+  const lines = Math.max(1, ...words.map((word) => [...word].length));
+  const tall = Math.min(structure.tall - NOTE_FOOT, (lines * 11 + 2 * EDGE + 2) * across);
   words.forEach((word, i) => {
-    // a column tall enough for the word, standing on its foot
-    const lines = [...word].length;
-    const tall = Math.min(structure.tall - NOTE_FOOT, (lines * 11 + 2 * EDGE + 2) * across);
-    const { down, patches } = carve([word], tall, POST, true, true);
+    const { down, patches } = carve([word], tall, POST, false, true);
     const at = -structure.wide / 2 + POST * (i + 1);
     for (const { col, row, cols, rows } of patches) {
       const top = NOTE_FOOT + tall - row * down;

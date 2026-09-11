@@ -580,7 +580,37 @@ const player = {
   rise: 0,
 };
 
+/**
+ * Where you were when you left is where you come back to: the ground and the
+ * spot on it, kept in this browser, a chain each. A link with a place in it
+ * still wins, and the first time in is home.
+ */
+const LAST_STAND = `gs-last-${chain.key}`;
+const cameBack = (() => {
+  if (new URLSearchParams(location.search).has('at')) return false;
+  try {
+    const kept = JSON.parse(localStorage.getItem(LAST_STAND) ?? 'null') as
+      | { ox: number; oz: number; x: number; z: number; yaw: number }
+      | null;
+    if (!kept || ![kept.ox, kept.oz, kept.x, kept.z, kept.yaw].every(Number.isFinite)) return false;
+    const inside = withinWorld(kept.ox + kept.x, kept.oz + kept.z);
+    if (Math.abs(inside.x - kept.ox - kept.x) > 1e-3 || Math.abs(inside.z - kept.oz - kept.z) > 1e-3) return false;
+    origin.x = kept.ox;
+    origin.z = kept.oz;
+    player.x = kept.x;
+    player.z = kept.z;
+    player.yaw = kept.yaw;
+    ground = terrain(GROUND, 340, origin);
+    renderer.reshape(floor, ground.geometry);
+    player.y = ground.surfaceAt(player.x, player.z);
+    return true;
+  } catch {
+    return false;
+  }
+})();
+
 const coverage = new Coverage(renderer.gl, { x: player.x, z: player.z });
+if (cameBack) coverage.recentreOn(origin.x, origin.z);
 
 /**
  * The address this patch is named after, built from what it is: how much code
@@ -807,6 +837,12 @@ window.addEventListener('blur', () => held.clear());
 // whatever was uncovered should still be uncovered tomorrow
 window.addEventListener('pagehide', () => {
   coverage.save();
+  // where you stood, for next time
+  try {
+    localStorage.setItem(LAST_STAND, JSON.stringify({ ox: origin.x, oz: origin.z, x: player.x, z: player.z, yaw: player.yaw }));
+  } catch {
+    // then next time starts at home
+  }
   // out of the room before the page goes, so nobody is left standing here
   live?.close();
 });
