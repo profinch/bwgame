@@ -47,6 +47,13 @@ export interface Owning {
 
 /** How often the indexer is asked which ground is yours, while you are not standing on any. */
 const LISTS_EVERY = 15_000;
+/** How many unnamed plots the list shows, newest first; named ones are all shown. */
+const LISTS_UNNAMED = 5;
+
+/** An address with its head and its tail: `0x3095c19c…5423`. */
+function shortOf(address: string): string {
+  return `${address.slice(0, 10)}…${address.slice(-4)}`;
+}
 
 export function ownGround(
   panel: HTMLElement,
@@ -111,17 +118,27 @@ export function ownGround(
         listedAt = performance.now();
         const wanted = owner;
         mine = (await claimedPlots()).filter((it) => it.owner.toLowerCase() === wanted);
-        listing.replaceChildren(
-          ...mine.map((it) => {
-            const go = document.createElement('button');
-            go.type = 'button';
-            go.className = 'own-go';
-            const name = it.name && chain.ens ? `${it.name}.${chain.ens.parent}` : `${it.plot.slice(0, 10)}…`;
-            go.innerHTML = `${name} <span>go there</span>`;
-            go.addEventListener('click', () => goTo(it.plot));
-            return go;
-          }),
-        );
+        // every named plot, then the last few unnamed: a name is how a plot
+        // keeps its place in the list, and the rest are counted
+        const named = mine.filter((it) => it.name);
+        const unnamed = mine.filter((it) => !it.name).sort((a, b) => (b.updatedIn ?? 0) - (a.updatedIn ?? 0));
+        const shown = [...named, ...unnamed.slice(0, LISTS_UNNAMED)];
+        const rows: HTMLElement[] = shown.map((it) => {
+          const go = document.createElement('button');
+          go.type = 'button';
+          go.className = 'own-go';
+          const name = it.name && chain.ens ? `${it.name}.${chain.ens.parent}` : shortOf(it.plot);
+          go.innerHTML = `${name} <span>go there</span>`;
+          go.addEventListener('click', () => goTo(it.plot));
+          return go;
+        });
+        if (unnamed.length > LISTS_UNNAMED) {
+          const rest = document.createElement('p');
+          rest.className = 'own-rest';
+          rest.textContent = `and ${unnamed.length - LISTS_UNNAMED} more unnamed — a named plot is always listed`;
+          rows.push(rest);
+        }
+        listing.replaceChildren(...rows);
       }
       said.textContent = mine.length ? `your ground: ${mine.length} ${mine.length === 1 ? 'plot' : 'plots'} on this chain` : 'your ground';
       noteLine.textContent = mine.length
@@ -131,12 +148,13 @@ export function ownGround(
     }
     state('here');
     const what = plot.plot!;
-    said.textContent = sticky || (what.name && chain.ens ? `yours: ${what.name}.${chain.ens.parent}` : `yours: ${plot.address.slice(0, 10)}…`);
+    said.textContent = sticky || (what.name && chain.ens ? `yours: ${what.name}.${chain.ens.parent}` : `yours: ${shortOf(plot.address)}`);
     noteLine.textContent =
       (what.note ? `says: ${what.note}` : 'nothing written into it yet') +
       (what.implementation ? `\npoints at ${what.implementation.slice(0, 10)}…` : '\npoints at no code: a drawing until it does');
-    // naming needs the salt the plot was made with, which the indexer knows
-    naming.hidden = !chain.ens;
+    // naming needs the salt the plot was made with, which the indexer knows;
+    // a plot named once is named: the form is not offered again
+    naming.hidden = !chain.ens || Boolean(what.name);
     nameInput.disabled = !what.salt;
     nameInput.placeholder = what.salt ? `a name under ${chain.ens?.parent ?? ''}` : 'a name, once the indexer has this plot';
   };

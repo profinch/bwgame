@@ -378,7 +378,7 @@ body.world {
 
 .hud {
   position: fixed;
-  z-index: 2;
+  z-index: 1; /* under the header and its bars, which are always in front */
   top: 20px;
   left: 24px;
   display: flex;
@@ -1030,6 +1030,10 @@ body.embedded #app {
 }
 
 .hud.own .own-go span {
+  opacity: 0.55;
+}
+
+.hud.own .own-rest {
   opacity: 0.55;
 }
 

@@ -405,8 +405,11 @@ const taking = takeGround(claiming, afoot, (plot) => {
   void raiseClaimed(plot);
 });
 
-/** How near you have to stand to a plot of yours to work on it. */
-const WITHIN_REACH = 18;
+/**
+ * How near you have to stand to a plot of yours to work on it: within sight
+ * of it, so a step back to look at it does not take the panel away.
+ */
+const WITHIN_REACH = 80;
 
 /**
  * The plot of yours you are standing at, if any: the nearest plot within reach
