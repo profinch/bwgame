@@ -1083,10 +1083,13 @@ body.embedded #app {
   /* five rows; the rest scroll, the panel does not grow */
   max-height: 176px;
   overflow-y: auto;
-  padding-right: 14px;
+  /* the bar runs halfway between the rows and the panel's edge: the list
+     reaches 8px into the panel's 16px padding, the bar is 4px, the rows end
+     8px before it — bar centred 10px in, rows ending 20px in */
+  margin-right: -8px;
+  padding-right: 8px;
   scrollbar-width: thin;
-  /* the track shows too, so a list that scrolls says so before it is touched */
-  scrollbar-color: color-mix(in srgb, var(--fg) 50%, transparent) color-mix(in srgb, var(--fg) 12%, transparent);
+  scrollbar-color: color-mix(in srgb, var(--fg) 50%, transparent) transparent;
 }
 
 .hud.own .own-list::-webkit-scrollbar {
@@ -1094,8 +1097,7 @@ body.embedded #app {
 }
 
 .hud.own .own-list::-webkit-scrollbar-track {
-  background: color-mix(in srgb, var(--fg) 12%, transparent);
-  border-radius: 2px;
+  background: transparent;
 }
 
 .hud.own .own-list::-webkit-scrollbar-thumb {
