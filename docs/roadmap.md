@@ -25,6 +25,8 @@ after the start), and what comes after. The hackathon is where this begins, not 
 - Onboarding: a welcome, an arrival descent, a guiding panel, a "what's near" line, how to play.
 - Mobile: a thumb stick, on-screen buttons, a one-column layout, battery-aware defaults.
 - Black or white: the whole page and the world turned over, kept in the browser.
+- Hills: six octaves of the address tree with a peaked profile on the coarse ones; buildings on
+  foundations. A whitepaper ([whitepaper.md](whitepaper.md)).
 
 ## In scope for the hackathon, not yet done
 
@@ -32,7 +34,6 @@ after the start), and what comes after. The hackathon is where this begins, not 
   fifty tabs; a verified human counts as a whole unit and an unverified one as a fraction. Also
   considered for naming, so a name belongs to a person.
 - An automatic onboarding: a guided first play, step by step, on top of the welcome.
-- A whitepaper (this folder is its seed).
 
 ## After the hackathon
 
@@ -49,8 +50,8 @@ In roughly the order it matters:
    implementation.
 6. **Kinds of contracts by interface:** tokens, NFT collections, pools, multisigs, proxies, each
    with a form; verified names from Sourcify.
-7. **Mountains:** larger octaves and a peaked profile on the coarse ones, so some of the ground
-   rises by hundreds of metres within view.
+7. **Mountains:** a larger amplitude on the largest cells, so some of the ground rises by
+   hundreds of metres within view; hills are there already.
 8. **GPU digging** (WebGPU): a hundred times the attempts, a tenth of the distance.
 9. **Plots on an L2 and on mainnet;** other chains as other worlds; bridges as passages.
 10. **Economy around plots:** selling, renting, lending a place — as contracts, not as our rules.

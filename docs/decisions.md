@@ -35,6 +35,10 @@ What was decided, and why. What was refused, and why. Dated where the date matte
 - **The veil is off** until the uncovered ground is shared between people; otherwise it is one
   person's diary and reads as a bug.
 - **The edge of the world is a wall.** Past 0x000… or 0xfff… there is no place.
+- **Buildings stand on foundations, the ground is not flattened** (11.09.2026): a structure is
+  set on the highest ground under it and reaches down to the lowest, so hills can be as steep as
+  they like without breaking what stands on them.
+- **The header is bwtoken.io's nav to the pixel**, so a tab switch between the two moves nothing.
 - **English in code, comments, commits and UI, lowercase in UI.** One contributor in the history.
 
 ## Refused
@@ -52,6 +56,5 @@ the zero address or a person's address as the entry point.
 
 ## Left to settle
 
-Where a wallet's own address is written · flattening ground under a plot in the terrain generator
-· which token a transaction moved (needs logs) · a shape for NFTs · two plots in one metre ·
+Where a wallet's own address is written · which token a transaction moved (needs logs) · a shape for NFTs · two plots in one metre ·
 the size of a written plot · reverse names for plots · a new figure for the walker.

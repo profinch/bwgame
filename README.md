@@ -205,6 +205,12 @@ The subgraph has its own `package.json` in `subgraph/`; see the README there.
   the same for every plot — so every such plot is the same building. What it should be sized by
   instead (the note? what the plot holds?) is open.
 
+## Documents
+
+The [whitepaper](docs/whitepaper.md) says the method in the manner of the Bitcoin and Ethereum
+papers; [docs/](docs/README.md) holds the rest — entities, roadmap, deployments, operations,
+decisions — kept current rather than as history.
+
 ## Prior work
 
 Disclosed per ETHGlobal rules: the concept and written plan predate the event — they were

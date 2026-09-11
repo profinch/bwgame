@@ -5,6 +5,7 @@ not left as history: the git log is the history.
 
 | file | what it holds | changes when |
 |---|---|---|
+| [whitepaper.md](whitepaper.md) | the paper: the map, the ground, the work, the plots, the names, the index, in the manner of the Bitcoin and Ethereum papers | the method changes |
 | [concept.md](concept.md) | what the game is, why it is worth standing in, what it does today | the idea moves |
 | [entities.md](entities.md) | every thing a chain has, how the world draws it, and what it would take to draw the rest | a new kind of thing gets a shape |
 | [roadmap.md](roadmap.md) | what was built inside ETHOnline 2026, what comes after, in what order | scope moves |
