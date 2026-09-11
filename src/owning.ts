@@ -122,8 +122,7 @@ export function ownGround(
         // keeps its place in the list, and the rest are counted
         const named = mine.filter((it) => it.name);
         const unnamed = mine.filter((it) => !it.name).sort((a, b) => (b.updatedIn ?? 0) - (a.updatedIn ?? 0));
-        const shown = [...named, ...unnamed.slice(0, LISTS_UNNAMED)];
-        const rows: HTMLElement[] = shown.map((it) => {
+        const rowOf = (it: Claimed) => {
           const go = document.createElement('button');
           go.type = 'button';
           go.className = 'own-go';
@@ -131,11 +130,17 @@ export function ownGround(
           go.innerHTML = `${name} <span>go there</span>`;
           go.addEventListener('click', () => goTo(it.plot));
           return go;
-        });
+        };
+        const rows: HTMLElement[] = [...named, ...unnamed.slice(0, LISTS_UNNAMED)].map(rowOf);
         if (unnamed.length > LISTS_UNNAMED) {
-          const rest = document.createElement('p');
+          // the rest are counted, and the count unfolds them
+          const rest = document.createElement('button');
+          rest.type = 'button';
           rest.className = 'own-rest';
           rest.textContent = `and ${unnamed.length - LISTS_UNNAMED} more unnamed — a named plot is always listed`;
+          rest.addEventListener('click', () => {
+            rest.replaceWith(...unnamed.slice(LISTS_UNNAMED).map(rowOf));
+          });
           rows.push(rest);
         }
         listing.replaceChildren(...rows);

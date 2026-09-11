@@ -1029,7 +1029,15 @@ body.embedded #app {
 }
 
 .hud.own .own-rest {
+  border: 0;
+  padding: 4px 0;
+  text-align: left;
+  white-space: normal;
   opacity: 0.55;
+}
+
+.hud.own .own-rest:hover {
+  opacity: 0.85;
 }
 
 /* the list scrolls when it is long, with a scrollbar drawn like the rest: a
