@@ -999,32 +999,35 @@ function strokesFor(structure: Structure, base: number): Stroke[] {
 }
 
 /**
- * Which world this is, and the others: the chain is not a setting but the
- * ground you stand on, so it hangs under the menu the way the sub-bar does on
- * bwtoken.io — as wide as the menu, closed it says where you are, open it
- * lists the worlds. The corners frame the section you are in, which here is
- * always the blockchain. Another world is entered by walking out of this one:
- * the page reloads, nothing carries over, as nothing should.
+ * The menu, as on bwtoken.io. The corners frame the whole of it until a
+ * section is chosen. "map" brings the map up in this page under this header,
+ * and frames itself. "blockchain" frames itself and slides the sub-bar down
+ * with the worlds listed, this one bright, the one to take ground on first;
+ * choosing another world is walking out of this one — the page reloads,
+ * nothing carries over, as nothing should — and a click elsewhere or on this
+ * world sends the bar back up and the corners back round the whole menu.
  */
 {
   const header = document.querySelector<HTMLElement>('.hud.top');
   const menu = document.querySelector<HTMLElement>('.navlinks');
   const frame = document.querySelector<HTMLElement>('.navlinks .frame');
-  const section = document.querySelector<HTMLElement>('#blockchain');
+  const mapLink = document.querySelector<HTMLAnchorElement>('#map');
+  const chainLink = document.querySelector<HTMLAnchorElement>('#blockchain');
   const bar = document.querySelector<HTMLElement>('#subbar');
-  const sel = document.querySelector<HTMLElement>('#wsel');
-  const cur = document.querySelector<HTMLElement>('#wcur');
   const list = document.querySelector<HTMLElement>('#wlist');
-  if (header && menu && frame && section && bar && sel && cur && list) {
-    cur.textContent = chain.name;
+  const mapView = document.querySelector<HTMLIFrameElement>('#mapview');
+  if (header && menu && frame && mapLink && chainLink && bar && list && mapView) {
+    // sepolia first: the world where ground is taken
+    const worlds = [CHAINS.sepolia, CHAINS.mainnet].filter((it) => it !== undefined);
     const rows: HTMLElement[] = [];
-    for (const other of Object.values(CHAINS)) {
+    for (const other of worlds) {
       const row = document.createElement(other.key === chain.key ? 'button' : 'a');
       row.className = other.key === chain.key ? 'wopt on' : 'wopt';
       row.textContent = other.name;
       if (row instanceof HTMLAnchorElement) {
         const to = new URL(location.href);
         to.search = `?chain=${other.key}`;
+        to.hash = '';
         row.href = to.toString();
       } else {
         row.setAttribute('type', 'button');
@@ -1032,43 +1035,64 @@ function strokesFor(structure: Structure, base: number): Stroke[] {
       rows.push(row);
     }
     list.replaceChildren(...rows);
+    bar.style.height = `${4 + rows.length * 28}px`;
 
-    // the corners round the section, and the bar under the whole menu: both
-    // measured, as on the site, so they follow the text whatever the font
-    const align = () => {
+    // the corners round a link, or round the whole menu; and the bar under
+    // the whole menu: measured, as on the site, so they follow the text
+    const place = (target: HTMLElement | 'group') => {
       const at = menu.getBoundingClientRect();
-      const on = section.getBoundingClientRect();
-      frame.style.left = `${on.left - at.left - 2}px`;
-      frame.style.top = `${on.top - at.top - 1}px`;
-      frame.style.width = `${on.width + 4}px`;
-      frame.style.height = `${on.height + 2}px`;
       const links = menu.querySelectorAll('a');
       const first = links[0]!.getBoundingClientRect();
       const last = links[links.length - 1]!.getBoundingClientRect();
+      const box =
+        target === 'group'
+          ? { l: first.left - at.left - 2, t: first.top - at.top - 1, w: last.right - first.left + 4, h: first.height + 2 }
+          : (() => {
+              const r = target.getBoundingClientRect();
+              return { l: r.left - at.left - 2, t: r.top - at.top - 1, w: r.width + 4, h: r.height + 2 };
+            })();
+      frame.style.left = `${box.l}px`;
+      frame.style.top = `${box.t}px`;
+      frame.style.width = `${box.w}px`;
+      frame.style.height = `${box.h}px`;
       bar.style.left = `${Math.round(first.left)}px`;
       bar.style.width = `${Math.round(last.right - first.left)}px`;
       bar.style.top = `${Math.round(header.getBoundingClientRect().bottom)}px`;
     };
 
-    const ROW = 28;
-    const PAD = 4;
-    const show = (open: boolean) => {
-      document.body.classList.toggle('listopen', open);
-      sel.setAttribute('aria-expanded', String(open));
-      bar.style.height = `${PAD + (open ? rows.length : 1) * ROW}px`;
+    let section: 'map' | 'blockchain' | null = null;
+    const show = (next: typeof section) => {
+      section = next;
+      document.body.classList.toggle('subopen', next === 'blockchain');
+      mapLink.classList.toggle('active', next === 'map');
+      chainLink.classList.toggle('active', next === 'blockchain');
+      chainLink.setAttribute('aria-expanded', String(next === 'blockchain'));
+      if (next === 'map' && !mapView.src) mapView.src = '/map.html?embedded';
+      mapView.hidden = next !== 'map';
+      history.replaceState(null, '', next === 'map' ? '#map' : location.pathname + location.search);
+      place(next === 'map' ? mapLink : next === 'blockchain' ? chainLink : 'group');
     };
-    align();
-    show(false);
-    addEventListener('resize', align);
-    const toggle = (event: Event) => {
+    show(location.hash === '#map' ? 'map' : null);
+    addEventListener('resize', () => place(section === 'map' ? mapLink : section === 'blockchain' ? chainLink : 'group'));
+
+    mapLink.addEventListener('click', (event) => {
       event.preventDefault();
       event.stopPropagation();
-      show(!document.body.classList.contains('listopen'));
-    };
-    sel.addEventListener('click', toggle);
-    section.addEventListener('click', toggle);
-    list.addEventListener('click', (event) => event.stopPropagation());
-    document.addEventListener('click', () => show(false));
+      show('map');
+    });
+    chainLink.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      // pressed again: the bar goes back up, and the corners round the menu
+      show(section === 'blockchain' ? null : 'blockchain');
+    });
+    list.addEventListener('click', (event) => {
+      event.stopPropagation();
+      if (event.target instanceof HTMLButtonElement) show(null);
+    });
+    document.addEventListener('click', () => {
+      if (section === 'blockchain') show(null);
+    });
   }
 }
 

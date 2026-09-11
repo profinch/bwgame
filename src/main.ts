@@ -31,6 +31,9 @@ import { balanceOf, formatEther, generate } from './wallet';
 const app = document.querySelector<HTMLElement>('#app');
 if (!app) throw new Error('no #app');
 
+// inside the world's page the map has the world's header over it, not its own
+if (new URLSearchParams(location.search).has('embedded')) document.body.classList.add('embedded');
+
 app.innerHTML = `
   <header class="bar">
     <h1><span class="mark">${mark({ size: 24, rows: 7 })}</span>ground state</h1>
