@@ -17,7 +17,7 @@ window.addEventListener('error', (event) => {
 import { lookAt, multiply, orthographic, perspective, type Mat4 } from './engine/mat4';
 import { loop } from './engine/loop';
 import { Coverage } from './engine/coverage';
-import { Renderer, once, type Sky } from './engine/renderer';
+import { INSTANCE_FLOATS, Renderer, once, type Sky } from './engine/renderer';
 import { addressUnder, DEPTH, HOME, levelOff, offsetOf, rawHeightAt, withinWorld } from './engine/land';
 import { boulder, box, figure, groundUnder, terrain } from './engine/shapes';
 import { Traffic, pollBlocks } from './engine/traffic';
@@ -104,7 +104,13 @@ function baseOf(structure: Structure): number {
   if (structure.kind === 'relic' && structure.relic === 1) {
     return groundUnder(ground.surfaceAt, x, z, reach, structure.turn) - structure.tall * 0.18;
   }
-  return groundUnder(ground.surfaceAt, x, z, reach, structure.turn) - structure.tall * 0.04;
+  // a building stands on the highest ground under it and reaches down to the
+  // lowest with a foundation, so a hill never comes up through its floor and
+  // it never hangs over the slope — the land keeps its shape, the building
+  // keeps its footing
+  const hill = reliefUnder(structure);
+  structure.sink = Math.max(0, hill.high - hill.low) + 0.1;
+  return hill.high + 0.02;
 }
 
 /** The highest and lowest ground a plate covers. */
@@ -517,7 +523,7 @@ async function travelTo(address: string): Promise<Structure | null> {
   return structure;
 }
 
-const walker = renderer.add(figure(), new Float32Array(9), true);
+const walker = renderer.add(figure(), new Float32Array(INSTANCE_FLOATS), true);
 /** Everybody else here, as the same figure in white — or the auger, if they are digging. */
 const others = renderer.add(figure(), new Float32Array(0), true);
 const othersDigging = renderer.add(auger(), new Float32Array(0), true);
@@ -530,7 +536,7 @@ const homeCell = placeOf(bytesOf(HOME));
  */
 const live = chain.live ? new Live(chain.live, chain.key, () => askAgain()) : null;
 /** What the walker turns into while digging. Only one of the two is ever drawn. */
-const drill = renderer.add(auger(), new Float32Array(9), true);
+const drill = renderer.add(auger(), new Float32Array(INSTANCE_FLOATS), true);
 /** How far the auger has turned. */
 let spin = 0;
 /** The ground it throws up. */
@@ -1139,12 +1145,12 @@ loop({
     const digging = taking.digging;
     renderer.update(
       walker,
-      new Float32Array([player.x, feet(), player.z, digging ? 0 : 1, digging ? 0 : 1, digging ? 0 : 1, player.yaw, 0.2, 0.6]),
+      new Float32Array([player.x, feet(), player.z, digging ? 0 : 1, digging ? 0 : 1, digging ? 0 : 1, player.yaw, 0.2, 0.6, 0]),
     );
     // the screw stands half sunk: the work is in the ground, not on it
     renderer.update(
       drill,
-      new Float32Array([player.x, feet() - POINT / 2, player.z, digging ? 1 : 0, digging ? 1 : 0, digging ? 1 : 0, spin, 0.2, 0.6]),
+      new Float32Array([player.x, feet() - POINT / 2, player.z, digging ? 1 : 0, digging ? 1 : 0, digging ? 1 : 0, spin, 0.2, 0.6, 0]),
     );
     renderer.update(spray, chips.instances);
     // everybody else, if they are on this patch of ground
@@ -1157,8 +1163,8 @@ loop({
         if (Math.abs(x) > GROUND / 2 || Math.abs(z) > GROUND / 2) continue;
         const y = supportAt(x, z, ground.surfaceAt(x, z) + STEP_UP);
         // their auger turns with ours: the rate is theirs, but the turning is a sign, not a measure
-        if (peer.dig) digging.push(x, y - POINT / 2, z, 1, 1, 1, spin, 0.92, 0.6);
-        else standing.push(x, y, z, 1, 1, 1, peer.drawnYaw, 0.92, 0.6);
+        if (peer.dig) digging.push(x, y - POINT / 2, z, 1, 1, 1, spin, 0.92, 0.6, 0);
+        else standing.push(x, y, z, 1, 1, 1, peer.drawnYaw, 0.92, 0.6, 0);
       }
       renderer.update(others, new Float32Array(standing));
       renderer.update(othersDigging, new Float32Array(digging));

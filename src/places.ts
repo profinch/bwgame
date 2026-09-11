@@ -742,7 +742,7 @@ function relicPieces(structure: Structure, base: number, origin: { x: number; z:
   const out: number[] = [];
   // a box in the relic's own frame, carried round by its turn the way the shader turns it
   const put = (lx: number, y: number, lz: number, w: number, h: number, d: number) =>
-    out.push(cx + c * lx + sn * lz, y, cz + c * lz - sn * lx, w, h, d, structure.turn, structure.albedo, structure.roughness);
+    out.push(cx + c * lx + sn * lz, y, cz + c * lz - sn * lx, w, h, d, structure.turn, structure.albedo, structure.roughness, 0);
   const words = relicWords(structure.relic ?? 1);
 
   if (structure.relic === 1) {
@@ -770,8 +770,9 @@ function relicPieces(structure: Structure, base: number, origin: { x: number; z:
     }
   } else {
     const half = GATE.apart / 2 + GATE.pier / 2;
-    carvedBlock(put, -half, base, 0, GATE.pier, GATE.tall, GATE.pier, [words[0]!]);
-    carvedBlock(put, half, base, 0, GATE.pier, GATE.tall, GATE.pier, [words[1]!]);
+    const sink = structure.sink ?? 0;
+    carvedBlock(put, -half, base - sink, 0, GATE.pier, GATE.tall + sink, GATE.pier, [words[0]!]);
+    carvedBlock(put, half, base - sink, 0, GATE.pier, GATE.tall + sink, GATE.pier, [words[1]!]);
     put(0, base + GATE.tall, 0, structure.wide, GATE.lintel, GATE.deep);
   }
   return new Float32Array(out);
@@ -793,7 +794,7 @@ export function bouldersOf(
     out.push(
       structure.x - origin.x, baseOf(structure), structure.z - origin.z,
       half, half, half,
-      structure.turn, structure.albedo, structure.roughness,
+      structure.turn, structure.albedo, structure.roughness, 0,
     );
   }
   return new Float32Array(out);
@@ -843,16 +844,20 @@ export function blocksOf(
  * and anything drawn there comes out torn.
  */
 export function instanceOf(structure: Structure, base: number, origin = { x: 0, z: 0 }): Float32Array {
+  // a building on a slope reaches down to the lowest ground under it
+  const sink = structure.sink ?? 0;
   return new Float32Array([
     structure.x - origin.x,
-    base,
+    base - sink,
     structure.z - origin.z,
     structure.wide,
-    structure.tall,
+    structure.tall + sink,
     structure.deep,
     structure.turn,
     structure.albedo,
     structure.roughness,
+    // windows on the walls of a contract's building, and on nothing else
+    structure.kind === 'built' ? 1 : 0,
   ]);
 }
 
@@ -917,7 +922,7 @@ export function piecesOf(structure: Structure, base: number, origin = { x: 0, z:
 
   const out: number[] = [];
   const put = (x: number, y: number, z: number, w: number, h: number, d: number, turn = 0) =>
-    out.push(x, y, z, w, h, d, turn, structure.albedo, structure.roughness);
+    out.push(x, y, z, w, h, d, turn, structure.albedo, structure.roughness, 0);
 
   // the plate: plain stone, reaching down far enough to meet the hill rather
   // than hover over it
