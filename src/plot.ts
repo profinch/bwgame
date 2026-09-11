@@ -257,6 +257,11 @@ const former: Reader[] = (chain.former ?? []).map((it) => ({ factory: it.plots, 
 
 let known: Claimed[] = [];
 
+/** Every plot known so far, as of the last answer — without asking anybody. */
+export function knownPlots(): readonly Claimed[] {
+  return known;
+}
+
 /**
  * Every plot the factory has ever deployed.
  *

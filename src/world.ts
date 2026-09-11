@@ -29,7 +29,7 @@ import { DRESSED_AT, type Structure, blocksOf, bouldersOf, instancesOf, stands, 
 import { POINT, auger } from './auger';
 import { type Stroke, glassOf, inkOf, strokesOf } from './blueprint';
 import { Chips } from './chips';
-import { claimAt, claimedPlots, formerPlots, implementationOf, isPlot, noteOf, ownerOf, plotNameOf, relicOf } from './plot';
+import { claimAt, claimedPlots, formerPlots, implementationOf, isPlot, knownPlots, noteOf, ownerOf, plotNameOf, relicOf } from './plot';
 import { ownGround } from './owning';
 import { Panels } from './panels';
 import { Live } from './live';
@@ -425,14 +425,45 @@ const WITHIN_REACH = 80;
  */
 function ownPlotHere(owner: string): Structure | null {
   const here = afoot();
+  const wanted = owner.toLowerCase();
   let nearest: Structure | null = null;
   let best = Infinity;
   for (const structure of structures) {
-    if (!structure.plot || structure.plot.owner?.toLowerCase() !== owner.toLowerCase()) continue;
+    if (!structure.plot || structure.plot.owner?.toLowerCase() !== wanted) continue;
     const away = Math.hypot(structure.x - here.x, structure.z - here.z) - Math.max(structure.wide, structure.deep) / 2;
     if (away < WITHIN_REACH && away < best) {
       best = away;
       nearest = structure;
+    }
+  }
+  if (nearest) return nearest;
+  // not standing yet — just arrived, the chain not yet asked — but the index
+  // already says whose ground this is: the panel need not wait for the walls
+  for (const claimed of knownPlots()) {
+    if (claimed.owner.toLowerCase() !== wanted) continue;
+    const at = offsetOf(claimed.plot);
+    const away = Math.hypot(at.x - origin.x - here.x, at.z - origin.z - here.z);
+    if (away < WITHIN_REACH && away < best) {
+      best = away;
+      nearest = {
+        kind: 'framed',
+        address: claimed.plot,
+        x: at.x - origin.x,
+        z: at.z - origin.z,
+        wide: 1,
+        tall: 1,
+        deep: 1,
+        turn: 0,
+        albedo: 0.5,
+        roughness: 0.6,
+        plot: {
+          owner: claimed.owner,
+          note: claimed.note ?? '',
+          implementation: claimed.implementation ?? null,
+          salt: claimed.salt ?? null,
+          name: claimed.name ?? null,
+        },
+      } as Structure;
     }
   }
   return nearest;
