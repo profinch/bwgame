@@ -11,6 +11,10 @@
  * `?chain=sepolia` moves everything at once: the sky, the buildings, the plots,
  * the names. Nothing carries over, because nothing should: ground claimed on
  * one chain exists on that chain and nowhere else.
+ *
+ * Two chains for now: Ethereum to walk — real geography, no factory — and
+ * Sepolia, where everything a plot can do is done. Other chains come after
+ * the hackathon; the world is a way of seeing a chain, not one chain.
  */
 export interface Chain {
   key: string;
@@ -146,30 +150,6 @@ export const CHAINS: Record<string, Chain> = {
       { at: '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238', symbol: 'usdc', decimals: 6 },
       { at: '0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14', symbol: 'weth', decimals: 18 },
       { at: '0x779877A7B0D9E8603169DdbD7836e478b4624789', symbol: 'link', decimals: 18 },
-    ],
-  },
-  bsc: {
-    key: 'bsc',
-    name: 'bnb chain',
-    id: 56,
-    rpcs: ['https://bsc-rpc.publicnode.com', 'https://binance.llamarpc.com'],
-    // the busiest thing on the chain: the Pancake V2 router, which nearly
-    // everything else on it goes through
-    home: '0x10ED43C718714eb63d5aA57B78B54704E256024E',
-    explorer: 'https://bscscan.com/address/',
-    coin: { symbol: 'bnb', supply: 139_000_000n * 10n ** 18n },
-    tokens: [
-      { at: '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c', symbol: 'wbnb', decimals: 18 },
-      { at: '0x55d398326f99059fF775485246999027B3197955', symbol: 'usdt', decimals: 18 },
-      { at: '0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56', symbol: 'busd', decimals: 18 },
-      { at: '0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d', symbol: 'usdc', decimals: 18 },
-      { at: '0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82', symbol: 'cake', decimals: 18 },
-      { at: '0x2170Ed0880ac9A755fd29B2688956BD959F933F8', symbol: 'eth', decimals: 18 },
-      { at: '0x7130d2A12B9BCbFAe4f2634d864A1Ee1Ce3Ead9c', symbol: 'btcb', decimals: 18 },
-      // the ones this ecosystem is actually made of
-      { at: '0x806F024e934332d547fA98232c9310Fd5CE5130f', symbol: 'black', decimals: 18 },
-      { at: '0xDd964452D9B2E0E7Bd54D0341E730c423202Fe4C', symbol: 'white', decimals: 18 },
-      { at: '0x60322971a672B81BccE5947706D22c19dAeCf6Fb', symbol: 'mdao', decimals: 18 },
     ],
   },
 };
