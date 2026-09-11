@@ -1015,9 +1015,12 @@ function strokesFor(structure: Structure, base: number): Stroke[] {
   const chainLink = document.querySelector<HTMLAnchorElement>('#blockchain');
   const clip = document.querySelector<HTMLElement>('#subclip');
   const bar = document.querySelector<HTMLElement>('#subbar');
+  const sel = document.querySelector<HTMLElement>('#wsel');
+  const cur = document.querySelector<HTMLElement>('#wcur');
   const list = document.querySelector<HTMLElement>('#wlist');
   const mapView = document.querySelector<HTMLIFrameElement>('#mapview');
-  if (header && menu && frame && mapLink && chainLink && clip && bar && list && mapView) {
+  if (header && menu && frame && mapLink && chainLink && clip && bar && sel && cur && list && mapView) {
+    cur.textContent = chain.name;
     // sepolia first: the world where ground is taken
     const worlds = [CHAINS.sepolia, CHAINS.mainnet].filter((it) => it !== undefined);
     const rows: HTMLElement[] = [];
@@ -1036,11 +1039,17 @@ function strokesFor(structure: Structure, base: number): Stroke[] {
       rows.push(row);
     }
     list.replaceChildren(...rows);
-    const tall = 4 + rows.length * 28;
-    bar.style.height = `${tall}px`;
+    // closed, one row: this world; unfolded, a row a world
+    const ROW = 28;
+    const PAD = 4;
+    const unfold = (open: boolean) => {
+      document.body.classList.toggle('listopen', open);
+      sel.setAttribute('aria-expanded', String(open));
+      bar.style.height = `${PAD + (open ? rows.length : 1) * ROW}px`;
+    };
     // the shadow reaches 24px to the sides and about 20px down
     const ROOM = 24;
-    clip.style.height = `${tall + ROOM}px`;
+    clip.style.height = `${PAD + rows.length * ROW + ROOM}px`;
 
     // the corners round a link, or round the whole menu; and the bar under
     // the whole menu: measured, as on the site, so they follow the text
@@ -1068,6 +1077,7 @@ function strokesFor(structure: Structure, base: number): Stroke[] {
     let section: 'map' | 'blockchain' | null = null;
     const show = (next: typeof section) => {
       section = next;
+      unfold(false);
       document.body.classList.toggle('subopen', next === 'blockchain');
       mapLink.classList.toggle('active', next === 'map');
       chainLink.classList.toggle('active', next === 'blockchain');
@@ -1095,12 +1105,19 @@ function strokesFor(structure: Structure, base: number): Stroke[] {
       // pressed again: the bar goes back up, and the corners round the menu
       show(section === 'blockchain' ? null : 'blockchain');
     });
+    sel.addEventListener('click', (event) => {
+      event.stopPropagation();
+      unfold(!document.body.classList.contains('listopen'));
+    });
     list.addEventListener('click', (event) => {
       event.stopPropagation();
-      if (event.target instanceof HTMLButtonElement) show(null);
+      // this world chosen again: the list folds, the bar stays
+      if (event.target instanceof HTMLButtonElement) unfold(false);
     });
     document.addEventListener('click', () => {
-      if (section === 'blockchain') show(null);
+      // a click elsewhere folds the list first, and sends the bar up next
+      if (document.body.classList.contains('listopen')) unfold(false);
+      else if (section === 'blockchain') show(null);
     });
   }
 }

@@ -439,7 +439,7 @@ body.world {
   opacity: 1;
 }
 
-.frame {
+.navlinks .frame {
   position: absolute;
   left: 0;
   top: 0;
@@ -453,17 +453,17 @@ body.world {
     height 0.55s cubic-bezier(0.7, 0, 0.2, 1);
 }
 
-.frame .c {
+.navlinks .frame .c {
   position: absolute;
   width: 6px;
   height: 6px;
   border-color: color-mix(in srgb, var(--line) 55%, transparent);
 }
 
-.frame .c.tl { top: 0; left: 0; border-top: 1px solid; border-left: 1px solid; }
-.frame .c.tr { top: 0; right: 0; border-top: 1px solid; border-right: 1px solid; }
-.frame .c.bl { bottom: 0; left: 0; border-bottom: 1px solid; border-left: 1px solid; }
-.frame .c.br { bottom: 0; right: 0; border-bottom: 1px solid; border-right: 1px solid; }
+.navlinks .frame .c.tl { top: 0; left: 0; border-top: 1px solid; border-left: 1px solid; }
+.navlinks .frame .c.tr { top: 0; right: 0; border-top: 1px solid; border-right: 1px solid; }
+.navlinks .frame .c.bl { bottom: 0; left: 0; border-bottom: 1px solid; border-left: 1px solid; }
+.navlinks .frame .c.br { bottom: 0; right: 0; border-bottom: 1px solid; border-right: 1px solid; }
 
 .hud.top h1 {
   line-height: normal;
@@ -772,13 +772,69 @@ body.subopen .subbar {
 }
 
 .subinner {
+  position: relative;
   padding-top: 4px;
 }
 
+/* closed, the bar says which world this is; the arrow at its right unfolds
+   the list in its place, as on the site */
+.wsel {
+  position: relative;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: opacity 0.25s;
+}
+
+.wcur {
+  font-size: 11.5px;
+  letter-spacing: 0.15em;
+  text-transform: lowercase;
+  color: var(--fg);
+}
+
 .wlist {
+  position: absolute;
+  top: 4px;
+  left: 0;
+  right: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s;
+}
+
+body.listopen .wlist {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+body.listopen .wsel {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.subarrow {
+  position: absolute;
+  top: 12px;
+  right: 11px;
+  width: 5px;
+  height: 5px;
+  border-right: 1.5px solid var(--fg);
+  border-bottom: 1.5px solid var(--fg);
+  transform: translateY(-2px) rotate(45deg);
+  opacity: 0.45;
+  transition: transform 0.45s cubic-bezier(0.45, 0, 0.15, 1);
+  pointer-events: none;
+  z-index: 2;
+}
+
+body.listopen .subarrow {
+  transform: translateY(0) rotate(-135deg);
 }
 
 .wopt {
@@ -822,6 +878,13 @@ body.subopen .subbar {
 
 body.embedded header.bar {
   display: none;
+}
+
+/* without its header the grid has two rows, and the stage starts under the
+   world's header (20px down, 37px tall, the grid's 14px gap) */
+body.embedded #app {
+  grid-template-rows: minmax(0, 1fr) auto;
+  padding-top: 71px;
 }
 
 .hud .near {

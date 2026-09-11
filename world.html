@@ -20,7 +20,11 @@
     </header>
     <div class="subclip" id="subclip">
       <div class="subbar" id="subbar" aria-label="which blockchain">
-        <div class="subinner"><div class="wlist" id="wlist"></div></div>
+        <div class="subinner">
+          <div class="wsel" id="wsel" role="button" aria-expanded="false"><span class="wcur" id="wcur"></span></div>
+          <div class="wlist" id="wlist"></div>
+          <span class="subarrow"></span>
+        </div>
       </div>
     </div>
     <iframe class="mapview" id="mapview" title="the map" hidden></iframe>
