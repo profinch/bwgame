@@ -1540,8 +1540,8 @@ going.addEventListener('submit', async (event) => {
 });
 
 window.addEventListener('keydown', (event) => {
-  // Home, or h: a Mac keyboard has no Home key (fn and the left arrow stand in for it)
-  if ((event.code !== 'Home' && event.code !== 'KeyH') || document.activeElement === where) return;
+  // h is home: a Mac keyboard has no Home key, and one key is one word to learn
+  if (event.code !== 'KeyH' || document.activeElement === where) return;
   if (event.metaKey || event.ctrlKey || event.altKey) return;
   event.preventDefault();
   void travelTo(HOME);
