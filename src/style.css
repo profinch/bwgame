@@ -746,7 +746,12 @@ html[data-t="dark"] {
   overflow: hidden;
   pointer-events: none;
   visibility: hidden;
-  background: color-mix(in srgb, var(--bg) 84%, transparent);
+  /* the header's shade falls on the bar's top, as the panel's does on the site:
+     the same 8px-down, 26px-soft shadow, drawn into the bar itself since
+     nothing here casts one */
+  background:
+    linear-gradient(to bottom, rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0.04) 10px, rgba(0, 0, 0, 0) 24px),
+    color-mix(in srgb, var(--bg) 84%, transparent);
   backdrop-filter: blur(13px);
   -webkit-backdrop-filter: blur(13px);
   border: 1px solid color-mix(in srgb, var(--line) 8%, transparent);
