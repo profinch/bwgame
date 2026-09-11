@@ -844,6 +844,15 @@ export function blocksOf(
  * Never in the world's: a float loses whole metres out at seventeen million,
  * and anything drawn there comes out torn.
  */
+/**
+ * Whether a contract's building carries the mesh of bwtoken.io on its walls
+ * and bends a little in a slow field (shaders.ts, `facade()` in shapes.ts).
+ *
+ * Built 12.09.2026 and switched off the same day: its fate is not decided —
+ * it may come back as it is, changed, or not at all. It stays here meanwhile.
+ */
+export const MESHED_WALLS = false;
+
 export function instanceOf(structure: Structure, base: number, origin = { x: 0, z: 0 }): Float32Array {
   // a building on a slope reaches down to the lowest ground under it
   const sink = structure.sink ?? 0;
@@ -857,8 +866,8 @@ export function instanceOf(structure: Structure, base: number, origin = { x: 0, 
     structure.turn,
     structure.albedo,
     structure.roughness,
-    // windows on the walls of a contract's building, and on nothing else
-    structure.kind === 'built' ? 1 : 0,
+    // the mesh on the walls of a contract's building, and on nothing else
+    MESHED_WALLS && structure.kind === 'built' ? 1 : 0,
   ]);
 }
 

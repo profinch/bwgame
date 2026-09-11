@@ -7,7 +7,7 @@ anyone, nothing authored.
 | entity | today | honest shape | needs |
 |---|---|---|---|
 | **externally owned account (wallet)** | a plate with a post per token; wear from the nonce | its ENS name along the plate's edge; age from its first transaction | an indexer for age |
-| **contract** | a building: size from code length, shape and turn from the code hash, darkness from balance, the mark's grid of dots on its walls as windows, breathing slowly | kinds by interface — token, NFT collection, proxy, multisig, factory, AMM pool — each with a form of its own; a verified contract wears its name | ERC-165 and probe calls, Sourcify |
+| **contract** | a building: size from code length, shape and turn from the code hash, darkness from balance | kinds by interface — token, NFT collection, proxy, multisig, factory, AMM pool — each with a form of its own; a verified contract wears its name | ERC-165 and probe calls, Sourcify |
 | **bytecode** | shape | clones from one factory stand identical — already so | — |
 | **storage** | — | interiors, where the layout is known (our own plots) | our contracts |
 | **balance** | a building's darkness; an `eth` post on a plate | — | — |
