@@ -31,6 +31,7 @@ import { type Stroke, glassOf, inkOf, strokesOf } from './blueprint';
 import { Chips } from './chips';
 import { claimAt, claimedPlots, formerPlots, implementationOf, isPlot, noteOf, ownerOf, plotNameOf, relicOf } from './plot';
 import { ownGround } from './owning';
+import { Panels } from './panels';
 import { Live } from './live';
 import { bytesOf, placeOf } from './mine';
 import { Stick, coarse } from './stick';
@@ -358,8 +359,10 @@ function sideInside(atX: number, atZ: number, off: number): number {
     const angle = Math.random() * 2 * Math.PI;
     const x = atX + Math.sin(angle) * off;
     const z = atZ + Math.cos(angle) * off;
+    // within a hair: the clamp goes through world coordinates in the tens of
+    // millions of metres, and the last bits do not survive the round trip
     const kept = withinWorld(x, z);
-    if (kept.x === x && kept.z === z) return angle;
+    if (Math.abs(kept.x - x) < 1e-3 && Math.abs(kept.z - z) < 1e-3) return angle;
   }
   const middle = withinWorld(-1e12, -1e12); // the far corner, so the middle is half way to it
   return Math.atan2(middle.x / 2 - atX, middle.z / 2 - atZ);
@@ -1002,6 +1005,9 @@ function strokesFor(structure: Structure, base: number): Stroke[] {
   }
 }
 
+/** Whether a panel drawn into the world — the players, the sky — is to be drawn; set with the menu. */
+let panelsShown: (key: string) => boolean = () => true;
+
 /**
  * The menu, as on bwtoken.io. The corners frame the whole of it until a
  * section is chosen. "map" brings the map up in this page under this header,
@@ -1023,7 +1029,13 @@ function strokesFor(structure: Structure, base: number): Stroke[] {
   const cur = document.querySelector<HTMLElement>('#wcur');
   const list = document.querySelector<HTMLElement>('#wlist');
   const mapView = document.querySelector<HTMLIFrameElement>('#mapview');
-  if (header && menu && frame && mapLink && chainLink && clip && bar && sel && cur && list && mapView) {
+  const panelClip = document.querySelector<HTMLElement>('#panelclip');
+  const panelBar = document.querySelector<HTMLElement>('#panelbar');
+  const panelSel = document.querySelector<HTMLElement>('#psel');
+  const panelInfo = document.querySelector<HTMLElement>('#pinfo');
+  const panelHelp = document.querySelector<HTMLElement>('#panels-help');
+  if (header && menu && frame && mapLink && chainLink && clip && bar && sel && cur && list && mapView
+    && panelClip && panelBar && panelSel && panelInfo && panelHelp) {
     cur.textContent = chain.name;
     // sepolia first: the world where ground is taken
     const worlds = [CHAINS.sepolia, CHAINS.mainnet].filter((it) => it !== undefined);
@@ -1075,7 +1087,17 @@ function strokesFor(structure: Structure, base: number): Stroke[] {
       frame.style.height = `${box.h}px`;
       clip.style.left = `${Math.round(first.left) - ROOM}px`;
       clip.style.width = `${Math.round(last.right - first.left) + 2 * ROOM}px`;
-      clip.style.top = `${Math.round(header.getBoundingClientRect().bottom)}px`;
+      const under = Math.round(header.getBoundingClientRect().bottom);
+      clip.style.top = `${under}px`;
+      // the panels' bar under the left end, as wide as the title, never narrower than the list needs
+      const bar0 = header.getBoundingClientRect().left + 13;
+      const title = header.querySelector<HTMLElement>('h1')!.getBoundingClientRect();
+      const wide = Math.max(160, Math.round(title.width));
+      panelClip.style.left = `${Math.round(bar0) - ROOM}px`;
+      panelClip.style.width = `${wide + 2 * ROOM}px`;
+      panelClip.style.top = `${under}px`;
+      panelHelp.style.left = `${Math.round(bar0)}px`;
+      panelHelp.style.top = `${under + 32 + 10}px`;
     };
 
     let section: 'map' | 'blockchain' | null = null;
@@ -1102,6 +1124,46 @@ function strokesFor(structure: Structure, base: number): Stroke[] {
       history.replaceState(null, '', next === 'map' ? '#map' : location.pathname + location.search);
       place(next === 'map' ? mapLink : next === 'blockchain' ? chainLink : 'group');
     };
+    // the panels: a row a panel behind the arrow, and a card behind the i
+    {
+      const panels = new Panels(document.querySelector<HTMLElement>('#plist')!, panelHelp);
+      panelsShown = (key) => panels.shown(key);
+      const fold = (open: boolean) => {
+        document.body.classList.toggle('panelsopen', open);
+        panelSel.setAttribute('aria-expanded', String(open));
+        panelBar.style.height = `${PAD + (open ? panels.count : 1) * ROW}px`;
+      };
+      panelClip.style.height = `${PAD + panels.count * ROW + ROOM}px`;
+      fold(false);
+      panelSel.addEventListener('click', (event) => {
+        event.stopPropagation();
+        fold(!document.body.classList.contains('panelsopen'));
+      });
+      panelBar.addEventListener('click', (event) => event.stopPropagation());
+      document.addEventListener('click', () => fold(false));
+      let over = false;
+      const tell = (on: boolean) => {
+        panelHelp.hidden = !on;
+      };
+      for (const el of [panelInfo, panelHelp]) {
+        el.addEventListener('mouseenter', () => {
+          over = true;
+          tell(true);
+        });
+        el.addEventListener('mouseleave', () => {
+          over = false;
+          setTimeout(() => {
+            if (!over) tell(false);
+          }, 120);
+        });
+      }
+      panelInfo.addEventListener('click', (event) => {
+        event.stopPropagation();
+        tell(panelHelp.hidden);
+      });
+      document.addEventListener('click', () => tell(false));
+    }
+
     // the corners' first placing is not a move: no transition until they are placed
     frame.style.transition = 'none';
     show(location.hash === '#map' ? 'map' : null);
@@ -1282,7 +1344,7 @@ loop({
     if (live) {
       const standing: number[] = [];
       const digging: number[] = [];
-      for (const peer of live.peers.values()) {
+      for (const peer of panelsShown('players') ? live.peers.values() : []) {
         const x = peer.drawnX - homeCell.x - origin.x;
         const z = peer.drawnZ - homeCell.z - origin.z;
         if (Math.abs(x) > GROUND / 2 || Math.abs(z) > GROUND / 2) continue;
@@ -1357,7 +1419,7 @@ loop({
       inkOf(strokesFor(structure, base), grown, at, drawn);
       glassOf(structure, base, origin, grown, drawn);
     }
-    const inked = ribbons.count * 4;
+    const inked = panelsShown('sky') ? ribbons.count * 4 : 0;
     const ink = new Float32Array(inked + drawn.length);
     ink.set(ribbons.vertices.subarray(0, inked));
     ink.set(drawn, inked);
