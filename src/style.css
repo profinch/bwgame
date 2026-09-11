@@ -893,8 +893,8 @@ body.panelsopen #panelbar .subarrow {
   width: 300px;
   padding: 14px 16px 12px;
   border: 1px solid color-mix(in srgb, var(--line) 8%, transparent);
-  border-radius: 16px;
-  background: color-mix(in srgb, var(--bg) 92%, transparent);
+  border-radius: 22px;
+  background: color-mix(in srgb, var(--bg) 82%, transparent);
   backdrop-filter: blur(13px);
   -webkit-backdrop-filter: blur(13px);
   font-size: 11.5px;

@@ -1093,8 +1093,9 @@ function strokesFor(structure: Structure, base: number): Stroke[] {
       panelClip.style.left = `${Math.round(bar0) - ROOM}px`;
       panelClip.style.width = `${wide + 2 * ROOM}px`;
       panelClip.style.top = `${under}px`;
-      panelHelp.style.left = `${Math.round(bar0)}px`;
-      panelHelp.style.top = `${under + 32 + 10}px`;
+      // the card to the right of the bar, level with it, clear of the list when it is down
+      panelHelp.style.left = `${Math.round(bar0) + wide + 12}px`;
+      panelHelp.style.top = `${under}px`;
     };
 
     let section: 'map' | 'blockchain' | null = null;
