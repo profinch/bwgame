@@ -1013,10 +1013,11 @@ function strokesFor(structure: Structure, base: number): Stroke[] {
   const frame = document.querySelector<HTMLElement>('.navlinks .frame');
   const mapLink = document.querySelector<HTMLAnchorElement>('#map');
   const chainLink = document.querySelector<HTMLAnchorElement>('#blockchain');
+  const clip = document.querySelector<HTMLElement>('#subclip');
   const bar = document.querySelector<HTMLElement>('#subbar');
   const list = document.querySelector<HTMLElement>('#wlist');
   const mapView = document.querySelector<HTMLIFrameElement>('#mapview');
-  if (header && menu && frame && mapLink && chainLink && bar && list && mapView) {
+  if (header && menu && frame && mapLink && chainLink && clip && bar && list && mapView) {
     // sepolia first: the world where ground is taken
     const worlds = [CHAINS.sepolia, CHAINS.mainnet].filter((it) => it !== undefined);
     const rows: HTMLElement[] = [];
@@ -1035,7 +1036,11 @@ function strokesFor(structure: Structure, base: number): Stroke[] {
       rows.push(row);
     }
     list.replaceChildren(...rows);
-    bar.style.height = `${4 + rows.length * 28}px`;
+    const tall = 4 + rows.length * 28;
+    bar.style.height = `${tall}px`;
+    // the shadow reaches 24px to the sides and about 20px down
+    const ROOM = 24;
+    clip.style.height = `${tall + ROOM}px`;
 
     // the corners round a link, or round the whole menu; and the bar under
     // the whole menu: measured, as on the site, so they follow the text
@@ -1055,9 +1060,9 @@ function strokesFor(structure: Structure, base: number): Stroke[] {
       frame.style.top = `${box.t}px`;
       frame.style.width = `${box.w}px`;
       frame.style.height = `${box.h}px`;
-      bar.style.left = `${Math.round(first.left)}px`;
-      bar.style.width = `${Math.round(last.right - first.left)}px`;
-      bar.style.top = `${Math.round(header.getBoundingClientRect().bottom)}px`;
+      clip.style.left = `${Math.round(first.left) - ROOM}px`;
+      clip.style.width = `${Math.round(last.right - first.left) + 2 * ROOM}px`;
+      clip.style.top = `${Math.round(header.getBoundingClientRect().bottom)}px`;
     };
 
     let section: 'map' | 'blockchain' | null = null;
@@ -1072,7 +1077,11 @@ function strokesFor(structure: Structure, base: number): Stroke[] {
       history.replaceState(null, '', next === 'map' ? '#map' : location.pathname + location.search);
       place(next === 'map' ? mapLink : next === 'blockchain' ? chainLink : 'group');
     };
+    // the corners' first placing is not a move: no transition until they are placed
+    frame.style.transition = 'none';
     show(location.hash === '#map' ? 'map' : null);
+    void frame.offsetWidth;
+    frame.style.transition = '';
     addEventListener('resize', () => place(section === 'map' ? mapLink : section === 'blockchain' ? chainLink : 'group'));
 
     mapLink.addEventListener('click', (event) => {

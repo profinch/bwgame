@@ -721,12 +721,25 @@ html[data-t="dark"] {
    as wide as it, put there by script. It is up out of sight until the menu's
    blockchain is pressed, then slides down with the worlds listed, this one
    bright; a choice or a click elsewhere sends it back up. */
-.subbar {
+/* the window the bar slides in: from the header's lower edge down, so going
+   up it vanishes behind the header rather than showing above it — the bar is
+   taller than the header. Room at the sides and below for the shadow. */
+.subclip {
   position: fixed;
   z-index: 1;
   top: 57px;
   left: 0;
-  width: 168px;
+  width: 216px;
+  height: 90px;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.subbar {
+  position: absolute;
+  top: 0;
+  left: 24px;
+  right: 24px;
   height: 32px;
   overflow: hidden;
   pointer-events: none;
