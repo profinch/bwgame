@@ -156,7 +156,11 @@ export function ownGround(
     said.textContent = sticky || (what.name && chain.ens ? `yours: ${what.name}.${chain.ens.parent}` : `yours: ${shortOf(plot.address)}`);
     noteLine.textContent =
       (what.note ? `says: ${what.note}` : 'nothing written into it yet') +
-      (what.implementation ? `\npoints at ${what.implementation.slice(0, 10)}…` : '\npoints at no code: a drawing until it does');
+      (what.implementation
+        ? `\npoints at ${what.implementation.slice(0, 10)}…`
+        : what.note
+          ? '\npoints at no code'
+          : '\npoints at no code: a drawing until something is written into it');
     // naming needs the salt the plot was made with, which the indexer knows;
     // a plot named once is named: the form is not offered again
     naming.hidden = !chain.ens || Boolean(what.name);

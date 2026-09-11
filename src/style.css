@@ -987,7 +987,7 @@ body.embedded #app {
 
 /* the owner's panel, dressed as the claim panel is, at the left as the claim panel is at the right */
 .hud.own {
-  top: 101px;
+  top: 77px; /* as far under the header as the claim panel is above the bottom edge */
   left: 24px;
   right: auto;
   bottom: auto;
@@ -1079,6 +1079,11 @@ body.embedded #app {
 
 /* the list scrolls when it is long, with a scrollbar drawn like the rest: a
    thin dark line on nothing */
+/* the same room between the words and what follows them, list or forms */
+.hud.own .own-write {
+  margin-top: 6px;
+}
+
 .hud.own .own-list {
   /* five rows; the rest scroll, the panel does not grow */
   margin-top: 6px;
