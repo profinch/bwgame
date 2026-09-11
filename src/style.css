@@ -849,18 +849,13 @@ body.listopen .subarrow {
   transform: translateY(0) rotate(-135deg);
 }
 
-/* the panels' bar unfolds on its own class, the worlds' on the site's */
-body.plistopen #panelbar .wlist {
+/* the panels' bar is the list, down; its arrow points up and takes it away */
+#panelbar .wlist {
   opacity: 1;
   pointer-events: auto;
 }
 
-body.plistopen #panelbar .wsel {
-  opacity: 0;
-  pointer-events: none;
-}
-
-body.plistopen #panelbar .subarrow {
+#panelbar .subarrow {
   transform: translateY(0) rotate(-135deg);
 }
 

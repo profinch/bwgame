@@ -1032,10 +1032,9 @@ function strokesFor(structure: Structure, base: number): Stroke[] {
   const list = document.querySelector<HTMLElement>('#wlist');
   const mapView = document.querySelector<HTMLIFrameElement>('#mapview');
   const panelBar = document.querySelector<HTMLElement>('#panelbar');
-  const panelSel = document.querySelector<HTMLElement>('#psel');
   const panelList = document.querySelector<HTMLElement>('#plist');
   if (header && menu && frame && mapLink && panelsLink && chainLink && clip && bar && sel && cur && list && mapView
-    && panelBar && panelSel && panelList) {
+    && panelBar && panelList) {
     cur.textContent = chain.name;
     // sepolia first: the world where ground is taken
     const worlds = [CHAINS.sepolia, CHAINS.mainnet].filter((it) => it !== undefined);
@@ -1091,24 +1090,15 @@ function strokesFor(structure: Structure, base: number): Stroke[] {
       clip.style.top = `${under}px`;
     };
 
-    // the panels: down with the menu's "panels", a row a panel behind the arrow
+    // the panels: down with the menu's "panels", a row a panel, the arrow takes it away
     const panels = new Panels(panelList);
-    const foldPanels = (open: boolean) => {
-      document.body.classList.toggle('plistopen', open);
-      panelSel.setAttribute('aria-expanded', String(open));
-      panelBar.style.height = `${PAD + (open ? panels.count : 1) * ROW}px`;
-    };
-    foldPanels(false);
+    panelBar.style.height = `${PAD + panels.count * ROW}px`;
     clip.style.height = `${PAD + Math.max(rows.length, panels.count) * ROW + ROOM}px`;
 
     let section: 'map' | 'panels' | 'blockchain' | null = null;
     const show = (next: typeof section) => {
       section = next;
       unfold(false);
-      // the panels come down already unfolded: the list is the point of them;
-      // the arrow folds it to the word, a click elsewhere is back to the game,
-      // and going up the bar keeps whatever it showed
-      if (next === 'panels') foldPanels(true);
       document.body.classList.toggle('subopen', next === 'blockchain');
       document.body.classList.toggle('panelsopen', next === 'panels');
       mapLink.classList.toggle('active', next === 'map');
@@ -1159,12 +1149,11 @@ function strokesFor(structure: Structure, base: number): Stroke[] {
     });
     // a row pressed keeps the bar down: several may be put away in a row
     panelBar.addEventListener('click', (event) => event.stopPropagation());
-    const unfoldOrFoldPanels = (event: Event) => {
+    // the arrow on the panels' bar is the way back to the game
+    panelBar.querySelector<HTMLElement>('.subarrow')!.addEventListener('click', (event) => {
       event.stopPropagation();
-      foldPanels(!document.body.classList.contains('plistopen'));
-    };
-    panelSel.addEventListener('click', unfoldOrFoldPanels);
-    panelBar.querySelector<HTMLElement>('.subarrow')!.addEventListener('click', unfoldOrFoldPanels);
+      show(null);
+    });
     const unfoldOrFold = (event: Event) => {
       event.stopPropagation();
       unfold(!document.body.classList.contains('listopen'));
