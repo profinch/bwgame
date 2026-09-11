@@ -138,11 +138,12 @@ h1 {
 
 /* --- what is this place ------------------------------------------------- */
 
+/* the same dress as the world's panels: the header's corners and edge, clear glass */
 .card,
 .drawer {
-  border: 1px solid color-mix(in srgb, var(--line) 14%, transparent);
-  background: var(--panel);
-  box-shadow: 0 6px 22px rgb(0 0 0 / 9%);
+  border-radius: 22px;
+  border: 1px solid color-mix(in srgb, var(--line) 8%, transparent);
+  background: color-mix(in srgb, var(--bg) 30%, transparent);
 }
 
 .card {
@@ -582,8 +583,8 @@ html[data-t="dark"] {
 
 /* taking ground, from inside the world */
 
-/* dressed as the header is — the same corners and edge — but thinner and less
-   blurred, so the world shows through a panel where it does not through the bar */
+/* dressed as the header is — the same corners and edge — but clear glass, no
+   blur: the world is seen through a panel as it is */
 .hud.claim {
   top: auto;
   left: auto;
@@ -594,9 +595,7 @@ html[data-t="dark"] {
   padding: 12px 16px;
   border-radius: 22px;
   border: 1px solid color-mix(in srgb, var(--line) 8%, transparent);
-  background: color-mix(in srgb, var(--bg) 52%, transparent);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  background: color-mix(in srgb, var(--bg) 30%, transparent);
   display: grid;
   gap: 6px;
 }
@@ -970,9 +969,7 @@ body.embedded #app {
   padding: 12px 16px;
   border-radius: 22px;
   border: 1px solid color-mix(in srgb, var(--line) 8%, transparent);
-  background: color-mix(in srgb, var(--bg) 52%, transparent);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  background: color-mix(in srgb, var(--bg) 30%, transparent);
   display: grid;
   gap: 6px;
 }
