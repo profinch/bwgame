@@ -75,12 +75,20 @@ const home = addressToPoint(HOME);
  * Nothing is stored and nothing is authored: anybody can work out the height of
  * a hill from the address underneath it, and it comes out the same everywhere.
  */
-const OCTAVES: readonly { depth: number; metres: number; height: number }[] = [
-  { depth: DEPTH - 6, metres: 4096, height: 58 },
-  { depth: DEPTH - 5, metres: 1024, height: 27 },
-  { depth: DEPTH - 4, metres: 256, height: 12 },
-  { depth: DEPTH - 3, metres: 64, height: 5 },
-  { depth: DEPTH - 2, metres: 16, height: 2 },
+/**
+ * `peak` shapes an octave: the hash in [0, 1) is raised to it before it is
+ * scaled, so with a peak of 3 most cells sit low and a few stand high. That is
+ * what makes hills rather than a uniform swell — the coarse octaves are peaked,
+ * the fine ones are not. Amplitudes are in metres; a walkable patch is 1700 m,
+ * so the 16 km octave shows as a slope and the 4 km one as a hill in view.
+ */
+const OCTAVES: readonly { depth: number; metres: number; height: number; peak: number }[] = [
+  { depth: DEPTH - 7, metres: 16384, height: 420, peak: 3 },
+  { depth: DEPTH - 6, metres: 4096, height: 240, peak: 2.4 },
+  { depth: DEPTH - 5, metres: 1024, height: 90, peak: 1.6 },
+  { depth: DEPTH - 4, metres: 256, height: 22, peak: 1 },
+  { depth: DEPTH - 3, metres: 64, height: 6, peak: 1 },
+  { depth: DEPTH - 2, metres: 16, height: 2, peak: 1 },
 ].filter((octave) => octave.depth >= 1);
 
 /**
@@ -117,7 +125,8 @@ function cellHeight(octave: number, rx: number, rz: number): number {
   const base = BASES[octave]!;
   const prefix = prefixOf(OCTAVES[octave]!.depth, base.x + BigInt(rx), base.z + BigInt(rz));
   const digest = keccak_256(encoder.encode(prefix));
-  const value = ((digest[0]! << 16) | (digest[1]! << 8) | digest[2]!) / 0x1000000;
+  const flat = ((digest[0]! << 16) | (digest[1]! << 8) | digest[2]!) / 0x1000000;
+  const value = Math.pow(flat, OCTAVES[octave]!.peak);
   heights.set(key, value);
   return value;
 }
@@ -185,7 +194,8 @@ export function rawHeightAt(x: number, z: number): number {
     const d = cellHeight(i, rx + 1, rz + 1);
     const top = a + (b - a) * fx;
     const bottom = c + (d - c) * fx;
-    sum += (top + (bottom - top) * fz - 0.5) * octave.height;
+    // the mean of x^peak on [0, 1) is 1/(peak+1): that is the sea level of the octave
+    sum += (top + (bottom - top) * fz - 1 / (octave.peak + 1)) * octave.height;
   }
   return sum;
 }

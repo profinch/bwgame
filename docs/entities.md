@@ -7,7 +7,7 @@ anyone, nothing authored.
 | entity | today | honest shape | needs |
 |---|---|---|---|
 | **externally owned account (wallet)** | a plate with a post per token; wear from the nonce | its ENS name along the plate's edge; age from its first transaction | an indexer for age |
-| **contract** | a building: size from code length, shape and turn from the code hash, darkness from balance | kinds by interface — token, NFT collection, proxy, multisig, factory, AMM pool — each with a form of its own; a verified contract wears its name | ERC-165 and probe calls, Sourcify |
+| **contract** | a building: size from code length, shape and turn from the code hash, darkness from balance, the mark's grid of dots on its walls as windows, breathing slowly | kinds by interface — token, NFT collection, proxy, multisig, factory, AMM pool — each with a form of its own; a verified contract wears its name | ERC-165 and probe calls, Sourcify |
 | **bytecode** | shape | clones from one factory stand identical — already so | — |
 | **storage** | — | interiors, where the layout is known (our own plots) | our contracts |
 | **balance** | a building's darkness; an `eth` post on a plate | — | — |
@@ -35,16 +35,21 @@ anyone, nothing authored.
 The ground is the address space, hashed. Ordinary terrain stacks octaves of noise: broad shapes
 first, finer ones on top. The address space is built that way already — the first digit cuts the
 world in quarters, the second cuts those in quarters, forty times over — so the octaves are not
-invented: they are depths of the tree. Five depths are used, with cells of 4096, 1024, 256, 64
-and 16 metres. The height of a cell is the keccak of its address prefix, the first three bytes as
-a number in [0, 1), times the octave's amplitude (58, 27, 12, 5, 2 metres), smoothed between
-corners. Nothing is stored and nothing is authored: anybody can compute the height of a hill from
-the address under it, and it comes out the same everywhere. Ground under stones and plots is
-levelled, as real ground is before building.
+invented: they are depths of the tree. Six depths are used, with cells of 16384, 4096, 1024,
+256, 64 and 16 metres. The height of a cell is the keccak of its address prefix, the first three
+bytes as a number in [0, 1), raised to a power on the coarse depths (3, 2.4 and 1.6 for the three
+largest cells) so that most cells sit low and a few stand high, times the octave's amplitude
+(420, 240, 90, 22, 6, 2 metres), smoothed between corners. Nothing is stored and nothing is
+authored: anybody can compute the height of a hill from the address under it, and it comes out
+the same everywhere.
 
-Measured: within one walkable patch (1.7 km) the ground rises and falls by about 30 metres, at most
-60; over 200 km the height stays within ±45 metres. Hills, not mountains. Mountains are a matter
-of amplitude and profile, not of the method (see roadmap).
+A building stands on the highest ground under its footprint and reaches down to the lowest with
+a foundation, so a hill never comes up through its floor and it never hangs over a slope; a
+plate does the same. The ground itself is not flattened.
+
+Measured (11.09.2026): within one walkable patch (1.7 km) the ground rises and falls by about
+100 metres, one patch in ten by more than 150, at most about 230; slopes reach one in three.
+Hills. Mountains would be another amplitude on the largest cells.
 
 ## How a plot is drawn
 
