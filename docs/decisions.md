@@ -38,6 +38,11 @@ What was decided, and why. What was refused, and why. Dated where the date matte
 - **Buildings stand on foundations, the ground is not flattened** (11.09.2026): a structure is
   set on the highest ground under it and reaches down to the lowest, so hills can be as steep as
   they like without breaking what stands on them.
+- **Panels are a filter**, in the site's sub-bar under the left end of the header: readings, claim,
+  owner, players, sky, each put away or brought back, kept in the browser; a small *i* says what
+  each is. Nothing else decides what is on the screen.
+- **Shadows stay shadows in the dark**: the dark is the page turned over, so a shadow meant to stay
+  dark is written light. Nothing glows, as nothing does on bwtoken.io.
 - **The header is bwtoken.io's nav to the pixel**, so a tab switch between the two moves nothing;
   the menu is the site's — *map*, *blockchain* with the corners round it — and the chains hang
   under it in the site's sub-bar. The line by the mark: *the chain on foot*.

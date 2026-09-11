@@ -3,7 +3,11 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <title>Ground State — engine</title>
+    <title>Ground State</title>
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <script>try{var _t=localStorage.getItem('bw-theme');if(_t)document.documentElement.dataset.t=_t;}catch(e){}</script>
   </head>
   <body class="world">
@@ -27,6 +31,17 @@
         </div>
       </div>
     </div>
+    <div class="subclip" id="panelclip">
+      <div class="subbar" id="panelbar" aria-label="which panels are shown">
+        <div class="subinner">
+          <div class="wsel" id="psel" role="button" aria-expanded="false"><span class="wcur">panels</span></div>
+          <div class="wlist" id="plist"></div>
+          <span class="subarrow"></span>
+          <span class="info" id="pinfo" role="button" aria-label="what the panels are">i</span>
+        </div>
+      </div>
+    </div>
+    <aside class="panels-help" id="panels-help" hidden></aside>
     <iframe class="mapview" id="mapview" title="the map"></iframe>
     <section class="welcome" hidden>
       <div class="welcome-card">
