@@ -1082,8 +1082,19 @@ function strokesFor(structure: Structure, base: number): Stroke[] {
       mapLink.classList.toggle('active', next === 'map');
       chainLink.classList.toggle('active', next === 'blockchain');
       chainLink.setAttribute('aria-expanded', String(next === 'blockchain'));
-      if (next === 'map' && !mapView.src) mapView.src = '/map.html?embedded';
-      mapView.hidden = next !== 'map';
+      document.body.classList.toggle('onmap', next === 'map');
+      // the map fades in as the site's pages do — the first time only once
+      // it has loaded, so that what fades in is the map and not a blank page
+      if (next === 'map') {
+        if (!mapView.src) {
+          mapView.src = '/map.html?embedded';
+          mapView.addEventListener('load', () => mapView.classList.toggle('on', section === 'map'), { once: true });
+        } else {
+          mapView.classList.add('on');
+        }
+      } else {
+        mapView.classList.remove('on');
+      }
       history.replaceState(null, '', next === 'map' ? '#map' : location.pathname + location.search);
       place(next === 'map' ? mapLink : next === 'blockchain' ? chainLink : 'group');
     };

@@ -874,6 +874,33 @@ body.listopen .subarrow {
   height: 100%;
   border: 0;
   background: var(--bg);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.6s ease;
+}
+
+.mapview.on {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* on the map the world's panels — the readings, the claim, the owner's, the
+   thumb controls — fade away with it; the header and the welcome stay */
+.hud.bottom,
+.hud.claim,
+.hud.own,
+.touchpad,
+.touchpad-buttons {
+  transition: opacity 0.6s ease;
+}
+
+body.onmap .hud.bottom,
+body.onmap .hud.claim,
+body.onmap .hud.own,
+body.onmap .touchpad,
+body.onmap .touchpad-buttons {
+  opacity: 0;
+  pointer-events: none;
 }
 
 body.embedded header.bar {
