@@ -48,7 +48,7 @@ export interface Owning {
 /** How often the indexer is asked which ground is yours, while you are not standing on any. */
 const LISTS_EVERY = 15_000;
 /** How many unnamed plots the list shows, newest first; named ones are all shown. */
-const LISTS_UNNAMED = 5;
+const LISTS_UNNAMED = 3;
 
 /** An address with its head and its tail: `0x3095c19c…5423`. */
 function shortOf(address: string): string {
