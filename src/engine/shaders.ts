@@ -52,6 +52,7 @@ out vec3 vMaterial;
 out vec3 vLocal;   // where on the box this is, before the turn: for what is drawn on its faces
 out vec3 vFace;    // which face, in the box's own frame
 out float vPhase;  // this instance's own moment in the waves
+out vec3 vSize;    // the box's size, for a lattice fitted to each wall
 ${WARP}
 
 void main() {
@@ -76,6 +77,7 @@ void main() {
   vLocal = local;
   vFace = normal;
   vPhase = phaseOf(offset);
+  vSize = size;
   gl_Position = viewProjection * vec4(world, 1.0);
 }`;
 
@@ -88,6 +90,7 @@ in vec3 vMaterial;
 in vec3 vLocal;
 in vec3 vFace;
 in float vPhase;
+in vec3 vSize;
 
 uniform float time;
 uniform vec3 eye;
@@ -177,6 +180,22 @@ float uncovered(vec3 world) {
 }
 
 // ordered noise, one level deep, so gradients stop banding
+// the mesh of bwtoken.io, in the units of its own cells: a node drifts on
+// the same slow waves as there (its amplitude a fifth of a cell, more or
+// less by row), and a node on the edge of a wall stays where it is
+vec2 meshNode(vec2 n, vec2 cells, float t) {
+  float swing = 0.2 + 0.16 * sin(n.y * 0.55 + n.x * 0.12);
+  vec2 drift = vec2(cos(n.y * 0.45 - t * 0.5) * swing * 0.7, sin(n.x * 0.55 + t + n.y * 0.35) * swing);
+  vec2 inward = min(n, cells - n);
+  return n + drift * smoothstep(0.0, 1.0, min(inward.x, inward.y));
+}
+
+float toSegment(vec2 p, vec2 a, vec2 b) {
+  vec2 ab = b - a;
+  float h = clamp(dot(p - a, ab) / max(dot(ab, ab), 1e-6), 0.0, 1.0);
+  return length(p - a - ab * h);
+}
+
 float dither(vec2 p) {
   const mat4 bayer = mat4(
      0.0,  8.0,  2.0, 10.0,
@@ -203,29 +222,44 @@ void main() {
   float light = albedo * (ambient * 0.34 + direct * 1.15)
               + ggx(n, v, l, roughness) * direct * 0.5;
 
-  // the mesh from bwtoken.io laid over the walls of a building: a square grid
-  // of fine lines with a diagonal in every other cell and a point at every
-  // node, its nodes drifting on slow waves so the grid is never quite still
+  // the mesh from bwtoken.io on the walls of a building, as it is there: a
+  // lattice of straight hairlines between nodes that drift on slow waves, a
+  // diagonal in every other cell, a point at every node, faint. The lattice is
+  // fitted to each wall — a whole number of cells across and up, its edges on
+  // the wall's edges — and a line is a pixel wide at any distance.
+  //
+  // Only this cell's four edges and its own diagonal can pass through a point
+  // in it, plus the two neighbours' diagonals that end at its corners: a node
+  // drifts by a third of a cell at most. Six nodes and seven segments a pixel,
+  // and none at all where a cell is under three pixels wide.
   if (vMaterial.z > 0.5 && abs(vFace.y) < 0.5) {
-    float u = abs(vFace.x) > 0.5 ? vLocal.z : vLocal.x;
-    vec2 p = vec2(u, vLocal.y);
-    float pitch = 1.25;
-    p += pitch * 0.16 * vec2(
-      sin(p.y * 2.1 - time * 0.5 + vPhase) + 0.5 * sin(p.x * 1.3 + time * 0.35),
-      sin(p.x * 2.4 + time * 0.7 + vPhase + p.y * 0.6));
-    vec2 g = p / pitch;
-    vec2 cell = floor(g);
-    vec2 f = fract(g);
-    float thin = 0.018 + 0.7 * fwidth(g.x + g.y);
-    vec2 toLine = min(f, 1.0 - f);
-    float line = 1.0 - smoothstep(thin, thin * 2.2, min(toLine.x, toLine.y));
-    float diagonal = 0.0;
-    if (mod(cell.x + cell.y, 2.0) < 0.5) {
-      diagonal = 1.0 - smoothstep(thin, thin * 2.2, abs(f.x - f.y) * 0.7071);
+    bool sideways = abs(vFace.x) > 0.5;
+    float across = sideways ? vSize.z : vSize.x;
+    float u = (sideways ? vLocal.z : vLocal.x) + across * 0.5;
+    float pitch = max(vSize.x, vSize.z) / 10.0;
+    vec2 cells = max(vec2(1.0), round(vec2(across, vSize.y) / pitch));
+    vec2 g = vec2(u, vLocal.y) / vec2(across, vSize.y) * cells;
+    float pixel = max(fwidth(g.x), fwidth(g.y));
+    float near = 1.0 - smoothstep(0.12, 0.35, pixel);
+    if (near > 0.0) {
+      float t = time * 0.3 + vPhase;
+      vec2 cell = floor(g);
+      vec2 n00 = meshNode(cell, cells, t);
+      vec2 n10 = meshNode(cell + vec2(1.0, 0.0), cells, t);
+      vec2 n01 = meshNode(cell + vec2(0.0, 1.0), cells, t);
+      vec2 n11 = meshNode(cell + vec2(1.0), cells, t);
+      float d = min(min(toSegment(g, n00, n10), toSegment(g, n00, n01)),
+                    min(toSegment(g, n10, n11), toSegment(g, n01, n11)));
+      if (mod(cell.x + cell.y, 2.0) < 0.5) {
+        d = min(d, toSegment(g, n00, n11));
+        d = min(d, toSegment(g, meshNode(cell - vec2(1.0), cells, t), n00));
+        d = min(d, toSegment(g, n11, meshNode(cell + vec2(2.0), cells, t)));
+      }
+      float line = 1.0 - smoothstep(0.4 * pixel, 1.3 * pixel, d);
+      float toNode = min(min(length(g - n00), length(g - n10)), min(length(g - n01), length(g - n11)));
+      float node = 1.0 - smoothstep(1.3 * pixel, 2.4 * pixel, toNode);
+      light *= 1.0 - max(0.28 * line, 0.42 * node) * near;
     }
-    float node = 1.0 - smoothstep(0.05, 0.05 + thin * 2.0, length(f - round(f)));
-    float ink = max(max(line, diagonal * 0.8), node);
-    light *= mix(1.0, 0.6, ink);
   }
 
   // distance thins into the air, which is what gives depth without colour
