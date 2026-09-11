@@ -394,7 +394,6 @@ body.world {
   top: 20px;
   left: 24px;
   right: 24px;
-  height: 37px;
   padding: 5px 12px;
   overflow: hidden;
   border-radius: 22px;
@@ -406,11 +405,28 @@ body.world {
   gap: 0 14px;
 }
 
-/* the row is 25px tall, as the nav's links are there, so the stones sit at
-   the same half pixel */
+/* what sets the bar's height is not the title but a gauge: an empty, unseen
+   flex item set exactly as the nav's links are there — 13px regular in the
+   same face, the line height the browser's own, 5px above and below — so the
+   bar comes out the height of the nav in whichever browser, whatever its font
+   metrics, and the stones sit at the same half pixel */
+.hud.top .gauge {
+  flex: none;
+  width: 0;
+  margin-right: -14px;
+  padding: 5px 0;
+  font: 400 13px/normal 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  visibility: hidden;
+}
+
 .hud.top h1 {
-  line-height: 25px;
+  line-height: normal;
   white-space: nowrap;
+}
+
+/* the mark is taller than the text line; it must not make the row taller */
+.hud.top h1 .mark {
+  margin-block: -10px;
 }
 
 .hud.top .hint {
@@ -837,10 +853,13 @@ body.touch .touchpad-buttons {
      stones 9px in from the right; the hint drops to a second line under */
   .hud.top {
     flex-wrap: wrap;
-    height: auto;
     margin: 24px 8px 0;
     padding: 5px 9px;
     gap: 0 10px;
+  }
+
+  .hud.top .gauge {
+    margin-right: -10px;
   }
 
   .hud.top .hint {
