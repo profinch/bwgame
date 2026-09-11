@@ -1,19 +1,19 @@
 /**
  * Which panels are on the screen: a filter under the left end of the header,
  * in the sub-bar of bwtoken.io. Closed it says "panels"; the arrow unfolds a
- * row a panel, bright when it is shown, dim when it is not; a small i opens a
- * card saying what each one is. The choice is kept in this browser.
+ * row a panel, bright when it is shown, dim when it is not. The choice is kept
+ * in this browser.
  *
  * A panel put away is hidden by a class on the body. The other players and the
  * block overhead are not panels and are never put away: they are the world.
  */
-export const PANELS: readonly { key: string; says: string }[] = [
-  {
-    key: 'readings',
-    says: 'where you stand: the chain, the depth, the address under your feet, what is near, the block overhead — and the field that takes you to an address or a name.',
-  },
-  { key: 'claim', says: 'digging for the ground where you stand, and the one transaction that makes it yours.' },
-  { key: 'owner', says: 'your own plot, when you stand on it: write into it, point it at code, name it, seal it.' },
+export const PANELS: readonly { key: string }[] = [
+  // where you stand, what is near, the block overhead, the field to go by
+  { key: 'readings' },
+  // digging where you stand, and the one transaction that makes it yours
+  { key: 'claim' },
+  // your own plot, when you stand on it: write, point at code, name, seal
+  { key: 'owner' },
 ];
 
 const KEPT_AS = 'gs-panels-off';
@@ -21,10 +21,7 @@ const KEPT_AS = 'gs-panels-off';
 export class Panels {
   private readonly off = new Set<string>();
 
-  constructor(
-    private readonly list: HTMLElement,
-    help: HTMLElement,
-  ) {
+  constructor(private readonly list: HTMLElement) {
     try {
       const kept = JSON.parse(localStorage.getItem(KEPT_AS) ?? '[]') as unknown;
       if (Array.isArray(kept)) for (const key of kept) if (typeof key === 'string') this.off.add(key);
@@ -41,18 +38,6 @@ export class Panels {
       rows.push(row);
     }
     list.replaceChildren(...rows);
-
-    const said = document.createElement('dl');
-    for (const panel of PANELS) {
-      const term = document.createElement('dt');
-      term.textContent = panel.key;
-      const what = document.createElement('dd');
-      what.textContent = panel.says;
-      said.append(term, what);
-    }
-    const foot = document.createElement('p');
-    foot.textContent = 'a dim row is a panel put away; press it to bring it back.';
-    help.replaceChildren(said, foot);
     this.apply();
   }
 

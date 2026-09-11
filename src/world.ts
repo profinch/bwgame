@@ -1029,10 +1029,8 @@ function strokesFor(structure: Structure, base: number): Stroke[] {
   const panelClip = document.querySelector<HTMLElement>('#panelclip');
   const panelBar = document.querySelector<HTMLElement>('#panelbar');
   const panelSel = document.querySelector<HTMLElement>('#psel');
-  const panelInfo = document.querySelector<HTMLElement>('#pinfo');
-  const panelHelp = document.querySelector<HTMLElement>('#panels-help');
   if (header && menu && frame && mapLink && chainLink && clip && bar && sel && cur && list && mapView
-    && panelClip && panelBar && panelSel && panelInfo && panelHelp) {
+    && panelClip && panelBar && panelSel) {
     cur.textContent = chain.name;
     // sepolia first: the world where ground is taken
     const worlds = [CHAINS.sepolia, CHAINS.mainnet].filter((it) => it !== undefined);
@@ -1093,9 +1091,6 @@ function strokesFor(structure: Structure, base: number): Stroke[] {
       panelClip.style.left = `${Math.round(bar0) - ROOM}px`;
       panelClip.style.width = `${wide + 2 * ROOM}px`;
       panelClip.style.top = `${under}px`;
-      // the card to the right of the bar, level with it, clear of the list when it is down
-      panelHelp.style.left = `${Math.round(bar0) + wide + 12}px`;
-      panelHelp.style.top = `${under}px`;
     };
 
     let section: 'map' | 'blockchain' | null = null;
@@ -1122,9 +1117,9 @@ function strokesFor(structure: Structure, base: number): Stroke[] {
       history.replaceState(null, '', next === 'map' ? '#map' : location.pathname + location.search);
       place(next === 'map' ? mapLink : next === 'blockchain' ? chainLink : 'group');
     };
-    // the panels: a row a panel behind the arrow, and a card behind the i
+    // the panels: a row a panel behind the arrow
     {
-      const panels = new Panels(document.querySelector<HTMLElement>('#plist')!, panelHelp);
+      const panels = new Panels(document.querySelector<HTMLElement>('#plist')!);
       const fold = (open: boolean) => {
         document.body.classList.toggle('panelsopen', open);
         panelSel.setAttribute('aria-expanded', String(open));
@@ -1140,27 +1135,6 @@ function strokesFor(structure: Structure, base: number): Stroke[] {
       panelBar.querySelector<HTMLElement>('.subarrow')!.addEventListener('click', foldOrUnfold);
       panelBar.addEventListener('click', (event) => event.stopPropagation());
       document.addEventListener('click', () => fold(false));
-      let over = false;
-      const tell = (on: boolean) => {
-        panelHelp.hidden = !on;
-      };
-      for (const el of [panelInfo, panelHelp]) {
-        el.addEventListener('mouseenter', () => {
-          over = true;
-          tell(true);
-        });
-        el.addEventListener('mouseleave', () => {
-          over = false;
-          setTimeout(() => {
-            if (!over) tell(false);
-          }, 120);
-        });
-      }
-      panelInfo.addEventListener('click', (event) => {
-        event.stopPropagation();
-        tell(panelHelp.hidden);
-      });
-      document.addEventListener('click', () => tell(false));
     }
 
     // the corners' first placing is not a move: no transition until they are placed
