@@ -11,7 +11,8 @@
  * on the chain and which wallet is in the browser.
  */
 import type { Structure } from './places';
-import { connected, landed, onOurChain, send } from './signer';
+import { type Claimed, claimedPlots } from './plot';
+import { connect, connected, landed, onOurChain, send } from './signer';
 
 import { chain } from './chains';
 
@@ -44,14 +45,21 @@ export interface Owning {
   stop(): void;
 }
 
+/** How often the indexer is asked which ground is yours, while you are not standing on any. */
+const LISTS_EVERY = 15_000;
+
 export function ownGround(
   panel: HTMLElement,
   /** The plot of the given owner's that is within reach, if any. */
   plotOf: (owner: string) => Structure | null,
   onChanged: (plot: string) => void,
+  /** The way to a plot of yours that is somewhere else. */
+  goTo: (plot: string) => void,
 ): Owning {
   const said = panel.querySelector<HTMLElement>('.own-said')!;
   const noteLine = panel.querySelector<HTMLElement>('.own-note')!;
+  const connecting = panel.querySelector<HTMLElement>('.own-connect')!;
+  const listing = panel.querySelector<HTMLElement>('.own-list')!;
   const writing = panel.querySelector<HTMLFormElement>('.own-write')!;
   const noteInput = writing.querySelector<HTMLInputElement>('input')!;
   const coding = panel.querySelector<HTMLFormElement>('.own-code')!;
@@ -65,17 +73,63 @@ export function ownGround(
   let busy = false;
   /** What the panel last said on its own; a transaction's word stays until the next look. */
   let sticky = '';
+  /** Your ground on this chain, as the indexer last listed it, and when. */
+  let mine: Claimed[] = [];
+  let listedFor: string | null = null;
+  let listedAt = 0;
 
+  const forms = [writing, coding, naming, panel.querySelector<HTMLElement>('.own-do')!];
+  /** The panel in one of its states: the forms are for standing on your own ground, the rest for not. */
+  const state = (of: 'connect' | 'list' | 'here') => {
+    connecting.hidden = of !== 'connect';
+    listing.hidden = of !== 'list';
+    for (const form of forms) form.hidden = of !== 'here';
+  };
+
+  /**
+   * The panel is always there while it is wanted; what it holds depends on
+   * where you stand. Off your ground it is the way to it: no wallet, the way
+   * to connect one; a wallet, every plot of yours listed, each a button that
+   * takes you there; none, the word that digging is where ground comes from.
+   */
   const look = async () => {
     if (busy) return;
     owner = (await connected().catch(() => null))?.toLowerCase() ?? null;
     plot = owner ? plotOf(owner) : null;
-    if (!plot) {
-      panel.hidden = true;
+    if (!owner) {
+      state('connect');
       sticky = '';
+      said.textContent = 'your ground';
+      noteLine.textContent = 'connect the wallet to see what is yours here, and to work on it';
       return;
     }
-    panel.hidden = false;
+    if (!plot) {
+      state('list');
+      sticky = '';
+      if (listedFor !== owner || performance.now() - listedAt > LISTS_EVERY) {
+        listedFor = owner;
+        listedAt = performance.now();
+        const wanted = owner;
+        mine = (await claimedPlots()).filter((it) => it.owner.toLowerCase() === wanted);
+        listing.replaceChildren(
+          ...mine.map((it) => {
+            const go = document.createElement('button');
+            go.type = 'button';
+            go.className = 'own-go';
+            const name = it.name && chain.ens ? `${it.name}.${chain.ens.parent}` : `${it.plot.slice(0, 10)}…`;
+            go.innerHTML = `${name} <span>go there</span>`;
+            go.addEventListener('click', () => goTo(it.plot));
+            return go;
+          }),
+        );
+      }
+      said.textContent = mine.length ? `your ground: ${mine.length} ${mine.length === 1 ? 'plot' : 'plots'} on this chain` : 'your ground';
+      noteLine.textContent = mine.length
+        ? 'stand on one to write into it, point it at code, name it, seal it'
+        : 'nothing here is yours yet: ground is not bought but dug for — dig where you stand';
+      return;
+    }
+    state('here');
     const what = plot.plot!;
     said.textContent = sticky || (what.name && chain.ens ? `yours: ${what.name}.${chain.ens.parent}` : `yours: ${plot.address.slice(0, 10)}…`);
     noteLine.textContent =
@@ -115,6 +169,15 @@ export function ownGround(
       panel.querySelectorAll('button').forEach((b) => (b.disabled = false));
     }
   };
+
+  connecting.querySelector('button')!.addEventListener('click', () => {
+    said.textContent = 'asking the wallet';
+    void connect()
+      .then(() => look())
+      .catch(() => {
+        said.textContent = 'the wallet said no';
+      });
+  });
 
   writing.addEventListener('submit', (event) => {
     event.preventDefault();

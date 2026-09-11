@@ -427,7 +427,7 @@ function ownPlotHere(owner: string): Structure | null {
   return nearest;
 }
 
-ownGround(owning, ownPlotHere, (plot) => void refresh(plot));
+ownGround(owning, ownPlotHere, (plot) => void refresh(plot), (plot) => void travelTo(plot));
 
 /** How long a plot just claimed takes to be drawn, in seconds. */
 const BUILDS_IN = 10;

@@ -1018,6 +1018,24 @@ body.embedded #app {
   white-space: nowrap;
 }
 
+/* your ground, listed: a row a plot, each a way there */
+.hud.own .own-list {
+  display: grid;
+  gap: 4px;
+}
+
+.hud.own .own-go {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  text-align: left;
+}
+
+.hud.own .own-go span {
+  opacity: 0.55;
+}
+
 .hud.own button:hover {
   border-color: var(--fg);
 }

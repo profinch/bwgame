@@ -38,6 +38,9 @@ What was decided, and why. What was refused, and why. Dated where the date matte
 - **Buildings stand on foundations, the ground is not flattened** (11.09.2026): a structure is
   set on the highest ground under it and reaches down to the lowest, so hills can be as steep as
   they like without breaking what stands on them.
+- **The owner's panel is the way to your ground** (12.09.2026): it stays while it is wanted; with no
+  wallet it offers to connect one, off your ground it lists every plot of yours with a button that
+  takes you there, on your ground it is the forms.
 - **Panels are a filter**, *panels* in the menu with the site's sub-bar under it: readings, claim,
   owner, each put away or brought back, kept in the browser. The
   other players and the sky are not panels: they are the world, and stay.
