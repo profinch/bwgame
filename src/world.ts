@@ -1005,9 +1005,6 @@ function strokesFor(structure: Structure, base: number): Stroke[] {
   }
 }
 
-/** Whether a panel drawn into the world — the players, the sky — is to be drawn; set with the menu. */
-let panelsShown: (key: string) => boolean = () => true;
-
 /**
  * The menu, as on bwtoken.io. The corners frame the whole of it until a
  * section is chosen. "map" brings the map up in this page under this header,
@@ -1127,7 +1124,6 @@ let panelsShown: (key: string) => boolean = () => true;
     // the panels: a row a panel behind the arrow, and a card behind the i
     {
       const panels = new Panels(document.querySelector<HTMLElement>('#plist')!, panelHelp);
-      panelsShown = (key) => panels.shown(key);
       const fold = (open: boolean) => {
         document.body.classList.toggle('panelsopen', open);
         panelSel.setAttribute('aria-expanded', String(open));
@@ -1135,10 +1131,12 @@ let panelsShown: (key: string) => boolean = () => true;
       };
       panelClip.style.height = `${PAD + panels.count * ROW + ROOM}px`;
       fold(false);
-      panelSel.addEventListener('click', (event) => {
+      const foldOrUnfold = (event: Event) => {
         event.stopPropagation();
         fold(!document.body.classList.contains('panelsopen'));
-      });
+      };
+      panelSel.addEventListener('click', foldOrUnfold);
+      panelBar.querySelector<HTMLElement>('.subarrow')!.addEventListener('click', foldOrUnfold);
       panelBar.addEventListener('click', (event) => event.stopPropagation());
       document.addEventListener('click', () => fold(false));
       let over = false;
@@ -1182,10 +1180,12 @@ let panelsShown: (key: string) => boolean = () => true;
       // pressed again: the bar goes back up, and the corners round the menu
       show(section === 'blockchain' ? null : 'blockchain');
     });
-    sel.addEventListener('click', (event) => {
+    const unfoldOrFold = (event: Event) => {
       event.stopPropagation();
       unfold(!document.body.classList.contains('listopen'));
-    });
+    };
+    sel.addEventListener('click', unfoldOrFold);
+    bar.querySelector<HTMLElement>('.subarrow')!.addEventListener('click', unfoldOrFold);
     list.addEventListener('click', (event) => {
       event.stopPropagation();
       // this world chosen again: the list folds, the bar stays
@@ -1344,7 +1344,7 @@ loop({
     if (live) {
       const standing: number[] = [];
       const digging: number[] = [];
-      for (const peer of panelsShown('players') ? live.peers.values() : []) {
+      for (const peer of live.peers.values()) {
         const x = peer.drawnX - homeCell.x - origin.x;
         const z = peer.drawnZ - homeCell.z - origin.z;
         if (Math.abs(x) > GROUND / 2 || Math.abs(z) > GROUND / 2) continue;
@@ -1419,7 +1419,7 @@ loop({
       inkOf(strokesFor(structure, base), grown, at, drawn);
       glassOf(structure, base, origin, grown, drawn);
     }
-    const inked = panelsShown('sky') ? ribbons.count * 4 : 0;
+    const inked = ribbons.count * 4;
     const ink = new Float32Array(inked + drawn.length);
     ink.set(ribbons.vertices.subarray(0, inked));
     ink.set(drawn, inked);

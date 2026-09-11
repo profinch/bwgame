@@ -4,9 +4,8 @@
  * row a panel, bright when it is shown, dim when it is not; a small i opens a
  * card saying what each one is. The choice is kept in this browser.
  *
- * Panels with a place on the page are hidden by a class on the body; the two
- * drawn into the world — the other players, the block overhead — are asked
- * about by the loop through `shown()`.
+ * A panel put away is hidden by a class on the body. The other players and the
+ * block overhead are not panels and are never put away: they are the world.
  */
 export const PANELS: readonly { key: string; says: string }[] = [
   {
@@ -15,8 +14,6 @@ export const PANELS: readonly { key: string; says: string }[] = [
   },
   { key: 'claim', says: 'digging for the ground where you stand, and the one transaction that makes it yours.' },
   { key: 'owner', says: 'your own plot, when you stand on it: write into it, point it at code, name it, seal it.' },
-  { key: 'players', says: 'the other people on this ground, and their digging.' },
-  { key: 'sky', says: "this block's transactions crossing overhead from sender to receiver." },
 ];
 
 const KEPT_AS = 'gs-panels-off';

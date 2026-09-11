@@ -401,7 +401,6 @@ body.world {
   background: color-mix(in srgb, var(--bg) 82%, transparent);
   backdrop-filter: blur(13px);
   -webkit-backdrop-filter: blur(13px);
-  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.1);
   gap: 0 14px;
 }
 
@@ -508,7 +507,6 @@ body.world {
   height: 24px;
   border-radius: 50%;
   transform: translateY(-50%);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
 }
 
 .m1 {
@@ -583,16 +581,20 @@ html[data-t="dark"] {
 
 /* taking ground, from inside the world */
 
+/* dressed as the header is — the same corners, edge and blur — at its own opacity */
 .hud.claim {
   top: auto;
   left: auto;
-  right: 18px;
-  bottom: 18px;
+  right: 24px;
+  bottom: 20px;
   pointer-events: auto;
   max-width: 34ch;
-  padding: 10px 12px;
-  border: 1px solid color-mix(in srgb, var(--line) 22%, transparent);
-  background: color-mix(in srgb, var(--panel) 82%, transparent);
+  padding: 12px 16px;
+  border-radius: 22px;
+  border: 1px solid color-mix(in srgb, var(--line) 8%, transparent);
+  background: color-mix(in srgb, var(--bg) 82%, transparent);
+  backdrop-filter: blur(13px);
+  -webkit-backdrop-filter: blur(13px);
   display: grid;
   gap: 6px;
 }
@@ -723,7 +725,7 @@ html[data-t="dark"] {
    bright; a choice or a click elsewhere sends it back up. */
 /* the window the bar slides in: from the header's lower edge down, so going
    up it vanishes behind the header rather than showing above it — the bar is
-   taller than the header. Room at the sides and below for the shadow. */
+   taller than the header. */
 .subclip {
   position: fixed;
   z-index: 1;
@@ -750,12 +752,10 @@ html[data-t="dark"] {
   border: 1px solid color-mix(in srgb, var(--line) 8%, transparent);
   border-top: 0;
   border-radius: 0 0 16px 16px;
-  box-shadow: 0 6px 14px rgba(0, 0, 0, 0);
   transform: translateY(-100%);
   transition:
     transform 0.45s cubic-bezier(0.4, 0, 0.2, 1),
     height 0.45s cubic-bezier(0.4, 0, 0.2, 1),
-    box-shadow 0.4s ease,
     visibility 0s linear 0.45s;
 }
 
@@ -764,11 +764,9 @@ body.subopen #subbar,
   transform: translateY(0);
   pointer-events: auto;
   visibility: visible;
-  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.09);
   transition:
     transform 0.45s cubic-bezier(0.4, 0, 0.2, 1),
     height 0.45s cubic-bezier(0.4, 0, 0.2, 1),
-    box-shadow 0.4s ease,
     visibility 0s linear 0s;
 }
 
@@ -830,8 +828,15 @@ body.listopen .wsel {
   transform: translateY(-2px) rotate(45deg);
   opacity: 0.45;
   transition: transform 0.45s cubic-bezier(0.45, 0, 0.15, 1);
-  pointer-events: none;
+  cursor: pointer;
   z-index: 2;
+}
+
+/* the arrow is five pixels; what is pressed is a thumb's width round it */
+.subarrow::after {
+  content: '';
+  position: absolute;
+  inset: -12px;
 }
 
 body.listopen .subarrow {
@@ -892,7 +897,6 @@ body.panelsopen #panelbar .subarrow {
   background: color-mix(in srgb, var(--bg) 92%, transparent);
   backdrop-filter: blur(13px);
   -webkit-backdrop-filter: blur(13px);
-  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.1);
   font-size: 11.5px;
   line-height: 1.45;
   color: var(--fg);
@@ -927,21 +931,6 @@ body.off-owner .hud.own {
   display: none !important;
 }
 
-/* the dark is the page turned over, shadows included: a shadow that is to
-   stay a shadow is written light, so that turned over it comes out dark — as
-   on bwtoken.io, where nothing glows */
-html[data-t='dark'] .hud.top,
-html[data-t='dark'] .panels-help {
-  box-shadow: 0 8px 26px rgba(255, 255, 255, 0.1);
-}
-
-html[data-t='dark'] body.subopen .subbar {
-  box-shadow: 0 6px 14px rgba(255, 255, 255, 0.09);
-}
-
-html[data-t='dark'] .mini {
-  box-shadow: 0 2px 6px rgba(255, 255, 255, 0.35);
-}
 
 .wopt {
   height: 28px;
