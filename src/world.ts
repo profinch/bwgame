@@ -1102,7 +1102,9 @@ function strokesFor(structure: Structure, base: number): Stroke[] {
     const show = (next: typeof section) => {
       section = next;
       unfold(false);
-      foldPanels(false);
+      // the panels come down already unfolded: the list is the point of them;
+      // the arrow folds it to the word, a click elsewhere is back to the game
+      foldPanels(next === 'panels');
       document.body.classList.toggle('subopen', next === 'blockchain');
       document.body.classList.toggle('panelsopen', next === 'panels');
       mapLink.classList.toggle('active', next === 'map');
