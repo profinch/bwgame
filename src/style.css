@@ -953,11 +953,11 @@ body.embedded #app {
 
 /* the plot of yours you are standing at */
 
-/* the owner's panel, dressed as the claim panel is, under the right bar */
+/* the owner's panel, dressed as the claim panel is, at the left as the claim panel is at the right */
 .hud.own {
   top: 101px;
-  left: auto;
-  right: 24px;
+  left: 24px;
+  right: auto;
   bottom: auto;
   pointer-events: auto;
   max-width: 34ch;
