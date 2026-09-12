@@ -845,12 +845,23 @@ const WALKING = new Set([
   'KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space',
 ]);
 
+/**
+ * Whether the keys are somebody else's right now: a field being typed into,
+ * or anything in a panel or a bar holding the focus. The world's keys — walk,
+ * jump, view, home — mean nothing then.
+ */
+function typing(): boolean {
+  const on = document.activeElement;
+  if (on instanceof HTMLInputElement || on instanceof HTMLTextAreaElement || on instanceof HTMLSelectElement) return true;
+  return on instanceof HTMLElement && (on.isContentEditable || on.closest('.hud:not(.top), .subbar') !== null);
+}
+
 window.addEventListener('keydown', (event) => {
   // Ctrl+V to paste arrives as KeyV, and used to flip the camera mid-paste
-  const typing = document.activeElement instanceof HTMLInputElement;
-  const plain = !event.ctrlKey && !event.metaKey && !event.altKey && !typing;
+  const busy = typing();
+  const plain = !event.ctrlKey && !event.metaKey && !event.altKey && !busy;
   if (event.code === 'KeyV' && plain && !event.repeat) overShoulder = !overShoulder;
-  if (typing) return;
+  if (busy) return;
   held.add(event.code);
   if (event.shiftKey) held.add('Shift');
   if (WALKING.has(event.code)) event.preventDefault();
@@ -1544,7 +1555,7 @@ window.addEventListener('keydown', (event) => {
   // h is home: a Mac keyboard has no Home key, and one key is one word to learn.
   // Home is where the first time in begins — somewhere on the ring round the
   // factory, facing it — not the spot beside it a travel ends on
-  if (event.code !== 'KeyH' || document.activeElement === where) return;
+  if (event.code !== 'KeyH' || typing()) return;
   if (event.metaKey || event.ctrlKey || event.altKey) return;
   event.preventDefault();
   taking.stop();
