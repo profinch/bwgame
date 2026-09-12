@@ -141,6 +141,16 @@ export class Traffic {
     this.owed = 0;
   }
 
+  /**
+   * Movements added to the sky besides the block's — the onboarding shows a
+   * few that failed, since a block may hold none while somebody is watching.
+   * They fly and fall back like any other; they are simply not from a block.
+   */
+  show(moved: readonly Moved[]): void {
+    this.waiting.push(...moved);
+    this.pace = Math.max(this.pace, 1);
+  }
+
   private launch(one: Moved): void {
     const a = offsetOf(one.from);
     const b = offsetOf(one.to);

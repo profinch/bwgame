@@ -1425,6 +1425,14 @@ function takeDemoJump(): boolean {
       view: (firstPerson) => {
         overShoulder = !firstPerson;
       },
+      failedTraffic: (count) => {
+        const anyAddress = () => {
+          let hex = '0x';
+          for (let i = 0; i < 40; i++) hex += '0123456789abcdef'[Math.floor(Math.random() * 16)];
+          return hex;
+        };
+        traffic.show(Array.from({ length: count }, () => ({ from: anyAddress(), to: anyAddress(), ok: false })));
+      },
       mark: (selector) => {
         for (const el of document.querySelectorAll('.tour-marked')) el.classList.remove('tour-marked');
         if (selector) document.querySelector(selector)?.classList.add('tour-marked');

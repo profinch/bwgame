@@ -34,6 +34,8 @@ export interface Driver {
   flipTheme(): void;
   /** Through the walker's own eyes, or over their shoulder. */
   view(firstPerson: boolean): void;
+  /** A few transactions that failed, crossing the sky and falling back — for show, not from a block. */
+  failedTraffic(count: number): void;
   /** Ring a thing on the screen, or nothing. */
   mark(selector: string | null): void;
 
@@ -130,7 +132,7 @@ export const STEPS: readonly Step[] = [
   },
   {
     scene: 'open',
-    says: 'here is where you stand: the chain, the depth, the address under your feet, what is near — and the block passing overhead. its transactions are the ribbons in the sky, each from its sender toward its receiver.',
+    says: 'here is where you stand: the chain, the depth, the address under your feet, what is near — and the block passing overhead. its transactions are the ribbons in the sky, each from its sender toward its receiver; one that failed shakes, stops short, and is drawn back.',
     async play(d, wait) {
       // the metrics turned over while they are the subject, then back as they are
       d.mark('.hud.bottom');
@@ -141,6 +143,8 @@ export const STEPS: readonly Step[] = [
       d.look(0.12, 0.3);
       await wait(2500);
       d.look(0.12, 0);
+      // and a couple that failed, so the shake and the drawing back are seen
+      d.failedTraffic(3);
       await wait(6000);
       d.look(0, -0.3);
       await wait(2500);
