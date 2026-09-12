@@ -608,8 +608,11 @@ html[data-t="dark"] {
   right: 24px;
   bottom: 20px;
   pointer-events: auto;
-  max-width: 34ch;
+  /* one size whatever it says — idle, digging with its counts, claimed */
+  width: 320px;
+  min-height: 200px;
   padding: 12px 16px;
+  align-content: start;
   border-radius: 22px;
   border: 1px solid color-mix(in srgb, var(--line) 8%, transparent);
   background: color-mix(in srgb, var(--bg) 78%, transparent);
@@ -1367,7 +1370,8 @@ body.touch .touchpad-buttons {
     flex-direction: column;
   }
 
-  .hud.own {
+  .hud.own,
+  .hud.claim {
     width: auto;
     min-height: 0;
   }
