@@ -1204,9 +1204,19 @@ let beforeTour: {
   cores: number;
   coresOf: number;
 } | null = null;
-/** The spot beside the first plot the tour stands on, the same for every step there; and beside the wallet. */
-let firstStand: { x: number; z: number; yaw: number } | null = null;
-let walletStand: { x: number; z: number; yaw: number } | null = null;
+/**
+ * Where the tour stands, each a fixed spot by a fixed address, so the tour is
+ * the same wherever it was begun: on open ground a way off home, facing away
+ * from it; beside the first plot, facing it; beside the wallet, facing it.
+ */
+function standBy(angle: number, off: number, facing: boolean): { x: number; z: number; yaw: number } {
+  const x = Math.sin(angle) * off;
+  const z = Math.cos(angle) * off;
+  return { x, z, yaw: Math.atan2(x, z) + (facing ? 0 : Math.PI) };
+}
+const OPEN_STAND = standBy(0.7, 150, false);
+const FIRST_STAND = standBy(2.4, 26, true);
+const WALLET_STAND = standBy(4.1, 16, true);
 /**
  * The travel the tour has under way, if any. A travel goes on after the step
  * that began it is left — the chain is asked, then the walker is set down —
@@ -1382,9 +1392,9 @@ function takeDemoJump(): boolean {
           const address = looksLikeName(typed) ? await resolveName(typed) : normalizeAddress(typed);
           if (address) {
             if (tourTravel) await tourTravel.catch(() => undefined);
-            tourTravel = travelTo(address);
+            // the full descent, as an arrival is — onto the tour's own spot
+            tourTravel = travelTo(address, { ...FIRST_STAND, drop: DESCENT_FROM });
             await tourTravel;
-            firstStand = { x: player.x, z: player.z, yaw: player.yaw };
           }
         } catch {
           // the name did not resolve: the tour goes on where it is
@@ -1536,18 +1546,13 @@ function takeDemoJump(): boolean {
         // a travel still under way from before finishes first, whatever the scene
         if (tourTravel) await tourTravel.catch(() => undefined);
         if (which === 'any') return null;
-        if (which === 'start') {
-          // back where the tour began, and looking the way you looked
-          if (!beforeTour) return null;
-          const travelled = Math.abs(origin.x - beforeTour.ox) > 0.5 || Math.abs(origin.z - beforeTour.oz) > 0.5;
-          if (travelled) arriveAt(beforeTour.ox, beforeTour.oz);
-          // the spot first, then the drop onto it: arriving puts you beside
-          // the address for a moment, which here is a building
-          player.x = beforeTour.x;
-          player.z = beforeTour.z;
-          // facing away from what was looked at — a building, most often — so
-          // the first steps are played over open ground
-          player.yaw = beforeTour.yaw + Math.PI;
+        if (which === 'open') {
+          // open ground a way off home, facing away from it
+          const travelled = Math.abs(origin.x) > 0.5 || Math.abs(origin.z) > 0.5;
+          if (travelled) arriveAt(0, 0);
+          player.x = OPEN_STAND.x;
+          player.z = OPEN_STAND.z;
+          player.yaw = OPEN_STAND.yaw;
           player.pitch = -0.03;
           player.y = ground.surfaceAt(player.x, player.z);
           if (travelled) {
@@ -1559,21 +1564,14 @@ function takeDemoJump(): boolean {
         // at a place — the first plot, or the wallet — there already or taken
         // there with a short drop, and on the same spot beside it every time
         const goal = which === 'wallet' ? TOUR_WALLET : await firstPlot();
-        const stands = which === 'wallet' ? walletStand : firstStand;
+        const stand = which === 'wallet' ? WALLET_STAND : FIRST_STAND;
         if (goal) {
           const at = offsetOf(goal);
           const travelled = Math.abs(origin.x - at.x) > 0.5 || Math.abs(origin.z - at.z) > 0.5;
           if (travelled) {
-            // a spot stood on before: dropped straight onto it, no random side
-            // beside the building first; a new place: the usual arrival, which
-            // then becomes the spot for every later visit
-            tourTravel = travelTo(goal, stands ? { ...stands, drop: 60 } : undefined);
+            tourTravel = travelTo(goal, { ...stand, drop: 60 });
             await tourTravel;
-            if (!stands) descent = 60;
           }
-          const stand = stands ?? { x: player.x, z: player.z, yaw: player.yaw };
-          if (which === 'wallet') walletStand = stand;
-          else firstStand = stand;
           player.x = stand.x;
           player.z = stand.z;
           player.yaw = stand.yaw;
@@ -1581,11 +1579,7 @@ function takeDemoJump(): boolean {
           // posts rather than on whatever stands on the horizon behind it
           player.pitch = which === 'wallet' ? -0.18 : -0.05;
           player.y = ground.surfaceAt(player.x, player.z);
-          // the spot first, then the drop onto it
-          if (travelled) {
-            descent = 60;
-            await wait(1600);
-          }
+          if (travelled) await wait(1600);
         }
         if (which === 'first' || which === 'wallet') return null;
         // the tour's plot, as the step needs it: a drawing, or written into —
@@ -1616,6 +1610,7 @@ function takeDemoJump(): boolean {
     // whoever watched it is put back where they stood before it began
     tour = new Tour(tourCard, driver, () => {
       driver.clean();
+      panels.restore();
       if (beforeTour) {
         if (origin.x !== beforeTour.ox || origin.z !== beforeTour.oz) arriveAt(beforeTour.ox, beforeTour.oz);
         player.x = beforeTour.x;
@@ -1642,8 +1637,7 @@ function takeDemoJump(): boolean {
         cores: Number(slider?.value ?? 1),
         coresOf: Number(slider?.max ?? 1),
       };
-      firstStand = null;
-      walletStand = null;
+      panels.suspend();
       taking.stop();
       // begun from the welcome, the first descent is still under way: it is
       // brought down to the same short drop the tour uses everywhere, so the

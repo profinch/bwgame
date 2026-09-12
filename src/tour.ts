@@ -72,16 +72,18 @@ export interface Driver {
   /** Everything the tour put up comes down, for good. */
   clean(): void;
   /**
-   * Set the scene a step needs before it plays — back where the tour began,
-   * or at the first plot, with the tour's plot claimed, or written into — at
-   * once, whether the step was reached in order, skipped to, or gone back to.
-   * The tour's plot's address comes back, if there is one.
+   * Set the scene a step needs before it plays — on open ground by home, at
+   * the first plot, at the wallet, with the tour's plot claimed, or written
+   * into — at once, whether the step was reached in order, skipped to, or gone
+   * back to; and the same wherever the tour was begun, since every spot is a
+   * fixed one by a fixed address. The tour's plot's address comes back, if
+   * there is one.
    */
   scene(which: Scene, wait: (ms: number) => Promise<void>): Promise<string | null>;
 }
 
 /** What has to be so before a step plays. */
-export type Scene = 'any' | 'start' | 'first' | 'wallet' | 'claimed' | 'written';
+export type Scene = 'any' | 'open' | 'first' | 'wallet' | 'claimed' | 'written';
 
 type Wait = (ms: number) => Promise<void>;
 
@@ -94,7 +96,7 @@ export interface Step {
 
 export const STEPS: readonly Step[] = [
   {
-    scene: 'start',
+    scene: 'open',
     says: 'this is a blockchain as a place. every address is a spot on this ground, and what stands here is what the chain says stands here — nothing is invented.',
     async play(d, wait) {
       // a look to one side and the other, over open ground: the start faces away from what stands near
@@ -108,7 +110,7 @@ export const STEPS: readonly Step[] = [
     },
   },
   {
-    scene: 'start',
+    scene: 'open',
     says: 'you walk it: w a s d, shift to run, space to jump. on a phone, the stick. dragging the picture looks round.',
     async play(d, wait) {
       d.walk(1, 0, false);
@@ -124,7 +126,7 @@ export const STEPS: readonly Step[] = [
     },
   },
   {
-    scene: 'start',
+    scene: 'open',
     says: 'here is where you stand: the chain, the depth, the address under your feet, what is near — and the block passing overhead. its transactions are the ribbons in the sky, each from its sender toward its receiver.',
     async play(d, wait) {
       // the metrics turned over while they are the subject, then back as they are
@@ -139,7 +141,7 @@ export const STEPS: readonly Step[] = [
     },
   },
   {
-    scene: 'start',
+    scene: 'open',
     says: 'an address or a name takes you anywhere. this goes to first.groundstate.eth — the first plot of this ground, named under groundstate.eth.',
     async play(d, wait) {
       d.mark('.hud.jump');

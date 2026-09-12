@@ -51,6 +51,16 @@ export class Panels {
     return !this.off.has(key);
   }
 
+  /** Every panel on the screen for the while — the onboarding shows them all — the choice kept. */
+  suspend(): void {
+    for (const panel of PANELS) document.body.classList.remove(`off-${panel.key}`);
+  }
+
+  /** The choice back on the screen. */
+  restore(): void {
+    this.apply();
+  }
+
   private toggle(key: string): void {
     if (this.off.has(key)) this.off.delete(key);
     else this.off.add(key);
