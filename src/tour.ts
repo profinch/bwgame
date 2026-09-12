@@ -114,13 +114,15 @@ export const STEPS: readonly Step[] = [
   {
     says: 'a contract stands as a building, its size from its code, the words written into it cut into its wall. a wallet lies as a plate with a post for each token. a dashed outline is a plot not yet written into; boulders and gates are plots of the earlier grounds.',
     async play(d, wait) {
-      d.walk(1, 0, false);
+      // back off from the building and lift the eyes, so the whole of it is in view
+      d.walk(-1, 0, false);
+      d.look(0, 0.1);
+      await wait(3200);
+      d.walk(0, 0, false);
+      d.look(0.12, 0);
       await wait(2500);
-      d.stop();
-      d.look(0.3, 0);
-      await wait(3000);
-      d.look(-0.3, 0);
-      await wait(3000);
+      d.look(-0.12, 0);
+      await wait(2500);
       d.stop();
     },
   },
