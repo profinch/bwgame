@@ -1358,6 +1358,10 @@ function takeDemoJump(): boolean {
         more.textContent = earlier ?? '';
       },
       mockClaim: () => {
+        // shown again — the step gone back to — the plot before comes down first
+        for (let i = structures.length - 1; i >= 0; i--) if (structures[i]!.mock) structures.splice(i, 1);
+        for (let i = rising.length - 1; i >= 0; i--) if (rising[i]!.mock) rising.splice(i, 1);
+        for (let i = inking.length - 1; i >= 0; i--) if (inking[i]!.mock) inking.splice(i, 1);
         // a plot of the tour's own, a few steps ahead: the address whose cell that is
         const ahead = { x: player.x - Math.sin(player.yaw) * 6, z: player.z - Math.cos(player.yaw) * 6 };
         const cell = addressUnder(ahead.x, ahead.z);
@@ -1369,8 +1373,10 @@ function takeDemoJump(): boolean {
         return address;
       },
       mockWrite: (address, note) => {
+        if (!address) return;
         const at = structures.findIndex((it) => it.address === address);
         if (at >= 0) structures.splice(at, 1);
+        for (let i = inking.length - 1; i >= 0; i--) if (inking[i]!.address === address) inking.splice(i, 1);
         startInking(mockPlot(address, note));
       },
       ownSays: (said, note) => {

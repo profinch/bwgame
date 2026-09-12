@@ -937,6 +937,11 @@ body.listopen .subarrow {
   color: var(--bg);
 }
 
+.hud.tour button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
 /* while the tour plays, the page is not to be touched: only the card's buttons answer */
 body.touring .hud:not(.tour),
 body.touring .navlinks,

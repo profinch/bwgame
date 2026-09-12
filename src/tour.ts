@@ -291,6 +291,7 @@ export class Tour {
   ) {
     card.querySelector<HTMLButtonElement>('.tour-skip')!.addEventListener('click', () => this.end());
     card.querySelector<HTMLButtonElement>('.tour-next')!.addEventListener('click', () => this.next());
+    card.querySelector<HTMLButtonElement>('.tour-back')!.addEventListener('click', () => this.back());
   }
 
   /** On to the next step, whatever this one was in the middle of. */
@@ -298,6 +299,14 @@ export class Tour {
     if (!this.running) return;
     this.driver.stop();
     void this.play(this.at + 1, ++this.run);
+  }
+
+  /** The step before, played again from its start. */
+  private back(): void {
+    if (!this.running || this.at === 0) return;
+    this.driver.stop();
+    this.driver.mark(null);
+    void this.play(this.at - 1, ++this.run);
   }
 
   /** Whether it has been watched through to the end once, in this browser. */
@@ -328,6 +337,7 @@ export class Tour {
     this.card.querySelector<HTMLElement>('.tour-count')!.textContent = `${index + 1} / ${STEPS.length}`;
     this.card.querySelector<HTMLElement>('.tour-says')!.textContent = step.says;
     this.card.querySelector<HTMLButtonElement>('.tour-next')!.textContent = index === STEPS.length - 1 ? 'done' : 'next';
+    this.card.querySelector<HTMLButtonElement>('.tour-back')!.disabled = index === 0;
     // a wait that never comes back once the tour has been left or moved on
     const wait: Wait = (ms) =>
       new Promise((resolve) => {
