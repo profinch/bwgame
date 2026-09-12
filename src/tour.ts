@@ -42,6 +42,10 @@ export interface Driver {
   claimSays(said: string, count: string, earlier?: string): void;
   /** Move the cores slider, for show. */
   cores(n: number, of: number): void;
+  /** Press a button, for show: it is turned over for a moment. */
+  press(selector: string): void;
+  /** The claim panel's buttons as they are while digging, or after a find: "stop" or "dig here", "claim it" shown or not. */
+  claimButtons(digging: boolean, found: boolean): void;
   /** A plot of the tour's own goes up a few steps ahead, a drawing; its address comes back. */
   mockClaim(): string;
   /** The tour's plot is written into: the drawing becomes a building and the words come up. */
@@ -181,6 +185,9 @@ export const STEPS: readonly Step[] = [
         await wait(220);
       }
       await wait(600);
+      d.press('.hud.claim .dig');
+      await wait(400);
+      d.claimButtons(true, false);
       d.claimSays('digging for a place beside you. every attempt is a place; the closest is kept. stop whenever you like', '');
       d.dig(true, 1.4e7);
       const path = [412, 388, 301, 296, 212, 187, 187, 154, 131, 119, 96, 96, 88, 74];
@@ -191,7 +198,10 @@ export const STEPS: readonly Step[] = [
         );
         await wait(650);
       }
+      d.press('.hud.claim .dig');
+      await wait(400);
       d.dig(false, 0);
+      d.claimButtons(false, true);
       d.claimSays('stopped. the closest place found is 74 m from here', 'best so far: 74 m from here · 9.8 M attempts');
       await wait(2000);
     },
@@ -200,6 +210,13 @@ export const STEPS: readonly Step[] = [
     scene: 'first',
     says: 'one transaction makes the closest place found your contract, for good — a plot: yours to write into, build on, name, hand on. it stands up out of the ground as a drawing of the building it will be.',
     async play(d, wait) {
+      d.mark('.hud.claim');
+      d.claimButtons(false, true);
+      d.claimSays('stopped. the closest place found is 74 m from here', 'best so far: 74 m from here · 9.8 M attempts');
+      await wait(1200);
+      d.press('.hud.claim .take');
+      await wait(400);
+      d.claimButtons(false, false);
       d.claimSays('claiming 74 m from here — sign in the wallet', '');
       await wait(1800);
       d.claimSays('sent. waiting for a block', '');
@@ -222,6 +239,8 @@ export const STEPS: readonly Step[] = [
       await wait(1200);
       await d.typeInto('.own-write input', 'hello, world', wait);
       await wait(600);
+      d.press('.own-write button');
+      await wait(400);
       d.clearField('.own-write input');
       d.ownSays('writing into it — sign in the wallet', 'nothing written into it yet\npoints at no code: a drawing until something is written into it');
       await wait(1500);
@@ -239,6 +258,8 @@ export const STEPS: readonly Step[] = [
     async play(d, wait) {
       await d.typeInto('.own-code input', '0xC0DE…5EED', wait);
       await wait(500);
+      d.press('.own-code button');
+      await wait(400);
       d.clearField('.own-code input');
       d.ownSays('pointing it at code — sign in the wallet', 'says: hello, world\npoints at no code');
       await wait(1400);
@@ -246,11 +267,15 @@ export const STEPS: readonly Step[] = [
       await wait(1600);
       await d.typeInto('.own-name input', 'demo', wait);
       await wait(500);
+      d.press('.own-name button');
+      await wait(400);
       d.clearField('.own-name input');
       d.ownSays('naming it demo.groundstate.eth — sign in the wallet', 'says: hello, world\npoints at 0xC0DE…5EED');
       await wait(1400);
       d.ownSays('yours: demo.groundstate.eth', 'says: hello, world\npoints at 0xC0DE…5EED');
       await wait(1800);
+      d.press('.own-do .seal');
+      await wait(400);
       d.ownSays('sealing the code for good — sign in the wallet', 'says: hello, world\npoints at 0xC0DE…5EED');
       await wait(1400);
       d.ownSays('sealed: the code is fixed for good', 'says: hello, world\npoints at 0xC0DE…5EED, sealed');

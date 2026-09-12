@@ -1391,6 +1391,21 @@ function takeDemoJump(): boolean {
         more.hidden = !earlier;
         more.textContent = earlier ?? '';
       },
+      press: (selector) => {
+        const button = document.querySelector<HTMLElement>(selector);
+        if (!button) return;
+        button.classList.add('tour-pressed');
+        setTimeout(() => button.classList.remove('tour-pressed'), 350);
+      },
+      claimButtons: (dig, found) => {
+        const digButton = claiming.querySelector<HTMLButtonElement>('.dig');
+        const takeButton = claiming.querySelector<HTMLButtonElement>('.take');
+        if (digButton) digButton.textContent = dig ? 'stop' : 'dig here';
+        if (takeButton) {
+          takeButton.hidden = !found;
+          takeButton.disabled = false;
+        }
+      },
       cores: (n, of) => {
         const slider = claiming.querySelector<HTMLInputElement>('.cores');
         const said = claiming.querySelector<HTMLElement>('.cores-said');
@@ -1468,6 +1483,7 @@ function takeDemoJump(): boolean {
         // the panels speaking for themselves, the fields empty, the slider as it was
         demo.dig = false;
         demo.claimHeld = false;
+        driver.claimButtons(false, false);
         taking.pause(false);
         ownPanel.pause(false);
         for (const field of document.querySelectorAll<HTMLInputElement>('.go input, .hud.own input')) field.value = '';
@@ -1528,6 +1544,7 @@ function takeDemoJump(): boolean {
         if (beforeTour) driver.cores(beforeTour.cores, beforeTour.coresOf);
         demo.dig = false;
         demo.claimHeld = false;
+        driver.claimButtons(false, false);
         for (let i = structures.length - 1; i >= 0; i--) if (structures[i]!.mock) structures.splice(i, 1);
         for (let i = rising.length - 1; i >= 0; i--) if (rising[i]!.mock) rising.splice(i, 1);
         for (let i = inking.length - 1; i >= 0; i--) if (inking[i]!.mock) inking.splice(i, 1);
