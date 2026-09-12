@@ -1203,6 +1203,7 @@ let beforeTour: {
   theme: string;
   cores: number;
   coresOf: number;
+  overShoulder: boolean;
 } | null = null;
 /**
  * Where the tour stands, each a fixed spot by a fixed address, so the tour is
@@ -1218,7 +1219,9 @@ function standBy(angle: number, off: number, facing: boolean): { x: number; z: n
 // back at about forty-five degrees as the camera sees it: lit, not flat
 const OPEN_STAND = standBy(5.09, 150, false);
 const FIRST_STAND = standBy(2.4, 26, true);
-const WALLET_STAND = standBy(4.1, 9, true);
+// the wallet is seen from its +z side, where the posts' signs face, from
+// just off the plate's edge
+const WALLET_STAND = standBy(0.15, 9, true);
 /**
  * The travel the tour has under way, if any. A travel goes on after the step
  * that began it is left — the chain is asked, then the walker is set down —
@@ -1415,6 +1418,9 @@ function takeDemoJump(): boolean {
         for (const row of panelList.querySelectorAll<HTMLButtonElement>('.wopt')) if (row.textContent === key) row.click();
       },
       flipTheme: () => document.querySelector<HTMLElement>('#tg')?.click(),
+      view: (firstPerson) => {
+        overShoulder = !firstPerson;
+      },
       mark: (selector) => {
         for (const el of document.querySelectorAll('.tour-marked')) el.classList.remove('tour-marked');
         if (selector) document.querySelector(selector)?.classList.add('tour-marked');
@@ -1526,8 +1532,9 @@ function takeDemoJump(): boolean {
         driver.mark(null);
         if (section !== 'onboarding') show('onboarding');
         unfold(false);
-        // the page the way round it was when the tour began
+        // the page the way round it was when the tour began, and the view as it was
         if ((document.documentElement.dataset.t ?? 'light') !== (beforeTour?.theme ?? 'light')) driver.flipTheme();
+        if (beforeTour) overShoulder = beforeTour.overShoulder;
         // the panels speaking for themselves, the fields empty, the slider as it was
         demo.dig = false;
         demo.claimHeld = false;
@@ -1579,7 +1586,7 @@ function takeDemoJump(): boolean {
           player.yaw = stand.yaw;
           // at the plate the eyes are kept a little down, on the plate and its
           // posts rather than on whatever stands on the horizon behind it
-          player.pitch = which === 'wallet' ? -0.3 : -0.05;
+          player.pitch = which === 'wallet' ? -0.22 : -0.05;
           player.y = ground.surfaceAt(player.x, player.z);
           if (travelled) await wait(1600);
         }
@@ -1593,6 +1600,7 @@ function takeDemoJump(): boolean {
       clean: () => {
         // everything the tour put up comes down, and the panels speak for themselves again
         if ((document.documentElement.dataset.t ?? 'light') !== (beforeTour?.theme ?? 'light')) driver.flipTheme();
+        if (beforeTour) overShoulder = beforeTour.overShoulder;
         for (const field of document.querySelectorAll<HTMLInputElement>('.go input, .hud.own input')) field.value = '';
         if (beforeTour) driver.cores(beforeTour.cores, beforeTour.coresOf);
         demo.dig = false;
@@ -1638,6 +1646,7 @@ function takeDemoJump(): boolean {
         theme: document.documentElement.dataset.t ?? 'light',
         cores: Number(slider?.value ?? 1),
         coresOf: Number(slider?.max ?? 1),
+        overShoulder,
       };
       panels.suspend();
       taking.stop();

@@ -32,6 +32,8 @@ export interface Driver {
   togglePanel(key: string): void;
   /** Turn the page over. */
   flipTheme(): void;
+  /** Through the walker's own eyes, or over their shoulder. */
+  view(firstPerson: boolean): void;
   /** Ring a thing on the screen, or nothing. */
   mark(selector: string | null): void;
 
@@ -162,7 +164,7 @@ export const STEPS: readonly Step[] = [
     async play(d, wait) {
       // back off from the building, then run the eyes up it to the roof and back down to its foot
       d.walk(-1, 0, false);
-      await wait(3200);
+      await wait(1200);
       d.walk(0, 0, false);
       d.look(0, 0.22);
       await wait(2600);
@@ -175,18 +177,23 @@ export const STEPS: readonly Step[] = [
     scene: 'wallet',
     says: 'a wallet lies as a plate on levelled ground, a post for each token it holds — the post as tall as the share of the token\'s whole supply, its name and the amount cut into it. and other people are here too: standing, walking, digging. a claim anyone makes stands up for everyone within seconds.',
     async play(d, wait) {
-      // the plate first, then somebody comes in from the right, well clear of
-      // it, stops beside you, and only then digs
-      await wait(2500);
+      // through your own eyes, close enough to read the posts; then somebody
+      // comes in from the right, well clear of the plate, stops beside you,
+      // digs, and walks off to the side — and stays in the world
+      d.view(true);
+      d.look(0, -0.08);
+      await wait(1500);
+      d.look(0, 0);
+      await wait(1500);
       d.peer(11, 3, false, true);
       await wait(400);
-      d.peer(-2, 1.5, false);
+      d.peer(-2.5, 2, false);
       await wait(9500);
-      d.peer(-2, 1.5, true);
+      d.peer(-2.5, 2, true);
       await wait(4500);
-      d.peer(-2, 1.5, false);
-      await wait(800);
-      d.peerGone();
+      d.peer(-2.5, 2, false);
+      await wait(600);
+      d.peer(9, -6, false);
     },
   },
   {
