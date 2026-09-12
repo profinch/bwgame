@@ -39,3 +39,6 @@ subgraph/build/
 
 # live server
 live/node_modules/
+
+# a wallet dug up near the factory: private key, never committed
+nearby/
