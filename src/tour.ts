@@ -40,6 +40,8 @@ export interface Driver {
   dig(on: boolean, rate: number): void;
   /** Speak through the claim panel. */
   claimSays(said: string, count: string, earlier?: string): void;
+  /** Move the cores slider, for show. */
+  cores(n: number, of: number): void;
   /** A plot of the tour's own goes up a few steps ahead, a drawing; its address comes back. */
   mockClaim(): string;
   /** The tour's plot is written into: the drawing becomes a building and the words come up. */
@@ -54,12 +56,23 @@ export interface Driver {
   peerGone(): void;
   /** Everything the tour put up comes down. */
   clean(): void;
+  /**
+   * Set the scene a step needs before it plays — at the first plot, with the
+   * tour's plot claimed, or written into — quickly, for a step skipped to or
+   * gone back to. The tour's plot's address comes back, if there is one.
+   */
+  scene(which: Scene, wait: (ms: number) => Promise<void>): Promise<string | null>;
 }
+
+/** What has to be so before a step plays. */
+export type Scene = 'any' | 'first' | 'claimed' | 'written';
 
 type Wait = (ms: number) => Promise<void>;
 
 export interface Step {
   says: string;
+  /** What has to be so before it plays; 'any' when it does not matter. */
+  scene?: Scene;
   play: (d: Driver, wait: Wait) => Promise<void>;
 }
 
@@ -112,21 +125,22 @@ export const STEPS: readonly Step[] = [
     },
   },
   {
+    scene: 'first',
     says: 'a contract stands as a building, its size from its code, the words written into it cut into its wall. a wallet lies as a plate with a post for each token. a dashed outline is a plot not yet written into; boulders and gates are plots of the earlier grounds.',
     async play(d, wait) {
-      // back off from the building and lift the eyes, so the whole of it is in view
+      // back off from the building, then run the eyes up it to the roof and back down to its foot
       d.walk(-1, 0, false);
-      d.look(0, 0.1);
       await wait(3200);
       d.walk(0, 0, false);
-      d.look(0.12, 0);
-      await wait(2500);
-      d.look(-0.12, 0);
-      await wait(2500);
+      d.look(0, 0.22);
+      await wait(2600);
+      d.look(0, -0.22);
+      await wait(2600);
       d.stop();
     },
   },
   {
+    scene: 'first',
     says: 'other people are here too, and you see them: standing, walking, digging. a claim anyone makes stands up for everyone within seconds.',
     async play(d, wait) {
       d.peer(6, -8, false);
@@ -143,16 +157,24 @@ export const STEPS: readonly Step[] = [
     },
   },
   {
+    scene: 'first',
     says: 'empty ground is not bought but dug for. dig here searches for a salt whose contract would land at your feet — every attempt is a place, the closest is kept, and the longer you dig the closer it gets. this is what it looks like.',
     async play(d, wait) {
       d.mark('.hud.claim');
+      d.claimSays('nobody has claimed this ground. dig here to take it: the longer you dig, the closer the plot', '');
+      // how much of the machine: the slider goes up, and the rate with it
+      for (const n of [5, 6, 7, 8, 9, 10, 11, 12]) {
+        d.cores(n, 16);
+        await wait(220);
+      }
+      await wait(600);
       d.claimSays('digging for a place beside you. every attempt is a place; the closest is kept. stop whenever you like', '');
       d.dig(true, 1.4e7);
       const path = [412, 388, 301, 296, 212, 187, 187, 154, 131, 119, 96, 96, 88, 74];
       for (let i = 0; i < path.length; i++) {
         d.claimSays(
           'digging for a place beside you. every attempt is a place; the closest is kept. stop whenever you like',
-          `best so far: ${path[i]} m from here · ${(0.7 * (i + 1)).toFixed(1)} M attempts · 14.2 M/s on 8 cores`,
+          `best so far: ${path[i]} m from here · ${(0.7 * (i + 1)).toFixed(1)} M attempts · 14.2 M/s on 12 cores`,
         );
         await wait(650);
       }
@@ -162,6 +184,7 @@ export const STEPS: readonly Step[] = [
     },
   },
   {
+    scene: 'first',
     says: 'one transaction makes the closest place found your contract, for good — a plot: yours to write into, build on, name, hand on. it stands up out of the ground as a drawing of the building it will be.',
     async play(d, wait) {
       d.claimSays('claiming 74 m from here — sign in the wallet', '');
@@ -178,6 +201,7 @@ export const STEPS: readonly Step[] = [
     },
   },
   {
+    scene: 'claimed',
     says: 'on your own plot the owner\'s panel is yours to act with. write into it — one transaction — and the words are cut into the wall as the drawing becomes a building.',
     async play(d, wait) {
       d.mark('.hud.own');
@@ -197,6 +221,7 @@ export const STEPS: readonly Step[] = [
     },
   },
   {
+    scene: 'written',
     says: 'point the plot at a contract of yours and that code runs at this address — a shop, a game, a gallery live here. name it under groundstate.eth so people can come by name. seal the code and it can never change: whoever deals with this place knows it stays what it is.',
     async play(d, wait) {
       await d.typeInto('.own-code input', '0xC0DE…5EED', wait);
@@ -347,7 +372,12 @@ export class Tour {
           if (this.run === run) resolve();
         }, ms);
       });
-    // the step plays itself out and then waits: the person says when to go on
+    // the scene first — skipped to, or gone back to, a step still finds what it
+    // is about in place — then the step plays itself out and waits: the person
+    // says when to go on
+    const plot = await this.driver.scene(step.scene ?? 'any', wait);
+    if (this.run !== run) return;
+    if (plot) mocked = plot;
     await step.play(this.driver, wait);
   }
 

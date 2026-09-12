@@ -1145,6 +1145,22 @@ const demo = { forward: 0, side: 0, run: false, jump: false, yawRate: 0, pitchRa
 /** The one other player the tour brings along, who is nobody. */
 const MOCK_PEER = -1;
 
+/** An address a few steps ahead of where you stand: the cell there, and any digits after. */
+function mockAddressAhead(): string {
+  const ahead = { x: player.x - Math.sin(player.yaw) * 6, z: player.z - Math.cos(player.yaw) * 6 };
+  const cell = addressUnder(ahead.x, ahead.z);
+  let tail = '';
+  for (let i = 0; i < 40 - cell.length; i++) tail += '0123456789abcdef'[Math.floor(Math.random() * 16)];
+  return `0x${cell}${tail}`;
+}
+
+/** The first plot's address, by its name, asked once. */
+let firstKnown: Promise<string | null> | null = null;
+function firstPlot(): Promise<string | null> {
+  firstKnown ??= resolveName('first.groundstate.eth').catch(() => null);
+  return firstKnown;
+}
+
 /** A plot of the tour's own, at an address, with a note or without: never from the chain. */
 function mockPlot(address: string, note: string): Structure {
   const account: Account = { address, codeSize: 2271, code: `0x${'a5'.repeat(2271)}`, balance: 0n, nonce: 1 };
@@ -1357,19 +1373,22 @@ function takeDemoJump(): boolean {
         more.hidden = !earlier;
         more.textContent = earlier ?? '';
       },
+      cores: (n, of) => {
+        const slider = claiming.querySelector<HTMLInputElement>('.cores');
+        const said = claiming.querySelector<HTMLElement>('.cores-said');
+        if (slider) {
+          slider.max = String(of);
+          slider.value = String(n);
+        }
+        if (said) said.textContent = `${n} of ${of} cores`;
+      },
       mockClaim: () => {
         // shown again — the step gone back to — the plot before comes down first
         for (let i = structures.length - 1; i >= 0; i--) if (structures[i]!.mock) structures.splice(i, 1);
         for (let i = rising.length - 1; i >= 0; i--) if (rising[i]!.mock) rising.splice(i, 1);
         for (let i = inking.length - 1; i >= 0; i--) if (inking[i]!.mock) inking.splice(i, 1);
-        // a plot of the tour's own, a few steps ahead: the address whose cell that is
-        const ahead = { x: player.x - Math.sin(player.yaw) * 6, z: player.z - Math.cos(player.yaw) * 6 };
-        const cell = addressUnder(ahead.x, ahead.z);
-        let tail = '';
-        for (let i = 0; i < 40 - cell.length; i++) tail += '0123456789abcdef'[Math.floor(Math.random() * 16)];
-        const address = `0x${cell}${tail}`;
-        const structure = mockPlot(address, '');
-        startRising(structure);
+        const address = mockAddressAhead();
+        startRising(mockPlot(address, ''));
         return address;
       },
       mockWrite: (address, note) => {
@@ -1418,6 +1437,31 @@ function takeDemoJump(): boolean {
       },
       peerGone: () => {
         live?.peers.delete(MOCK_PEER);
+      },
+      scene: async (which, wait) => {
+        if (which === 'any') return null;
+        // at the first plot: there already, or taken there with a short drop
+        const first = await firstPlot();
+        if (first) {
+          const at = offsetOf(first);
+          if (Math.abs(origin.x - at.x) > 0.5 || Math.abs(origin.z - at.z) > 0.5) {
+            await travelTo(first);
+            descent = 60;
+            await wait(1600);
+          }
+        }
+        if (which === 'first') return null;
+        // the tour's plot, as the step needs it: a drawing, or written into —
+        // put up at once, the growing and the writing having been shown already
+        const note = which === 'written' ? 'hello, world' : '';
+        const had = structures.find((it) => it.mock);
+        if (had && (had.plot?.note ?? '') === note && (which === 'written') === (had.kind !== 'framed')) return had.address;
+        for (let i = structures.length - 1; i >= 0; i--) if (structures[i]!.mock) structures.splice(i, 1);
+        for (let i = rising.length - 1; i >= 0; i--) if (rising[i]!.mock) rising.splice(i, 1);
+        for (let i = inking.length - 1; i >= 0; i--) if (inking[i]!.mock) inking.splice(i, 1);
+        const address = had?.address ?? mockAddressAhead();
+        raise(mockPlot(address, note));
+        return address;
       },
       clean: () => {
         // everything the tour put up comes down, and the panels speak for themselves again
