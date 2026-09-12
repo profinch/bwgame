@@ -54,18 +54,26 @@ export interface Driver {
   /** Somebody else, this far from you, walking or digging. */
   peer(dx: number, dz: number, dig: boolean): void;
   peerGone(): void;
-  /** Everything the tour put up comes down. */
+  /**
+   * Back to square one: nothing moving, nothing marked, no bar down, the map
+   * away, the page the way round it was, the panels speaking for themselves,
+   * the fields empty, the tour's plots and player gone. Every step begins so,
+   * whichever way it was come to.
+   */
+  reset(): void;
+  /** Everything the tour put up comes down, for good. */
   clean(): void;
   /**
-   * Set the scene a step needs before it plays — at the first plot, with the
-   * tour's plot claimed, or written into — quickly, for a step skipped to or
-   * gone back to. The tour's plot's address comes back, if there is one.
+   * Set the scene a step needs before it plays — back where the tour began,
+   * or at the first plot, with the tour's plot claimed, or written into — at
+   * once, whether the step was reached in order, skipped to, or gone back to.
+   * The tour's plot's address comes back, if there is one.
    */
   scene(which: Scene, wait: (ms: number) => Promise<void>): Promise<string | null>;
 }
 
 /** What has to be so before a step plays. */
-export type Scene = 'any' | 'first' | 'claimed' | 'written';
+export type Scene = 'any' | 'start' | 'first' | 'claimed' | 'written';
 
 type Wait = (ms: number) => Promise<void>;
 
@@ -78,6 +86,7 @@ export interface Step {
 
 export const STEPS: readonly Step[] = [
   {
+    scene: 'start',
     says: 'this is a blockchain as a place. every address is a spot on this ground, and what stands here is what the chain says stands here — nothing is invented.',
     async play(d, wait) {
       d.look(0.55, 0);
@@ -88,6 +97,7 @@ export const STEPS: readonly Step[] = [
     },
   },
   {
+    scene: 'start',
     says: 'you walk it: w a s d, shift to run, space to jump. on a phone, the stick. dragging the picture looks round.',
     async play(d, wait) {
       d.walk(1, 0, false);
@@ -103,6 +113,7 @@ export const STEPS: readonly Step[] = [
     },
   },
   {
+    scene: 'start',
     says: 'here is where you stand: the chain, the depth, the address under your feet, what is near — and the block passing overhead. its transactions are the ribbons in the sky, each from its sender toward its receiver.',
     async play(d, wait) {
       d.mark('.hud.bottom');
@@ -114,6 +125,7 @@ export const STEPS: readonly Step[] = [
     },
   },
   {
+    scene: 'start',
     says: 'an address or a name takes you anywhere. this goes to first.groundstate.eth — the first plot of this ground, named under groundstate.eth.',
     async play(d, wait) {
       d.mark('.hud.jump');
@@ -375,6 +387,7 @@ export class Tour {
     // the scene first — skipped to, or gone back to, a step still finds what it
     // is about in place — then the step plays itself out and waits: the person
     // says when to go on
+    this.driver.reset();
     const plot = await this.driver.scene(step.scene ?? 'any', wait);
     if (this.run !== run) return;
     if (plot) mocked = plot;

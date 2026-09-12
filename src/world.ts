@@ -1171,7 +1171,19 @@ function mockPlot(address: string, note: string): Structure {
 /** Whether the auger is in the ground: for real, or for show. */
 const diggingNow = () => taking.digging || demo.dig;
 /** Where the person stood when the tour began, to be put back there after. */
-let beforeTour: { ox: number; oz: number; x: number; z: number; yaw: number; pitch: number } | null = null;
+let beforeTour: {
+  ox: number;
+  oz: number;
+  x: number;
+  z: number;
+  yaw: number;
+  pitch: number;
+  theme: string;
+  cores: number;
+  coresOf: number;
+} | null = null;
+/** The spot beside the first plot the tour stands on, the same for every step there. */
+let firstStand: { x: number; z: number; yaw: number } | null = null;
 
 function takeDemoJump(): boolean {
   const asked = demo.jump;
@@ -1336,7 +1348,10 @@ function takeDemoJump(): boolean {
         where.value = '';
         try {
           const address = looksLikeName(typed) ? await resolveName(typed) : normalizeAddress(typed);
-          if (address) await travelTo(address);
+          if (address) {
+            await travelTo(address);
+            firstStand = { x: player.x, z: player.z, yaw: player.yaw };
+          }
         } catch {
           // the name did not resolve: the tour goes on where it is
         }
@@ -1438,9 +1453,47 @@ function takeDemoJump(): boolean {
       peerGone: () => {
         live?.peers.delete(MOCK_PEER);
       },
+      reset: () => {
+        // nothing moving, nothing marked, no bar down, the map away
+        driver.stop();
+        driver.mark(null);
+        if (section !== 'onboarding') show('onboarding');
+        unfold(false);
+        // the page the way round it was when the tour began
+        if ((document.documentElement.dataset.t ?? 'light') !== (beforeTour?.theme ?? 'light')) driver.flipTheme();
+        // the panels speaking for themselves, the fields empty, the slider as it was
+        demo.dig = false;
+        demo.claimHeld = false;
+        taking.pause(false);
+        ownPanel.pause(false);
+        for (const field of document.querySelectorAll<HTMLInputElement>('.go input, .hud.own input')) field.value = '';
+        if (beforeTour) driver.cores(beforeTour.cores, beforeTour.coresOf);
+        // the tour's plots and its player gone
+        for (let i = structures.length - 1; i >= 0; i--) if (structures[i]!.mock) structures.splice(i, 1);
+        for (let i = rising.length - 1; i >= 0; i--) if (rising[i]!.mock) rising.splice(i, 1);
+        for (let i = inking.length - 1; i >= 0; i--) if (inking[i]!.mock) inking.splice(i, 1);
+        settle();
+        live?.peers.delete(MOCK_PEER);
+      },
       scene: async (which, wait) => {
         if (which === 'any') return null;
-        // at the first plot: there already, or taken there with a short drop
+        if (which === 'start') {
+          // back where the tour began, and looking the way you looked
+          if (!beforeTour) return null;
+          if (Math.abs(origin.x - beforeTour.ox) > 0.5 || Math.abs(origin.z - beforeTour.oz) > 0.5) {
+            arriveAt(beforeTour.ox, beforeTour.oz);
+            descent = 60;
+            await wait(1600);
+          }
+          player.x = beforeTour.x;
+          player.z = beforeTour.z;
+          player.yaw = beforeTour.yaw;
+          player.pitch = beforeTour.pitch;
+          player.y = ground.surfaceAt(player.x, player.z);
+          return null;
+        }
+        // at the first plot: there already, or taken there with a short drop;
+        // and on the same spot beside it every time, facing it
         const first = await firstPlot();
         if (first) {
           const at = offsetOf(first);
@@ -1449,22 +1502,25 @@ function takeDemoJump(): boolean {
             descent = 60;
             await wait(1600);
           }
+          if (!firstStand) firstStand = { x: player.x, z: player.z, yaw: player.yaw };
+          player.x = firstStand.x;
+          player.z = firstStand.z;
+          player.yaw = firstStand.yaw;
+          player.pitch = -0.05;
+          player.y = ground.surfaceAt(player.x, player.z);
         }
         if (which === 'first') return null;
         // the tour's plot, as the step needs it: a drawing, or written into —
         // put up at once, the growing and the writing having been shown already
-        const note = which === 'written' ? 'hello, world' : '';
-        const had = structures.find((it) => it.mock);
-        if (had && (had.plot?.note ?? '') === note && (which === 'written') === (had.kind !== 'framed')) return had.address;
-        for (let i = structures.length - 1; i >= 0; i--) if (structures[i]!.mock) structures.splice(i, 1);
-        for (let i = rising.length - 1; i >= 0; i--) if (rising[i]!.mock) rising.splice(i, 1);
-        for (let i = inking.length - 1; i >= 0; i--) if (inking[i]!.mock) inking.splice(i, 1);
-        const address = had?.address ?? mockAddressAhead();
-        raise(mockPlot(address, note));
+        const address = mockAddressAhead();
+        raise(mockPlot(address, which === 'written' ? 'hello, world' : ''));
         return address;
       },
       clean: () => {
         // everything the tour put up comes down, and the panels speak for themselves again
+        if ((document.documentElement.dataset.t ?? 'light') !== (beforeTour?.theme ?? 'light')) driver.flipTheme();
+        for (const field of document.querySelectorAll<HTMLInputElement>('.go input, .hud.own input')) field.value = '';
+        if (beforeTour) driver.cores(beforeTour.cores, beforeTour.coresOf);
         demo.dig = false;
         demo.claimHeld = false;
         for (let i = structures.length - 1; i >= 0; i--) if (structures[i]!.mock) structures.splice(i, 1);
@@ -1494,7 +1550,19 @@ function takeDemoJump(): boolean {
     });
     startTour = () => {
       if (tour!.running) return;
-      beforeTour = { ox: origin.x, oz: origin.z, x: player.x, z: player.z, yaw: player.yaw, pitch: player.pitch };
+      const slider = claiming.querySelector<HTMLInputElement>('.cores');
+      beforeTour = {
+        ox: origin.x,
+        oz: origin.z,
+        x: player.x,
+        z: player.z,
+        yaw: player.yaw,
+        pitch: player.pitch,
+        theme: document.documentElement.dataset.t ?? 'light',
+        cores: Number(slider?.value ?? 1),
+        coresOf: Number(slider?.max ?? 1),
+      };
+      firstStand = null;
       taking.stop();
       show('onboarding');
       tour!.start();
