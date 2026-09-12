@@ -32,7 +32,7 @@ import { Chips } from './chips';
 import { claimAt, claimedPlots, formerPlots, implementationOf, isPlot, knownPlots, noteOf, ownerOf, plotNameOf, relicOf } from './plot';
 import { ownGround } from './owning';
 import { Panels } from './panels';
-import { Tour } from './tour';
+import { type Driver, Tour } from './tour';
 import { Live } from './live';
 import { bytesOf, placeOf } from './mine';
 import { Stick, coarse } from './stick';
@@ -599,7 +599,6 @@ function turn(seconds: number): void {
 /** And go to whatever an address holds, raising it if it is a thing. */
 async function travelTo(address: string): Promise<Structure | null> {
   taking.stop();
-  tour?.saw('travelled');
   const at = offsetOf(address);
   arriveAt(at.x, at.z);
   void raiseNearby();
@@ -822,7 +821,7 @@ function fall(seconds: number): void {
   const standing = player.rise === 0;
   const floor = supportAt(player.x, player.z, player.y + (standing ? STEP_UP : 0));
 
-  const asked = held.has('Space') || stick.takeJump();
+  const asked = tour?.running ? takeDemoJump() : held.has('Space') || stick.takeJump();
   if (asked && standing && player.y <= floor + 0.01 && !taking.digging) {
     player.rise = JUMP;
   }
@@ -898,6 +897,7 @@ function typing(): boolean {
 }
 
 window.addEventListener('keydown', (event) => {
+  if (tour?.running) return;
   // Ctrl+V to paste arrives as KeyV, and used to flip the camera mid-paste
   const busy = typing();
   const plain = !event.ctrlKey && !event.metaKey && !event.altKey && !busy;
@@ -934,6 +934,7 @@ window.addEventListener('pagehide', () => {
 let looking: { x: number; y: number } | null = null;
 
 canvas.addEventListener('pointerdown', (event) => {
+  if (tour?.running) return;
   canvas.setPointerCapture(event.pointerId);
   looking = { x: event.clientX, y: event.clientY };
 });
@@ -943,7 +944,6 @@ canvas.addEventListener('pointermove', (event) => {
   // looking for yourself ends any turn the world was making for you, and any descent
   turning = null;
   descent = 0;
-  tour?.saw('looked');
   player.yaw -= (event.clientX - looking.x) * 0.004;
   player.pitch = Math.max(-1.2, Math.min(1.2, player.pitch - (event.clientY - looking.y) * 0.003));
   looking = { x: event.clientX, y: event.clientY };
@@ -1044,20 +1044,19 @@ const stick = new Stick(
 function walk(seconds: number): void {
   // digging is aimed at where you stand, so while it runs you stand there
   if (taking.digging) return;
-  const forward =
-    (held.has('KeyW') || held.has('ArrowUp') ? 1 : 0) -
-    (held.has('KeyS') || held.has('ArrowDown') ? 1 : 0) +
-    stick.forward;
-  const side =
-    (held.has('KeyD') || held.has('ArrowRight') ? 1 : 0) -
-    (held.has('KeyA') || held.has('ArrowLeft') ? 1 : 0) +
-    stick.side;
+  const driven = tour?.running ?? false;
+  const forward = driven
+    ? demo.forward
+    : (held.has('KeyW') || held.has('ArrowUp') ? 1 : 0) - (held.has('KeyS') || held.has('ArrowDown') ? 1 : 0) + stick.forward;
+  const side = driven
+    ? demo.side
+    : (held.has('KeyD') || held.has('ArrowRight') ? 1 : 0) - (held.has('KeyA') || held.has('ArrowLeft') ? 1 : 0) + stick.side;
   if (!forward && !side) return;
-  tour?.saw('walked');
 
   // a thumb half way out walks at half pace; a key is all the way
   const push = Math.min(1, Math.hypot(forward, side));
-  const speed = (held.has('Shift') || stick.run ? RUN : WALK) * seconds * push;
+  const running = driven ? demo.run : held.has('Shift') || stick.run;
+  const speed = (running ? RUN : WALK) * seconds * push;
   const sin = Math.sin(player.yaw);
   const cos = Math.cos(player.yaw);
   // yaw turns the way you face; forward is -z when yaw is zero
@@ -1141,6 +1140,16 @@ function strokesFor(structure: Structure, base: number): Stroke[] {
 /** The onboarding, started from the welcome or the menu; the menu's corners follow it. */
 let tour: Tour | null = null;
 let startTour: () => void = () => {};
+/** What the tour is doing with the keys and the pointer while it drives. */
+const demo = { forward: 0, side: 0, run: false, jump: false, yawRate: 0, pitchRate: 0 };
+/** Where the person stood when the tour began, to be put back there after. */
+let beforeTour: { ox: number; oz: number; x: number; z: number; yaw: number; pitch: number } | null = null;
+
+function takeDemoJump(): boolean {
+  const asked = demo.jump;
+  demo.jump = false;
+  return asked;
+}
 
 /**
  * The menu, as on bwtoken.io. The corners frame the whole of it until a
@@ -1264,22 +1273,92 @@ let startTour: () => void = () => {};
     const framed = () =>
       section === 'onboarding' ? tourLink : section === 'map' ? mapLink : section === 'panels' ? panelsLink : section === 'blockchain' ? chainLink : 'group';
 
-    // the onboarding: the corners on its word while it runs, off when it ends
-    tour = new Tour(tourCard, () => {
-      if (section === 'onboarding') show(null);
+    // the onboarding drives the world through this; it is the keys and the pointer, as calls
+    const driver: Driver = {
+      look: (yawRate, pitchRate) => {
+        demo.yawRate = yawRate;
+        demo.pitchRate = pitchRate;
+        turning = null;
+        descent = 0;
+      },
+      walk: (forward, side, run) => {
+        demo.forward = forward;
+        demo.side = side;
+        demo.run = run;
+      },
+      jump: () => {
+        demo.jump = true;
+      },
+      stop: () => {
+        demo.forward = 0;
+        demo.side = 0;
+        demo.run = false;
+        demo.yawRate = 0;
+        demo.pitchRate = 0;
+      },
+      type: async (text, wait) => {
+        where.value = '';
+        for (const sign of text) {
+          where.value += sign;
+          await wait(70);
+        }
+      },
+      go: async () => {
+        const typed = where.value.trim();
+        where.value = '';
+        try {
+          const address = looksLikeName(typed) ? await resolveName(typed) : normalizeAddress(typed);
+          if (address) await travelTo(address);
+        } catch {
+          // the name did not resolve: the tour goes on where it is
+        }
+      },
+      section: (which) => {
+        if (which === null) {
+          if (section !== 'onboarding') show('onboarding');
+          return;
+        }
+        show(which);
+        tourLink.classList.add('active');
+      },
+      unfoldWorlds: () => unfold(true),
+      togglePanel: (key) => {
+        for (const row of panelList.querySelectorAll<HTMLButtonElement>('.wopt')) if (row.textContent === key) row.click();
+      },
+      flipTheme: () => document.querySelector<HTMLElement>('#tg')?.click(),
+      mark: (selector) => {
+        for (const el of document.querySelectorAll('.tour-marked')) el.classList.remove('tour-marked');
+        if (selector) document.querySelector(selector)?.classList.add('tour-marked');
+      },
+    };
+    // the onboarding: the corners on its word while it runs; when it ends,
+    // whoever watched it is put back where they stood before it began
+    tour = new Tour(tourCard, driver, () => {
+      if (beforeTour) {
+        if (origin.x !== beforeTour.ox || origin.z !== beforeTour.oz) arriveAt(beforeTour.ox, beforeTour.oz);
+        player.x = beforeTour.x;
+        player.z = beforeTour.z;
+        player.yaw = beforeTour.yaw;
+        player.pitch = beforeTour.pitch;
+        player.y = ground.surfaceAt(player.x, player.z);
+        descent = 0;
+        beforeTour = null;
+      }
+      show(null);
     });
-    tourLink.addEventListener('click', (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      if (tour!.running) return;
-      show('onboarding');
-      tour!.start();
-    });
-    tourCard.addEventListener('click', (event) => event.stopPropagation());
     startTour = () => {
+      if (tour!.running) return;
+      beforeTour = { ox: origin.x, oz: origin.z, x: player.x, z: player.z, yaw: player.yaw, pitch: player.pitch };
+      taking.stop();
       show('onboarding');
       tour!.start();
     };
+    tourLink.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      startTour();
+    });
+    tourCard.addEventListener('click', (event) => event.stopPropagation());
 
     // the corners' first placing is not a move: no transition until they are placed
     frame.style.transition = 'none';
@@ -1323,7 +1402,8 @@ let startTour: () => void = () => {};
       if (event.target instanceof HTMLButtonElement) unfold(false);
     });
     document.addEventListener('click', () => {
-      // a click elsewhere folds the list first, and sends the bar up next
+      // while the tour drives, a click is nobody's
+      if (tour?.running) return;
       // the worlds' bar folds to this world first and goes up next; the panels'
       // bar, whose open state is the list, goes straight up as it is
       if (document.body.classList.contains('listopen')) unfold(false);
@@ -1416,6 +1496,11 @@ loop({
     // whatever is going up, goes up a little more — by the loop's own clock
     // and not the wall's, because a tab out of sight takes no steps: a plot
     // waits where it is rather than being finished while nobody is watching
+    // the tour looking round for you
+    if (tour?.running) {
+      player.yaw += demo.yawRate * seconds;
+      player.pitch = Math.max(-1.2, Math.min(1.2, player.pitch + demo.pitchRate * seconds));
+    }
     if (rising.length || inking.length) {
       for (let i = rising.length - 1; i >= 0; i--) {
         const structure = rising[i]!;
@@ -1636,7 +1721,7 @@ window.addEventListener('keydown', (event) => {
   // h is home: a Mac keyboard has no Home key, and one key is one word to learn.
   // Home is where the first time in begins — somewhere on the ring round the
   // factory, facing it — not the spot beside it a travel ends on
-  if (event.code !== 'KeyH' || typing()) return;
+  if (event.code !== 'KeyH' || typing() || tour?.running) return;
   if (event.metaKey || event.ctrlKey || event.altKey) return;
   event.preventDefault();
   taking.stop();
