@@ -330,10 +330,15 @@ export const STEPS: readonly Step[] = [
     async play(d, wait) {
       d.section('panels');
       await wait(1800);
-      d.togglePanel('metrics');
-      await wait(1500);
-      d.togglePanel('metrics');
-      await wait(1200);
+      // the owner's panel and the claim panel put away, then brought back
+      d.togglePanel('owner');
+      await wait(1400);
+      d.togglePanel('claim');
+      await wait(1800);
+      d.togglePanel('claim');
+      await wait(1000);
+      d.togglePanel('owner');
+      await wait(1400);
       d.section(null);
       await wait(600);
     },
