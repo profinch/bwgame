@@ -308,6 +308,8 @@ export interface Post {
   dx: number;
   dz: number;
   turn: number;
+  /** How much of it stands yet, 0 to 1, and 1 if unset: a token just heard of comes up out of the plate. */
+  grown?: number;
 }
 
 /** A post's footprint, and how far apart posts stand. */
@@ -501,6 +503,12 @@ export function postsOf(
   account: Account,
   holdings: readonly Holding[] = [],
   coin: { symbol: string; supply: bigint } = NATIVE,
+  /**
+   * How many tokens the wallet is known to hold when not all of them have been
+   * heard yet: the stones are cut to the size that many will need, so the ones
+   * already standing do not have to be cut down as the rest come in.
+   */
+  expecting = 0,
 ): Post[] {
   const all: Holding[] = [];
   if (account.balance > 0n) {
@@ -519,18 +527,26 @@ export function postsOf(
     };
   });
 
-  // which of them stand here is decided by share, so nothing big is dropped
-  standing.sort((one, two) => two.share - one.share || one.symbol.localeCompare(two.symbol));
-  const posts =
-    standing.length <= MOST
-      ? standing
-      : [
-          ...standing.slice(0, MOST - 1),
-          { symbol: 'more', amount: String(standing.length - (MOST - 1)), share: 0, tall: LOW },
-        ];
+  // which of them stand here is decided by share, so nothing big is dropped;
+  // where each stands is decided by the order they were given in — the coin,
+  // then the tokens as the chain's reader lists them — so a plate read a token
+  // at a time fills up without anything already standing being moved
+  let posts = standing;
+  if (standing.length > MOST) {
+    const biggest = new Set(
+      [...standing]
+        .sort((one, two) => two.share - one.share || one.symbol.localeCompare(two.symbol))
+        .slice(0, MOST - 1),
+    );
+    posts = [
+      ...standing.filter((post) => biggest.has(post)),
+      { symbol: 'more', amount: String(standing.length - (MOST - 1)), share: 0, tall: LOW },
+    ];
+  }
 
   // and then they are scattered, because ground is not a chart
-  const { columns, rows, pitch, wide } = tierFor(posts.length);
+  const coined = account.balance > 0n ? 1 : 0;
+  const { columns, rows, pitch, wide } = tierFor(Math.max(posts.length, Math.min(MOST, expecting + coined)));
   const seed = keccak_256(encoder.encode(`${account.address.toLowerCase()}/posts`));
   const byte = (i: number) => seed[i % 32]! / 255;
   const places = Array.from({ length: columns * rows }, (_, i) => i);
@@ -1124,7 +1140,7 @@ export function standingOn(
       halfWide: post.wide / 2,
       halfDeep: post.wide / 2,
       turn: post.turn,
-      top: foot + post.tall,
+      top: foot + post.tall * (post.grown ?? 1),
     };
   });
 }
@@ -1174,28 +1190,26 @@ export function piecesOf(structure: Structure, base: number, origin = { x: 0, z:
     // its writing is cut into the wall that looks back at whoever is reading:
     // the body stops a groove short of that wall, and the wall is laid on in
     // rectangles that go round the strokes, so the strokes are the gap
+    // one still coming up stands as tall as it has grown, its writing riding
+    // on the top and cut off at the plate, the way a building's is
+    const tall = post.tall * (post.grown ?? 1);
     if (post.wide < WORTH_WRITING) {
       // too small to write on: a bare peg, and the readout still names it
-      put(px, foot, pz, post.wide, post.tall, post.wide, post.turn);
+      put(px, foot, pz, post.wide, tall, post.wide, post.turn);
       continue;
     }
 
     const { across, down, patches } = writingOn(post.symbol, post.amount, post.tall, post.wide);
     const cutIn = Math.max(across * 1.6, 0.003);
     const [bx, bz] = round(0, -cutIn / 2);
-    put(px + bx, foot, pz + bz, post.wide, post.tall, post.wide - cutIn, post.turn);
+    put(px + bx, foot, pz + bz, post.wide, tall, post.wide - cutIn, post.turn);
 
     for (const { col, row, cols, rows } of patches) {
       const [lx, lz] = round((col + cols / 2 - WALL / 2) * across, post.wide / 2 - cutIn / 2);
-      put(
-        px + lx,
-        foot + post.tall - (row + rows) * down,
-        pz + lz,
-        cols * across,
-        rows * down,
-        cutIn,
-        post.turn,
-      );
+      const top = foot + tall - row * down;
+      const bottom = Math.max(foot, top - rows * down);
+      if (top <= bottom) continue;
+      put(px + lx, bottom, pz + lz, cols * across, top - bottom, cutIn, post.turn);
     }
   }
 

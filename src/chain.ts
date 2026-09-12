@@ -79,8 +79,17 @@ export async function accountAt(address: string): Promise<Account | null> {
  *
  * Whatever cannot be found is not guessed at. A stone says what was answered.
  */
-export async function holdingsOf(address: string): Promise<Holding[]> {
-  const graphed = chain.holdingsFeed ? await fromTokenApi(address) : null;
+export async function holdingsOf(
+  address: string,
+  /**
+   * Told what has been heard so far, and how many tokens there are to hear,
+   * each time the feed says another — so a stone can stand its posts up one at
+   * a time rather than wait for the last. Whatever answers whole tells nothing
+   * until it returns.
+   */
+  some?: (held: readonly Holding[], expecting: number) => void,
+): Promise<Holding[]> {
+  const graphed = chain.holdingsFeed ? await fromTokenApi(address, some) : null;
   if (graphed) return graphed;
   const indexed = chain.indexer ? await fromIndexer(address) : null;
   return indexed ?? (await fromTokenList(address));
@@ -91,18 +100,48 @@ export async function holdingsOf(address: string): Promise<Holding[]> {
  * every fungible token, with its supply. Null if it did not answer, in which
  * case the indexer is asked instead.
  */
-async function fromTokenApi(address: string): Promise<Holding[] | null> {
+async function fromTokenApi(
+  address: string,
+  some?: (held: readonly Holding[], expecting: number) => void,
+): Promise<Holding[] | null> {
   try {
-    const response = await fetch(`${chain.holdingsFeed}&address=${address}`, { headers: { accept: 'application/json' } });
+    // asked as a stream: a line saying how many, then a line a token as the
+    // server hears each one's supply. An older server answers in one piece.
+    const response = await fetch(`${chain.holdingsFeed}&address=${address}&stream=1`, {
+      headers: { accept: 'application/x-ndjson, application/json' },
+    });
     if (!response.ok) return null;
-    const answer = (await response.json()) as { holdings?: { symbol?: string; amount?: string; decimals?: number; supply?: string }[] };
-    if (!Array.isArray(answer.holdings)) return null;
+    type Row = { symbol?: string; amount?: string; decimals?: number; supply?: string; count?: number };
     const held: Holding[] = [];
-    for (const row of answer.holdings.slice(0, AT_MOST)) {
-      if (!row.symbol || !row.amount) continue;
+    const take = (row: Row): boolean => {
+      if (!row.symbol || !row.amount || held.length >= AT_MOST) return false;
       const amount = BigInt(row.amount);
-      if (amount <= 0n) continue;
+      if (amount <= 0n) return false;
       held.push({ symbol: row.symbol, amount, decimals: Number(row.decimals ?? 18), supply: row.supply ? BigInt(row.supply) : undefined });
+      return true;
+    };
+    if (!(response.headers.get('content-type') ?? '').includes('ndjson') || !response.body) {
+      const answer = (await response.json()) as { holdings?: Row[] };
+      if (!Array.isArray(answer.holdings)) return null;
+      for (const row of answer.holdings) take(row);
+      return held;
+    }
+    let expecting = 0;
+    let rest = '';
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    for (;;) {
+      const { value, done } = await reader.read();
+      rest += decoder.decode(value, { stream: !done });
+      const lines = rest.split('\n');
+      rest = done ? '' : (lines.pop() ?? '');
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        const row = JSON.parse(line) as Row;
+        if (typeof row.count === 'number') expecting = row.count;
+        else if (take(row)) some?.(held, expecting);
+      }
+      if (done) break;
     }
     return held;
   } catch {

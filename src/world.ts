@@ -25,7 +25,18 @@ import { CHAINS, chain } from './chains';
 import { type Account, accountAt, holdingsOf } from './chain';
 import { normalizeAddress } from './coord';
 import { looksLikeName, resolveName } from './ens';
-import { DRESSED_AT, type Structure, blocksOf, bouldersOf, instancesOf, isWallet, stands, structureOf } from './places';
+import {
+  DRESSED_AT,
+  type Holding,
+  type Structure,
+  blocksOf,
+  bouldersOf,
+  instancesOf,
+  isWallet,
+  postsOf,
+  stands,
+  structureOf,
+} from './places';
 import { POINT, auger } from './auger';
 import { type Stroke, glassOf, inkOf, strokesOf } from './blueprint';
 import { Chips } from './chips';
@@ -155,7 +166,14 @@ function reliefUnder(structure: Structure): { high: number; low: number } {
  * ordinary contract: built, and so never drawn.
  */
 async function standing(account: Account, vouched = false): Promise<Structure> {
-  const holdings = isWallet(account) ? await holdingsOf(account.address) : [];
+  // a wallet's stone goes up at once, with the coin on it; what else it holds
+  // comes up a post at a time as the chain's reader lists it, see `growPosts`
+  if (isWallet(account)) {
+    const stone = structureOf(account, [], chain.coin);
+    void growPosts(account);
+    return stone;
+  }
+  const holdings: Holding[] = [];
   // a plot of an earlier ground is a relic, whatever else it is
   const relic = relicOf(account.code);
   if (relic) return structureOf(account, holdings, chain.coin, null, relic);
@@ -184,6 +202,43 @@ async function standing(account: Account, vouched = false): Promise<Structure> {
     salt: claimed?.salt ?? null,
     name: named,
   });
+}
+
+/**
+ * The posts of a wallet's stone, stood up one at a time.
+ *
+ * What a wallet holds takes a read a token, and a wallet holding thirty is a
+ * long wait for one answer. So the stone is not waited for: it stands with the
+ * coin on it, and each token comes up out of the plate as its share is heard —
+ * where it will stand when all are in, because the posts take their places in
+ * the order they are told and the plate is cut for as many as are coming. If
+ * the stone has been taken down meanwhile, nothing is put back.
+ */
+async function growPosts(account: Account): Promise<void> {
+  const wanted = account.address.toLowerCase();
+  const show = (held: readonly Holding[], expecting: number) => {
+    const at = structures.findIndex((it) => !it.mock && it.address.toLowerCase() === wanted);
+    if (at < 0) return;
+    const before = structures[at]!;
+    const now = structureOf(account, held, chain.coin);
+    now.posts = postsOf(account, held, chain.coin, expecting);
+    // what was standing goes on standing; what is new starts from the plate
+    for (const post of now.posts) {
+      const stood = before.posts?.find((it) => it.symbol === post.symbol && it.amount === post.amount);
+      post.grown = stood ? (stood.grown ?? 1) : 0;
+    }
+    structures[at] = now;
+    const was = sprouting.indexOf(before);
+    if (was >= 0) sprouting.splice(was, 1);
+    if (now.posts.some((post) => (post.grown ?? 1) < 1)) sprouting.push(now);
+    settle();
+  };
+  try {
+    const held = await holdingsOf(account.address, show);
+    show(held, held.length);
+  } catch {
+    // what was answered stands
+  }
 }
 
 /**
@@ -543,6 +598,9 @@ const rising: Structure[] = [];
 /** How long a note just written takes to come up on the wall, in seconds, and the walls it is coming up on. */
 const INKS_IN = 4;
 const inking: Structure[] = [];
+/** How long a post takes to stand up out of its plate, in seconds, and the stones with posts still coming up. */
+const POST_RISES_IN = 1.5;
+const sprouting: Structure[] = [];
 
 /** Put a building up with its writing still to come, sign by sign. */
 function startInking(structure: Structure): void {
@@ -2016,7 +2074,7 @@ loop({
       player.yaw += demo.yawRate * seconds;
       player.pitch = Math.max(-1.2, Math.min(1.2, player.pitch + demo.pitchRate * seconds));
     }
-    if (rising.length || inking.length) {
+    if (rising.length || inking.length || sprouting.length) {
       for (let i = rising.length - 1; i >= 0; i--) {
         const structure = rising[i]!;
         structure.grown = Math.min(1, (structure.grown ?? 0) + seconds / BUILDS_IN);
@@ -2026,6 +2084,15 @@ loop({
         const structure = inking[i]!;
         structure.inked = Math.min(1, (structure.inked ?? 0) + seconds / INKS_IN);
         if (structure.inked >= 1) inking.splice(i, 1);
+      }
+      for (let i = sprouting.length - 1; i >= 0; i--) {
+        let standing = true;
+        for (const post of sprouting[i]!.posts ?? []) {
+          if ((post.grown ?? 1) >= 1) continue;
+          post.grown = Math.min(1, (post.grown ?? 0) + seconds / POST_RISES_IN);
+          if (post.grown < 1) standing = false;
+        }
+        if (standing) sprouting.splice(i, 1);
       }
       placeStones();
     }

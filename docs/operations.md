@@ -30,8 +30,9 @@ not on the server). From macOS set `COPYFILE_DISABLE=1` or tar ships `._*` files
 same network as nginx, with `SUBGRAPH` (the subgraph query URL) and `ROOM` (the chain whose claims
 it watches) in the environment, and a volume at `/data` (`-v gs-live-data:/data`) where it keeps
 the revealed places (`revealed.json`), and `TOKEN_API_JWT` — the team's key for The Graph's Token API
-(Pinax), which the server asks for what mainnet wallets hold (`/live/holdings?network=mainnet&address=…`);
-the key never reaches the browser, and without it the pages fall back to Blockscout. Presence is in memory; the subgraph's rows are re-read on
+(Pinax), which the server asks for what mainnet wallets hold (`/live/holdings?network=mainnet&address=…`,
+or with `&stream=1` a line a token as each supply comes in, which is how the pages ask so a stone's
+posts stand up one at a time; answers kept five minutes, supplies for good); the key never reaches the browser, and without it the pages fall back to Blockscout. Presence is in memory; the subgraph's rows are re-read on
 start. Rebuild the image and recreate the container to update — with the volume, or the revealed
 places are forgotten.
 

@@ -65,7 +65,9 @@ const SAWS_AT_MOST_EVERY = 1500;
  */
 const TOKEN_API = process.env.TOKEN_API ?? 'https://api.pinax.network';
 const TOKEN_API_KEY = process.env.TOKEN_API_JWT ?? process.env.TOKEN_API_KEY ?? '';
-const HOLDINGS_KEPT_FOR = 60_000;
+const HOLDINGS_KEPT_FOR = 300_000;
+/** How many supplies are asked for at once. */
+const SUPPLIES_AT_ONCE = 4;
 /** How long the subgraph has to be silent before the chain is read instead, and how often then. */
 const CHAIN_AFTER = 120_000;
 const CHAIN_EVERY = 600_000;
@@ -101,36 +103,96 @@ try {
 }
 /** address@network -> { at, holdings } */
 const holdingsKept = new Map();
-/** contract@network -> total supply as a string, or '' when the API had none */
+/** contract@network -> a promise of the total supply as a string, or '' when the API had none */
 const supplyKept = new Map();
 
 async function tokenApi(path, params) {
   const url = new URL(`${TOKEN_API}${path}`);
   for (const [k, v] of Object.entries(params)) url.searchParams.set(k, String(v));
-  const response = await fetch(url, { headers: { authorization: `Bearer ${TOKEN_API_KEY}`, accept: 'application/json' } });
-  if (!response.ok) throw new Error(`token api ${response.status} for ${path}`);
-  const answer = await response.json();
-  return Array.isArray(answer?.data) ? answer.data : [];
+  for (let tries = 0; ; tries++) {
+    const response = await fetch(url, { headers: { authorization: `Bearer ${TOKEN_API_KEY}`, accept: 'application/json' } });
+    if (response.ok) {
+      const answer = await response.json();
+      return Array.isArray(answer?.data) ? answer.data : [];
+    }
+    // asked too fast: once more, after a breath
+    if (response.status !== 429 || tries >= 2) throw new Error(`token api ${response.status} for ${path}`);
+    await new Promise((r) => setTimeout(r, 700 * (tries + 1)));
+  }
+}
+
+/** A few at a time: `go(work)` runs work when a place is free. */
+function fewAtOnce(places) {
+  let busy = 0;
+  const queue = [];
+  const next = () => {
+    if (busy >= places || !queue.length) return;
+    busy++;
+    const { work, resolve, reject } = queue.shift();
+    work().then(resolve, reject).finally(() => {
+      busy--;
+      next();
+    });
+  };
+  return (work) =>
+    new Promise((resolve, reject) => {
+      queue.push({ work, resolve, reject });
+      next();
+    });
+}
+const askSupply = fewAtOnce(SUPPLIES_AT_ONCE);
+
+/**
+ * A token's total supply in raw units, kept for good. The API gives supplies
+ * in token units, decimal-scaled; a post is sized by the share of the whole,
+ * so the whole is put back in raw units. '' when the API does not know.
+ */
+function supplyOf(network, row) {
+  const key = `${String(row.contract).toLowerCase()}@${network}`;
+  let kept = supplyKept.get(key);
+  if (!kept) {
+    kept = askSupply(async () => {
+      const [token] = await tokenApi('/v1/evm/tokens', { network, contract: row.contract });
+      const supply = token?.total_supply ?? token?.circulating_supply;
+      const decimals = Number(token?.decimals ?? row.decimals ?? 18);
+      return supply === undefined || supply === null || !Number.isFinite(Number(supply))
+        ? ''
+        : (BigInt(Math.round(Number(supply))) * 10n ** BigInt(decimals)).toString();
+    }).catch(() => '');
+    supplyKept.set(key, kept);
+  }
+  return kept;
 }
 
 /**
  * Every fungible token a wallet holds on a network, with each token's total
- * supply, so a holding can be read as a share of it. Null when there is no
+ * supply, so a holding can be read as a share of it — told one at a time, so
+ * a page can stand each post up as it is heard rather than wait for the last.
+ * First a line saying how many are coming; then the tokens in the order the
+ * API lists them, each as soon as its supply is in. Nothing when there is no
  * key to ask with or the network is not one the API covers.
  */
-async function holdingsOf(network, address) {
-  if (!TOKEN_API_KEY || !/^[a-z0-9-]{1,32}$/.test(network) || !/^0x[0-9a-fA-F]{40}$/.test(address)) return null;
+async function* holdingsRead(network, address) {
+  if (!TOKEN_API_KEY || !/^[a-z0-9-]{1,32}$/.test(network) || !/^0x[0-9a-fA-F]{40}$/.test(address)) return;
   const key = `${address.toLowerCase()}@${network}`;
   const kept = holdingsKept.get(key);
-  if (kept && Date.now() - kept.at < HOLDINGS_KEPT_FOR) return kept.holdings;
-  // ten a page on the free plan; a wallet with more is read a few pages deep
-  const rows = [];
-  for (let page = 1; page <= 5; page++) {
-    const part = await tokenApi('/v1/evm/balances', { network, address, limit: 10, page });
-    rows.push(...part);
-    if (part.length < 10) break;
+  if (kept && Date.now() - kept.at < HOLDINGS_KEPT_FOR) {
+    yield { count: kept.holdings.length };
+    yield* kept.holdings;
+    return;
   }
-  const holdings = [];
+  // ten a page on the free plan; a wallet with more is read a few pages deep,
+  // the rest of the pages asked for at once when the first one is full
+  const balances = (page) => tokenApi('/v1/evm/balances', { network, address, limit: 10, page });
+  const rows = await balances(1);
+  if (rows.length >= 10) {
+    const pages = await Promise.all([2, 3, 4, 5].map(balances));
+    for (const part of pages) {
+      rows.push(...part);
+      if (part.length < 10) break;
+    }
+  }
+  const worth = [];
   for (const row of rows) {
     if (!row?.symbol || !row.contract || !row.amount) continue;
     let amount;
@@ -139,29 +201,32 @@ async function holdingsOf(network, address) {
     } catch {
       continue;
     }
-    if (amount <= 0n) continue;
-    const supplyKey = `${String(row.contract).toLowerCase()}@${network}`;
-    if (!supplyKept.has(supplyKey)) {
-      try {
-        // the API gives supplies in token units, decimal-scaled; a post is
-        // sized by the share of the whole, so the whole is put back in raw units
-        const [token] = await tokenApi('/v1/evm/tokens', { network, contract: row.contract });
-        const supply = token?.total_supply ?? token?.circulating_supply;
-        const decimals = Number(token?.decimals ?? row.decimals ?? 18);
-        supplyKept.set(
-          supplyKey,
-          supply === undefined || supply === null || !Number.isFinite(Number(supply)) ? '' : (BigInt(Math.round(Number(supply))) * 10n ** BigInt(decimals)).toString(),
-        );
-      } catch {
-        supplyKept.set(supplyKey, '');
-      }
-    }
-    const supply = supplyKept.get(supplyKey);
-    holdings.push({ symbol: String(row.symbol), amount: amount.toString(), decimals: Number(row.decimals ?? 18), supply: supply || undefined });
+    if (amount > 0n) worth.push({ row, amount });
   }
-  const answer = { source: 'the graph token api', network, address: address.toLowerCase(), holdings };
-  holdingsKept.set(key, { at: Date.now(), holdings: answer });
-  return answer;
+  yield { count: worth.length };
+  // the supplies are asked a few at a time, and told in the API's order
+  const supplies = worth.map(({ row }) => supplyOf(network, row));
+  const holdings = [];
+  for (let i = 0; i < worth.length; i++) {
+    const { row, amount } = worth[i];
+    const supply = await supplies[i];
+    const holding = { symbol: String(row.symbol), amount: amount.toString(), decimals: Number(row.decimals ?? 18), supply: supply || undefined };
+    holdings.push(holding);
+    yield holding;
+  }
+  holdingsKept.set(key, { at: Date.now(), holdings });
+}
+
+/** The same, in one piece: null when there is nothing to ask with. */
+async function holdingsOf(network, address) {
+  if (!TOKEN_API_KEY) return null;
+  const holdings = [];
+  let asked = false;
+  for await (const line of holdingsRead(network, address)) {
+    asked = true;
+    if (line.symbol) holdings.push(line);
+  }
+  return asked ? { source: 'the graph token api', network, address: address.toLowerCase(), holdings } : null;
 }
 
 let saveDue = null;
@@ -205,18 +270,36 @@ const http = createServer((request, response) => {
     response.end(JSON.stringify({ block: graphBlock, plots: rows }));
     return;
   }
-  // what a wallet holds, from The Graph's Token API
+  // what a wallet holds, from The Graph's Token API: in one piece, or as a
+  // stream of lines with `stream=1`, a token a line as each is heard
   if (url.pathname.endsWith('/holdings')) {
-    void holdingsOf(url.searchParams.get('network') ?? '', url.searchParams.get('address') ?? '').then(
-      (answer) => {
-        response.writeHead(answer ? 200 : 503, { 'content-type': 'application/json', 'cache-control': 'no-store', 'access-control-allow-origin': '*' });
-        response.end(JSON.stringify(answer ?? { error: 'no token api here' }));
-      },
-      (error) => {
-        response.writeHead(502, { 'content-type': 'application/json', 'access-control-allow-origin': '*' });
-        response.end(JSON.stringify({ error: String(error?.message ?? error) }));
-      },
-    );
+    const network = url.searchParams.get('network') ?? '';
+    const address = url.searchParams.get('address') ?? '';
+    const open = { 'cache-control': 'no-store', 'access-control-allow-origin': '*' };
+    void (async () => {
+      try {
+        if (url.searchParams.get('stream') !== '1') {
+          const answer = await holdingsOf(network, address);
+          response.writeHead(answer ? 200 : 503, { ...open, 'content-type': 'application/json' });
+          response.end(JSON.stringify(answer ?? { error: 'no token api here' }));
+          return;
+        }
+        let begun = false;
+        for await (const line of holdingsRead(network, address)) {
+          if (!begun) {
+            begun = true;
+            response.writeHead(200, { ...open, 'content-type': 'application/x-ndjson' });
+          }
+          response.write(`${JSON.stringify(line)}\n`);
+        }
+        if (!begun) response.writeHead(503, { ...open, 'content-type': 'application/json' });
+        response.end(begun ? undefined : JSON.stringify({ error: 'no token api here' }));
+      } catch (error) {
+        // a stream cut short says what it had; nothing said yet is a plain failure
+        if (!response.headersSent) response.writeHead(502, { ...open, 'content-type': 'application/json' });
+        response.end(response.headersSent ? undefined : JSON.stringify({ error: String(error?.message ?? error) }));
+      }
+    })();
     return;
   }
   // the revealed places, every one

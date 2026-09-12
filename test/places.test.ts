@@ -182,6 +182,43 @@ describe('what stands where', () => {
     expect(mute.tall).toBeLessThanOrEqual(speck.tall);
   });
 
+  it('keeps a post where it stands as the rest come in', () => {
+    // the coin and the first tokens heard take their places; a token heard
+    // later comes up somewhere else, and moves nothing
+    const few = postsOf(WALLET, HELD.slice(0, 1), undefined, HELD.length);
+    const all = postsOf(WALLET, HELD, undefined, HELD.length);
+    for (const post of few) {
+      const later = all.find((it) => it.symbol === post.symbol)!;
+      expect([later.dx, later.dz, later.turn, later.wide]).toEqual([post.dx, post.dz, post.turn, post.wide]);
+    }
+    // and the stones are cut for as many as are coming, not as many as are in
+    const crowd: Holding[] = [];
+    for (let i = 0; i < 60; i++) crowd.push({ symbol: `t${i}`, amount: 10n ** 20n, decimals: 18, supply: 10n ** 24n });
+    const first = postsOf(WALLET, crowd.slice(0, 3), undefined, crowd.length)[0]!;
+    const last = postsOf(WALLET, crowd, undefined, crowd.length)[0]!;
+    expect(first.wide).toBe(last.wide);
+    expect(first.wide).toBeLessThan(POST);
+  });
+
+  it('draws a post coming up as tall as it has grown, its writing cut off at the plate', () => {
+    const whole = structureOf(WALLET, HELD);
+    const half = structureOf(WALLET, HELD);
+    for (const post of half.posts!) post.grown = 0.5;
+    const tallest = (data: Float32Array) => {
+      let top = 0;
+      for (let i = 0; i < data.length; i += 10) top = Math.max(top, data[i + 1]! + data[i + 4]!);
+      return top;
+    };
+    const plate = whole.tall;
+    expect(tallest(piecesOf(half, 0, { x: half.x, z: half.z })) - plate).toBeCloseTo(
+      (tallest(piecesOf(whole, 0, { x: whole.x, z: whole.z })) - plate) / 2,
+      5,
+    );
+    // nothing of it reaches below the top of the plate
+    const data = piecesOf(half, 0, { x: half.x, z: half.z });
+    for (let i = 10; i < data.length; i += 10) expect(data[i + 1]!).toBeGreaterThanOrEqual(plate - 1e-6);
+  });
+
   it('gives every wallet the same plate, however much it holds', () => {
     const bare = structureOf({ ...WALLET, balance: 0n });
     const held = structureOf(WALLET, HELD);
