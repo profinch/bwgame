@@ -774,8 +774,8 @@ function notedBuilding(structure: Structure, base: number, origin: { x: number; 
   const c = Math.cos(structure.turn);
   const sn = Math.sin(structure.turn);
   const out: number[] = [];
-  const put = (lx: number, y: number, lz: number, w: number, h: number, d: number) =>
-    out.push(cx + c * lx + sn * lz, y, cz + c * lz - sn * lx, w, h, d, structure.turn, structure.albedo, structure.roughness, 0);
+  const put = (lx: number, y: number, lz: number, w: number, h: number, d: number, albedo = structure.albedo) =>
+    out.push(cx + c * lx + sn * lz, y, cz + c * lz - sn * lx, w, h, d, structure.turn, albedo, structure.roughness, 0);
 
   const sink = structure.sink ?? 0;
   const grown = structure.grown ?? 1;
@@ -783,6 +783,8 @@ function notedBuilding(structure: Structure, base: number, origin: { x: number; 
   const top = base + structure.tall * grown;
   const across = POST / WALL;
   const cutIn = Math.max(across * 1.6, 0.003);
+  /** The floor of the grooves is dark, so the letters read from a way off. */
+  const GROOVE_FLOOR = 0.08;
   // the wall, pulled in by the cut; its face goes back on flush, in pieces
   put(0, bottom, -cutIn / 2, structure.wide, top - bottom, structure.deep - cutIn);
   const faceZ = structure.deep / 2 - cutIn / 2;
@@ -840,6 +842,10 @@ function notedBuilding(structure: Structure, base: number, origin: { x: number; 
       slab(lx, lx + POST, foot, foot + tall);
       return;
     }
+    // a dark floor behind the stone, seen only through the strokes
+    const lo = Math.max(foot, bottom);
+    const hi = Math.min(foot + tall, top);
+    if (hi > lo) put(lx + POST / 2, lo, structure.deep / 2 - cutIn + 0.001, POST, hi - lo, 0.002, GROOVE_FLOOR);
     const { down, patches } = carve([word], tall, POST);
     for (const { col, row, cols, rows } of patches) {
       const y0 = foot + tall - (row + rows) * down;

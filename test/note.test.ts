@@ -28,6 +28,11 @@ describe('a note on a building', () => {
     // the body is pulled in by the cut; every other piece is a slab of the face, flush with where the wall was
     expect(pieces[5]).toBeCloseTo(5 - cutIn, 5);
     for (let i = INSTANCE_FLOATS; i < pieces.length; i += INSTANCE_FLOATS) {
+      // the dark floors of the grooves sit just off the pulled-in wall; the face slabs are flush
+      if (pieces[i + 7]! < 0.1) {
+        expect(pieces[i + 2]).toBeCloseTo(2.5 - cutIn + 0.001, 5);
+        continue;
+      }
       expect(pieces[i + 2]).toBeCloseTo(2.5 - cutIn / 2, 5);
       expect(pieces[i + 5]).toBeCloseTo(cutIn, 5);
     }
