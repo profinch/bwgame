@@ -64,8 +64,11 @@ export class Live {
     this.connect();
   }
 
+  /** Out of the room for a while — the onboarding — neither seen nor seeing. */
+  private paused = false;
+
   private connect(): void {
-    if (this.closed) return;
+    if (this.closed || this.paused) return;
     let socket: WebSocket;
     try {
       socket = new WebSocket(this.url);
@@ -120,7 +123,7 @@ export class Live {
 
   /** Try again after a while, and a longer while each time, up to half a minute. */
   private later(): void {
-    if (this.closed) return;
+    if (this.closed || this.paused) return;
     setTimeout(() => this.connect(), this.retryIn);
     this.retryIn = Math.min(30_000, this.retryIn * 2);
   }
@@ -147,6 +150,26 @@ export class Live {
       let turn = peer.yaw - peer.drawnYaw;
       turn = Math.atan2(Math.sin(turn), Math.cos(turn));
       peer.drawnYaw += turn * share;
+    }
+  }
+
+  /**
+   * Step out of the room, saying so, and come back later: while the onboarding
+   * plays, nobody sees the walker it drives, and the tour sees nobody but the
+   * player it brings — the game and the onboarding kept apart.
+   */
+  pause(on: boolean): void {
+    if (this.paused === on) return;
+    this.paused = on;
+    if (on) {
+      const socket = this.socket;
+      if (socket && socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ t: 'bye' }));
+      this.socket = null;
+      socket?.close();
+      this.peers.clear();
+    } else {
+      this.retryIn = 1000;
+      this.connect();
     }
   }
 

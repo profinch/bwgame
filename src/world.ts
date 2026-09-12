@@ -1633,6 +1633,7 @@ function takeDemoJump(): boolean {
     tour = new Tour(tourCard, driver, () => {
       driver.clean();
       panels.restore();
+      live?.pause(false);
       if (beforeTour) {
         if (origin.x !== beforeTour.ox || origin.z !== beforeTour.oz) arriveAt(beforeTour.ox, beforeTour.oz);
         player.x = beforeTour.x;
@@ -1661,6 +1662,8 @@ function takeDemoJump(): boolean {
         overShoulder,
       };
       panels.suspend();
+      // out of the room: the game does not see the tour, nor the tour the game
+      live?.pause(true);
       taking.stop();
       // begun from the welcome, the first descent is still under way: it is
       // brought down to the same short drop the tour uses everywhere, so the
