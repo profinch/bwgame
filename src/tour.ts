@@ -48,8 +48,8 @@ export interface Driver {
   cores(n: number, of: number): void;
   /** Press a button, for show: it is turned over for a moment. */
   press(selector: string): void;
-  /** The claim panel's buttons as they are while digging, or after a find: "stop" or "dig here", "claim it" shown or not. */
-  claimButtons(digging: boolean, found: boolean): void;
+  /** The claim panel's buttons as they are while digging, or after a find: "stop" or "dig here", "claim it" shown or not, and pressed while a claim is under way. */
+  claimButtons(digging: boolean, found: boolean, busy?: boolean): void;
   /** A plot of the tour's own goes up a few steps ahead, a drawing; its address comes back. */
   mockClaim(): string;
   /** The tour's plot is written into: the drawing becomes a building and the words come up. */
@@ -240,7 +240,8 @@ export const STEPS: readonly Step[] = [
       await wait(1200);
       d.press('.hud.claim .take');
       await wait(400);
-      d.claimButtons(false, false);
+      // the button stays, pressed, while the claim is under way, as it does
+      d.claimButtons(false, true, true);
       d.claimSays('claiming 74 m from here — sign in the wallet', '');
       await wait(1800);
       d.claimSays('sent. waiting for a block', '');

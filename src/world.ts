@@ -66,6 +66,8 @@ const GROUND = 1700;
  * only addresses are worked out from the sum of the two.
  */
 const origin = { x: 0, z: 0 };
+/** The address last travelled to, if any: what the ground was opened on, to be put up again on coming back. */
+let travelledTo: string | null = null;
 
 let ground = terrain(GROUND, 340, origin);
 const renderer = new Renderer(canvas);
@@ -270,15 +272,20 @@ async function raiseNearby(growing = false): Promise<void> {
       // down and put up again as the building it now is; anything else standing
       // is left alone
       const already = structures.find((standing) => standing.address.toLowerCase() === plot.toLowerCase());
+      // a relic is what it is: nothing the index says changes it
+      if (already?.kind === 'relic' || already?.mock) continue;
       if (already) {
         // standing already, and the index says the same: left alone. Said
         // differently — written into, pointed at code, named, handed on — it
         // is taken down and put up again as what it now is
+        // like with like: an empty name and no name are the same nothing, and
+        // so are an empty note and none — or a standing plot would be taken
+        // down and put up again every time the index was asked
         const changed =
-          (already.plot?.note ?? '') !== (note ?? already.plot?.note ?? '') ||
-          (implementation !== undefined && (already.plot?.implementation ?? null) !== (implementation ?? null)) ||
-          (name !== undefined && (already.plot?.name ?? null) !== (name || null)) ||
-          (owner !== undefined && already.plot?.owner?.toLowerCase() !== owner.toLowerCase());
+          (already.plot?.note || '') !== (note ?? already.plot?.note ?? '') ||
+          (implementation !== undefined && (already.plot?.implementation || null) !== (implementation || null)) ||
+          (name !== undefined && (already.plot?.name || null) !== (name || null)) ||
+          (owner !== undefined && (already.plot?.owner ?? '').toLowerCase() !== owner.toLowerCase());
         if (!changed) continue;
         structures.splice(structures.indexOf(already), 1);
       }
@@ -312,7 +319,8 @@ let asking = false;
  * you return to is current rather than however old the last answer was.
  */
 function askAgain(): void {
-  if (asking || document.hidden) return;
+  // while the tour plays nothing new is put up: the world is the tour's own for the while
+  if (asking || document.hidden || tour?.running) return;
   void raiseNearby(true);
 }
 
@@ -619,6 +627,7 @@ async function travelTo(
   stand?: { x: number; z: number; yaw: number; drop: number },
 ): Promise<Structure | null> {
   taking.stop();
+  travelledTo = address;
   const at = offsetOf(address);
   arriveAt(at.x, at.z);
   if (stand) {
@@ -691,7 +700,7 @@ const cameBack = (() => {
   if (new URLSearchParams(location.search).has('at')) return false;
   try {
     const kept = JSON.parse(localStorage.getItem(LAST_STAND) ?? 'null') as
-      | { ox: number; oz: number; x: number; z: number; yaw: number }
+      | { ox: number; oz: number; x: number; z: number; yaw: number; at?: string | null }
       | null;
     if (!kept || ![kept.ox, kept.oz, kept.x, kept.z, kept.yaw].every(Number.isFinite)) return false;
     const inside = withinWorld(kept.ox + kept.x, kept.oz + kept.z);
@@ -704,6 +713,16 @@ const cameBack = (() => {
     ground = terrain(GROUND, 340, origin);
     renderer.reshape(floor, ground.geometry);
     player.y = ground.surfaceAt(player.x, player.z);
+    // what the ground was opened on — a wallet, a contract — is put up again
+    // too: it is not a plot, so nothing else would bring it back
+    if (typeof kept.at === 'string' && /^(0x)?[0-9a-fA-F]{40}$/.test(kept.at)) {
+      // an address may have been kept bare, as the field normalises it
+      const at = kept.at.startsWith('0x') ? kept.at : `0x${kept.at}`;
+      travelledTo = at;
+      void accountAt(at).then(async (account) => {
+        if (account && stands(account)) raise(await standing(account));
+      });
+    }
     return true;
   } catch {
     return false;
@@ -978,7 +997,10 @@ window.addEventListener('pagehide', () => {
   coverage.save();
   // where you stood, for next time
   try {
-    localStorage.setItem(LAST_STAND, JSON.stringify({ ox: origin.x, oz: origin.z, x: player.x, z: player.z, yaw: player.yaw }));
+    localStorage.setItem(
+      LAST_STAND,
+      JSON.stringify({ ox: origin.x, oz: origin.z, x: player.x, z: player.z, yaw: player.yaw, at: tour?.running ? null : travelledTo }),
+    );
   } catch {
     // then next time starts at home
   }
@@ -1551,13 +1573,13 @@ function takeDemoJump(): boolean {
         button.classList.add('tour-pressed');
         setTimeout(() => button.classList.remove('tour-pressed'), 350);
       },
-      claimButtons: (dig, found) => {
+      claimButtons: (dig, found, busy = false) => {
         const digButton = claiming.querySelector<HTMLButtonElement>('.dig');
         const takeButton = claiming.querySelector<HTMLButtonElement>('.take');
         if (digButton) digButton.textContent = dig ? 'stop' : 'dig here';
         if (takeButton) {
           takeButton.hidden = !found;
-          takeButton.disabled = false;
+          takeButton.disabled = busy;
         }
       },
       cores: (n, of) => {
