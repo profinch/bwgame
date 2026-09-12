@@ -966,14 +966,14 @@ body.touring #view {
   transition: filter 0.4s ease;
 }
 
-/* a button the tour presses is turned over for a moment */
+/* a button the tour presses fills for a moment: the text's colour behind the
+   page's colour. Filled rather than filtered — a filter on a button with no
+   background of its own inverts only its letters, which inside a turned-over
+   panel makes them the panel's colour and gone */
 .tour-pressed {
-  filter: invert(1);
-}
-
-/* inside a turned-over panel, a pressed button turns back — twice over is the way it was */
-.tour-marked .tour-pressed {
-  filter: invert(1);
+  background: var(--fg) !important;
+  color: var(--bg) !important;
+  border-color: var(--fg) !important;
 }
 
 /* a panel put away is not on the page at all */
