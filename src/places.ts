@@ -58,6 +58,12 @@ export interface Structure {
   inked?: number;
   /** Put up by the onboarding to show what a thing looks like; taken down when it ends. Never from the chain. */
   mock?: boolean;
+  /**
+   * The ground at the foot of the front wall, where a note is cut: on a slope
+   * the base is the highest ground under the building, and a note set by it
+   * would hang metres over the low side. Whoever knows the terrain writes it.
+   */
+  frontFoot?: number;
   /** For a relic: which earlier ground it is a plot of. */
   relic?: 1 | 2;
   /** For a plot of this ground: whose it is, what is written into it, what it points at, what it is called. */
@@ -783,11 +789,13 @@ function notedBuilding(structure: Structure, base: number, origin: { x: number; 
     .map((word) => word.slice(0, NOTE_SIGNS));
   const across = POST / WALL;
   const cutIn = Math.max(across * 1.6, 0.003);
-  const foot = base + NOTE_FOOT;
+  // a hand above the ground at the foot of the wall it is on, not above the base
+  const footGround = structure.frontFoot ?? base;
+  const foot = footGround + NOTE_FOOT;
   // one height for every column, that of the longest word, and the writing
   // hangs from the top of it: the words start level and end where they end
   const lines = Math.max(1, ...words.map((word) => [...word].length));
-  const tall = Math.min(structure.tall - NOTE_FOOT, (lines * 11 + 2 * EDGE + 2) * across);
+  const tall = Math.min(base + structure.tall - foot, (lines * 11 + 2 * EDGE + 2) * across);
   // every stroke of every word, in reading order — word by word, down each —
   // so a note just written comes up before your eyes the way it is read
   const strokes: { at: number; col: number; row: number; cols: number; rows: number; down: number }[] = [];
@@ -798,7 +806,8 @@ function notedBuilding(structure: Structure, base: number, origin: { x: number; 
   });
   const shown = Math.ceil(strokes.length * Math.min(1, structure.inked ?? 1));
   strokes.slice(0, shown).forEach(({ at, down, col, row, cols, rows }) => {
-    const top = NOTE_FOOT + tall - row * down;
+    // shown once the building has grown past it, measured from the base as growth is
+    const top = foot - base + tall - row * down;
     if (top > reached + 1e-6) return;
     put(at + (col + cols / 2 - WALL / 2) * across, foot + tall - (row + rows) * down, structure.deep / 2 + cutIn / 2, cols * across, rows * down, cutIn);
   });

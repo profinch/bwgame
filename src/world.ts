@@ -114,6 +114,10 @@ function baseOf(structure: Structure): number {
   // keeps its footing
   const hill = reliefUnder(structure);
   structure.sink = Math.max(0, hill.high - hill.low) + 0.1;
+  // the ground at the foot of the front wall, for what is written on it
+  const sn = Math.sin(structure.turn);
+  const c = Math.cos(structure.turn);
+  structure.frontFoot = ground.surfaceAt(x + (sn * structure.deep) / 2, z + (c * structure.deep) / 2);
   return hill.high + 0.02;
 }
 
