@@ -448,9 +448,14 @@ export class Tour {
     // the scene first — skipped to, or gone back to, a step still finds what it
     // is about in place — then the step plays itself out and waits: the person
     // says when to go on
+    // while the scene is being set nothing is pressed: the buttons wait too
+    const buttons = this.card.querySelectorAll<HTMLButtonElement>('.tour-next, .tour-back');
+    for (const button of buttons) button.disabled = true;
     this.driver.reset();
     const plot = await this.driver.scene(step.scene ?? 'any', wait);
     if (this.run !== run) return;
+    for (const button of buttons) button.disabled = false;
+    this.card.querySelector<HTMLButtonElement>('.tour-back')!.disabled = index === 0;
     if (plot) mocked = plot;
     await step.play(this.driver, wait);
   }

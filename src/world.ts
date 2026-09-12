@@ -1188,6 +1188,13 @@ let beforeTour: {
 /** The spot beside the first plot the tour stands on, the same for every step there; and beside the wallet. */
 let firstStand: { x: number; z: number; yaw: number } | null = null;
 let walletStand: { x: number; z: number; yaw: number } | null = null;
+/**
+ * The travel the tour has under way, if any. A travel goes on after the step
+ * that began it is left — the chain is asked, then the walker is set down —
+ * so the next scene waits for it, or two travels would set the walker down
+ * over each other and the tour would come apart under quick clicking.
+ */
+let tourTravel: Promise<unknown> | null = null;
 /** The wallet the tour shows: the one that took the first ground here. */
 const TOUR_WALLET = '0x3095c19c92551bba70bcfa9aafa99d145347b5f8';
 
@@ -1355,7 +1362,9 @@ function takeDemoJump(): boolean {
         try {
           const address = looksLikeName(typed) ? await resolveName(typed) : normalizeAddress(typed);
           if (address) {
-            await travelTo(address);
+            if (tourTravel) await tourTravel.catch(() => undefined);
+            tourTravel = travelTo(address);
+            await tourTravel;
             firstStand = { x: player.x, z: player.z, yaw: player.yaw };
           }
         } catch {
@@ -1505,6 +1514,8 @@ function takeDemoJump(): boolean {
         live?.peers.delete(MOCK_PEER);
       },
       scene: async (which, wait) => {
+        // a travel still under way from before finishes first, whatever the scene
+        if (tourTravel) await tourTravel.catch(() => undefined);
         if (which === 'any') return null;
         if (which === 'start') {
           // back where the tour began, and looking the way you looked
@@ -1530,7 +1541,8 @@ function takeDemoJump(): boolean {
         if (goal) {
           const at = offsetOf(goal);
           if (Math.abs(origin.x - at.x) > 0.5 || Math.abs(origin.z - at.z) > 0.5) {
-            await travelTo(goal);
+            tourTravel = travelTo(goal);
+            await tourTravel;
             descent = 60;
             await wait(1600);
           }
