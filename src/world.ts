@@ -1094,6 +1094,8 @@ function walk(seconds: number): void {
 function apart(seconds: number): void {
   if (!live) return;
   for (const peer of live.peers.values()) {
+    // the tour's player is nobody, and pushes nobody: they stop where they are told
+    if (peer.id === MOCK_PEER) continue;
     const dx = player.x - (peer.drawnX - homeCell.x - origin.x);
     const dz = player.z - (peer.drawnZ - homeCell.z - origin.z);
     const away = Math.hypot(dx, dz);
