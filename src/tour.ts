@@ -127,6 +127,10 @@ export const STEPS: readonly Step[] = [
     scene: 'start',
     says: 'here is where you stand: the chain, the depth, the address under your feet, what is near — and the block passing overhead. its transactions are the ribbons in the sky, each from its sender toward its receiver.',
     async play(d, wait) {
+      // away from whatever stands in front, so the sky and the ground are the picture
+      d.look(2.6, 0);
+      await wait(1200);
+      d.stop();
       d.mark('.hud.bottom');
       d.look(0, 0.25);
       await wait(2500);
