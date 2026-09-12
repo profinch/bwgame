@@ -15,6 +15,8 @@
  *   SUBGRAPH   the subgraph to watch for changes; none, and no claims are told
  *   ROOM       the room the subgraph's claims belong to (sepolia)
  */
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { dirname } from 'node:path';
 import { createServer } from 'node:http';
 import { WebSocketServer } from 'ws';
 
@@ -44,6 +46,16 @@ const TOPIC = {
   named: '0x418b43aaaf6e778e64a1e00a6dcf49679517d0a2ed54df922ec5e6ad3f21da4c',
   unnamed: '0x716fe3c2abaeeab2657968647db646cc99fb457a562b9bb4c6162c34bbe2bbb2',
 };
+/**
+ * The shared memory of revealed places: every address anybody has gone to and
+ * found something standing at — a wallet, a contract — so that a place seen
+ * by one is seen by all. Not from the chain: nobody's visit is on it. Kept
+ * on disk, so a restart forgets nothing.
+ */
+const REVEALED_FILE = process.env.REVEALED_FILE ?? '/data/revealed.json';
+/** The most places kept, and the least time between one person's reports. */
+const REVEALED_MOST = 20_000;
+const SAWS_AT_MOST_EVERY = 1500;
 /** How long the subgraph has to be silent before the chain is read instead, and how often then. */
 const CHAIN_AFTER = 120_000;
 const CHAIN_EVERY = 600_000;
@@ -66,6 +78,30 @@ const PINGS_EVERY = 25_000;
 let nextId = 1;
 /** room -> id -> person */
 const rooms = new Map();
+
+/** address -> { at: when first seen, count: how many times } */
+const revealed = new Map();
+try {
+  if (existsSync(REVEALED_FILE)) {
+    for (const [address, it] of Object.entries(JSON.parse(readFileSync(REVEALED_FILE, 'utf8')))) revealed.set(address, it);
+    console.log(`${revealed.size} revealed place(s) remembered from ${REVEALED_FILE}`);
+  }
+} catch (error) {
+  console.error('the revealed places could not be read:', error?.message ?? error);
+}
+let saveDue = null;
+function saveRevealed() {
+  if (saveDue) return;
+  saveDue = setTimeout(() => {
+    saveDue = null;
+    try {
+      mkdirSync(dirname(REVEALED_FILE), { recursive: true });
+      writeFileSync(REVEALED_FILE, JSON.stringify(Object.fromEntries(revealed)));
+    } catch (error) {
+      console.error('the revealed places could not be kept:', error?.message ?? error);
+    }
+  }, 2000);
+}
 
 function room(name) {
   let found = rooms.get(name);
@@ -94,11 +130,17 @@ const http = createServer((request, response) => {
     response.end(JSON.stringify({ block: graphBlock, plots: rows }));
     return;
   }
+  // the revealed places, every one
+  if (url.pathname.endsWith('/revealed')) {
+    response.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store', 'access-control-allow-origin': '*' });
+    response.end(JSON.stringify({ addresses: [...revealed.keys()] }));
+    return;
+  }
   // a plain request gets a plain answer, so a health check has something to read
   response.writeHead(200, { 'content-type': 'application/json' });
   const counts = {};
   for (const [name, people] of rooms) counts[name] = people.size;
-  response.end(JSON.stringify({ rooms: counts, plots: plots.size, block: graphBlock }));
+  response.end(JSON.stringify({ rooms: counts, plots: plots.size, block: graphBlock, revealed: revealed.size }));
 });
 
 const sockets = new WebSocketServer({ server: http, maxPayload: 4096 });
@@ -123,6 +165,24 @@ sockets.on('connection', (socket) => {
       person = { id, x: 0, z: 0, yaw: 0, dig: false, seen: Date.now(), socket };
       room(inRoom).set(id, person);
       tell(socket, { t: 'you', id });
+      return;
+    }
+    // somebody went to an address and found something standing there: the
+    // place is remembered for everybody, and everybody in the room is told
+    if (message.t === 'saw' && person && typeof message.address === 'string' && /^0x[0-9a-fA-F]{40}$/.test(message.address)) {
+      const now = Date.now();
+      if (now - (person.lastSaw ?? 0) < SAWS_AT_MOST_EVERY) return;
+      person.lastSaw = now;
+      const address = message.address.toLowerCase();
+      const had = revealed.get(address);
+      if (had) {
+        had.count += 1;
+        return;
+      }
+      if (revealed.size >= REVEALED_MOST) return;
+      revealed.set(address, { at: now, count: 1 });
+      saveRevealed();
+      if (inRoom) for (const other of room(inRoom).values()) if (other.id !== id) tell(other.socket, { t: 'revealed', addresses: [address] });
       return;
     }
     // leaving, said out loud: gone at once, however long the edge in front of

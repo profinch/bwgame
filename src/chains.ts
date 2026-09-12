@@ -66,6 +66,8 @@ export interface Chain {
   subgraph?: string;
   /** The live server's copy of the subgraph's answer, asked first: one asker for everybody. */
   plotsFeed?: string;
+  /** The live server's memory of revealed places: every address anybody went to and found standing. */
+  revealedFeed?: string;
   /**
    * An indexer that can say what a wallet holds.
    *
@@ -153,6 +155,7 @@ export const CHAINS: Record<string, Chain> = {
     // Studio throttles the subgraph as a whole, so pages read the live
     // server's copy of its answer, and only that server asks Studio
     plotsFeed: 'https://gs.bwtoken.io/live/plots',
+    revealedFeed: 'https://gs.bwtoken.io/live/revealed',
     tokens: [
       { at: '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238', symbol: 'usdc', decimals: 6 },
       { at: '0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14', symbol: 'weth', decimals: 18 },

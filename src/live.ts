@@ -109,7 +109,7 @@ export class Live {
       }
       const said = message as { t?: string; id?: number };
       if (said?.t === 'you' && typeof said.id === 'number') this.me = said.id;
-      if (said?.t === 'changed') this.onChanged();
+      if (said?.t === 'changed' || said?.t === 'revealed') this.onChanged();
     });
     const drop = () => {
       if (this.socket !== socket) return;
@@ -126,6 +126,13 @@ export class Live {
     if (this.closed || this.paused) return;
     setTimeout(() => this.connect(), this.retryIn);
     this.retryIn = Math.min(30_000, this.retryIn * 2);
+  }
+
+  /** You went to an address and found something standing: the place is remembered for everybody. */
+  saw(address: string): void {
+    const socket = this.socket;
+    if (!socket || socket.readyState !== WebSocket.OPEN) return;
+    socket.send(JSON.stringify({ t: 'saw', address }));
   }
 
   /** Where you are, if it has changed and it has been a moment since the last time. */

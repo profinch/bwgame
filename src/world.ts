@@ -29,7 +29,7 @@ import { DRESSED_AT, type Structure, blocksOf, bouldersOf, instancesOf, stands, 
 import { POINT, auger } from './auger';
 import { type Stroke, glassOf, inkOf, strokesOf } from './blueprint';
 import { Chips } from './chips';
-import { claimAt, claimedPlots, formerPlots, implementationOf, isPlot, knownPlots, noteOf, ownerOf, plotNameOf, relicOf } from './plot';
+import { claimAt, claimedPlots, formerPlots, implementationOf, isPlot, knownPlots, noteOf, ownerOf, plotNameOf, relicOf, revealedPlaces } from './plot';
 import { ownGround } from './owning';
 import { Panels } from './panels';
 import { type Driver, Tour } from './tour';
@@ -297,6 +297,21 @@ async function raiseNearby(growing = false): Promise<void> {
       // you watch; written into anew: the writing comes up
       if (growing || (already?.kind === 'framed' && structure.kind !== 'framed')) startRising(structure);
       else if (already && (already.plot?.note ?? '') !== (structure.plot?.note ?? '')) startInking(structure);
+      else raise(structure);
+    }
+    // and the places anybody has revealed — wallets, contracts — that are on
+    // this ground: seen by one, seen by all
+    const taken = new Set(plots.map((it) => it.plot.toLowerCase()));
+    for (const address of await revealedPlaces()) {
+      if (origin.x !== here.x || origin.z !== here.z) return;
+      if (taken.has(address) || standingAt(address)) continue;
+      const at = offsetOf(address);
+      if (Math.abs(at.x - here.x) > GROUND / 2 || Math.abs(at.z - here.z) > GROUND / 2) continue;
+      const account = await accountAt(address);
+      if (!account || !stands(account)) continue;
+      if (origin.x !== here.x || origin.z !== here.z) return;
+      const structure = await standing(account);
+      if (growing) startRising(structure);
       else raise(structure);
     }
   } finally {
@@ -641,7 +656,11 @@ async function travelTo(
   const account = await accountAt(address);
   if (!account) return null;
   const structure = await standing(account);
-  if (stands(account)) raise(structure);
+  if (stands(account)) {
+    raise(structure);
+    // found standing: the place is remembered for everybody
+    if (!tour?.running) live?.saw(account.address);
+  }
   if (!stand) {
     // a stone with forty posts on it is ten metres across, so stand off far
     // enough to see the whole of it rather than inside the first row — on the

@@ -331,3 +331,20 @@ export async function claimAt(address: string): Promise<Claimed | null> {
   const wanted = address.toLowerCase();
   return (await claimedPlots()).find((claimed) => claimed.plot.toLowerCase() === wanted) ?? null;
 }
+
+/**
+ * Every place anybody has gone to and found something standing at — the live
+ * server's memory, shared by everybody. Empty if nobody keeps one here or it
+ * did not answer.
+ */
+export async function revealedPlaces(): Promise<string[]> {
+  if (!chain.revealedFeed) return [];
+  try {
+    const response = await fetch(chain.revealedFeed);
+    if (!response.ok) return [];
+    const answer = (await response.json()) as { addresses?: unknown };
+    return Array.isArray(answer.addresses) ? answer.addresses.filter((it): it is string => typeof it === 'string' && /^0x[0-9a-f]{40}$/.test(it)) : [];
+  } catch {
+    return [];
+  }
+}

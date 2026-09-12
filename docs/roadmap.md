@@ -21,7 +21,11 @@ after the start), and what comes after. The hackathon is where this begins, not 
   as its only registrar and its ENSIP-10 wildcard resolver; non-transferable names that belong to
   the place; travel by name.
 - Multiplayer: a live server for presence (other players, their digging) and for pushing new
-  claims to everyone within seconds. Nothing stored.
+  claims to everyone within seconds.
+- **Shared memory of revealed places** (12.09.2026): every address anybody goes to and finds
+  standing — a wallet, a contract — is remembered by the live server, on disk, and put up for
+  everybody on that ground; a place seen by one is seen by all, at once in the room and on every
+  later visit. Rate-limited per person, capped at twenty thousand places.
 - Onboarding: a welcome, an arrival descent, a guiding panel, a "what's near" line, how to play,
   and a walk round in nine steps — offered the first time, in the menu after.
 - Mobile: a thumb stick, on-screen buttons, a one-column layout, battery-aware defaults.
@@ -39,9 +43,8 @@ after the start), and what comes after. The hackathon is where this begins, not 
 
 In roughly the order it matters:
 
-1. **Shared memory of the uncovered.** A server that keeps the coverage tiles and the places anyone
-   has revealed, merged by maximum, rate-limited so nobody can send an "open world". Until then the
-   veil is off; it comes back with this.
+1. **Shared memory of the uncovered ground** — the coverage tiles, merged by maximum, so the veil can
+   come back. (The revealed *places* are shared already: see above.)
 2. **Ground that loads as you walk.** Today the walkable patch is 1.7 km and has an edge you can
    reach; terrain should stream.
 3. **Arrive at your own plot** when a wallet is connected; the factory otherwise.

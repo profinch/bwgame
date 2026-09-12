@@ -28,8 +28,10 @@ not on the server). From macOS set `COPYFILE_DISABLE=1` or tar ships `._*` files
 
 `live/server.js`, Node 22, one dependency (`ws`). Runs as a Docker container on the server, on the
 same network as nginx, with `SUBGRAPH` (the subgraph query URL) and `ROOM` (the chain whose claims
-it watches) in the environment. It keeps nothing: presence in memory, claims from the subgraph
-every four seconds. Rebuild the image and recreate the container to update.
+it watches) in the environment, and a volume at `/data` (`-v gs-live-data:/data`) where it keeps
+the revealed places (`revealed.json`). Presence is in memory; the subgraph's rows are re-read on
+start. Rebuild the image and recreate the container to update — with the volume, or the revealed
+places are forgotten.
 
 ## The subgraph
 
