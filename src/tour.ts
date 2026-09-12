@@ -51,8 +51,11 @@ export interface Driver {
   /** Type into a field, a sign at a time. */
   typeInto(selector: string, text: string, wait: (ms: number) => Promise<void>): Promise<void>;
   clearField(selector: string): void;
-  /** Somebody else, this far from you, walking or digging. */
-  peer(dx: number, dz: number, dig: boolean): void;
+  /**
+   * Somebody else, walking to a spot this far from you at a walking pace —
+   * or put there at once, to begin — and digging there or not.
+   */
+  peer(dx: number, dz: number, dig: boolean, atOnce?: boolean): void;
   peerGone(): void;
   /**
    * Back to square one: nothing moving, nothing marked, no bar down, the map
@@ -155,15 +158,13 @@ export const STEPS: readonly Step[] = [
     scene: 'first',
     says: 'other people are here too, and you see them: standing, walking, digging. a claim anyone makes stands up for everyone within seconds.',
     async play(d, wait) {
-      d.peer(6, -8, false);
+      d.peer(7, -9, false, true);
       await wait(400);
-      for (let i = 1; i <= 12; i++) {
-        d.peer(6 - i * 0.6, -8 + i * 0.5, false);
-        await wait(350);
-      }
-      d.peer(-1.2, -2, true);
+      d.peer(-1.4, -2.4, false);
+      await wait(6500);
+      d.peer(-1.4, -2.4, true);
       await wait(4500);
-      d.peer(-1.2, -2, false);
+      d.peer(-1.4, -2.4, false);
       await wait(800);
       d.peerGone();
     },

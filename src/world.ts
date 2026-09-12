@@ -1144,6 +1144,9 @@ let startTour: () => void = () => {};
 const demo = { forward: 0, side: 0, run: false, jump: false, yawRate: 0, pitchRate: 0, dig: false, rate: 0, claimHeld: false };
 /** The one other player the tour brings along, who is nobody. */
 const MOCK_PEER = -1;
+/** Where the tour's player is and is going, in metres from you, and how fast they walk. */
+const mockPeer = { on: false, x: 0, z: 0, toX: 0, toZ: 0, dig: false };
+const MOCK_PEER_PACE = 1.5;
 
 /** An address a few steps ahead of where you stand: the cell there, and any digits after. */
 function mockAddressAhead(): string {
@@ -1435,22 +1438,23 @@ function takeDemoJump(): boolean {
         const field = document.querySelector<HTMLInputElement>(selector);
         if (field) field.value = '';
       },
-      peer: (dx, dz, dig) => {
+      peer: (dx, dz, dig, atOnce = false) => {
         if (!live) return;
-        const x = homeCell.x + origin.x + player.x + dx;
-        const z = homeCell.z + origin.z + player.z + dz;
-        const had = live.peers.get(MOCK_PEER);
-        const yaw = Math.atan2(-(dx - (had ? had.x - homeCell.x - origin.x - player.x : dx)), -(dz - (had ? had.z - homeCell.z - origin.z - player.z : dz)));
-        if (had) {
-          had.x = x;
-          had.z = z;
-          had.dig = dig;
-          had.yaw = yaw;
-        } else {
+        mockPeer.on = true;
+        mockPeer.toX = dx;
+        mockPeer.toZ = dz;
+        mockPeer.dig = dig;
+        if (atOnce || !live.peers.has(MOCK_PEER)) {
+          mockPeer.x = dx;
+          mockPeer.z = dz;
+          const x = homeCell.x + origin.x + player.x + dx;
+          const z = homeCell.z + origin.z + player.z + dz;
+          const yaw = Math.atan2(dx, dz) + Math.PI;
           live.peers.set(MOCK_PEER, { id: MOCK_PEER, x, z, yaw, dig, drawnX: x, drawnZ: z, drawnYaw: yaw });
         }
       },
       peerGone: () => {
+        mockPeer.on = false;
         live?.peers.delete(MOCK_PEER);
       },
       reset: () => {
@@ -1473,6 +1477,7 @@ function takeDemoJump(): boolean {
         for (let i = rising.length - 1; i >= 0; i--) if (rising[i]!.mock) rising.splice(i, 1);
         for (let i = inking.length - 1; i >= 0; i--) if (inking[i]!.mock) inking.splice(i, 1);
         settle();
+        mockPeer.on = false;
         live?.peers.delete(MOCK_PEER);
       },
       scene: async (which, wait) => {
@@ -1527,6 +1532,7 @@ function takeDemoJump(): boolean {
         for (let i = rising.length - 1; i >= 0; i--) if (rising[i]!.mock) rising.splice(i, 1);
         for (let i = inking.length - 1; i >= 0; i--) if (inking[i]!.mock) inking.splice(i, 1);
         settle();
+        mockPeer.on = false;
         live?.peers.delete(MOCK_PEER);
         taking.pause(false);
         ownPanel.pause(false);
@@ -1710,6 +1716,24 @@ loop({
     // whatever is going up, goes up a little more — by the loop's own clock
     // and not the wall's, because a tab out of sight takes no steps: a plot
     // waits where it is rather than being finished while nobody is watching
+    // the tour's player walking to where they are going, a step a frame
+    if (mockPeer.on && live) {
+      const had = live.peers.get(MOCK_PEER);
+      if (had) {
+        const dx = mockPeer.toX - mockPeer.x;
+        const dz = mockPeer.toZ - mockPeer.z;
+        const away = Math.hypot(dx, dz);
+        const step = Math.min(away, MOCK_PEER_PACE * seconds);
+        if (away > 1e-3) {
+          mockPeer.x += (dx / away) * step;
+          mockPeer.z += (dz / away) * step;
+          had.yaw = Math.atan2(-dx, -dz);
+        }
+        had.x = homeCell.x + origin.x + player.x + mockPeer.x;
+        had.z = homeCell.z + origin.z + player.z + mockPeer.z;
+        had.dig = mockPeer.dig;
+      }
+    }
     // the tour looking round for you
     if (tour?.running) {
       player.yaw += demo.yawRate * seconds;
