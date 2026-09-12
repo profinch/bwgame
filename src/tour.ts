@@ -133,10 +133,14 @@ export const STEPS: readonly Step[] = [
       d.mark('.hud.bottom');
       await wait(3000);
       d.mark(null);
-      d.look(0, 0.25);
+      // then the sky: the ribbons run a few hundred metres up and out toward
+      // the horizon, so the eyes go well up and pan slowly while they cross
+      d.look(0.12, 0.3);
       await wait(2500);
-      d.look(0, 0);
-      await wait(3000);
+      d.look(0.12, 0);
+      await wait(6000);
+      d.look(0, -0.3);
+      await wait(2500);
       d.stop();
     },
   },
