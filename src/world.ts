@@ -1216,9 +1216,9 @@ const MOCK_PEER_PACE = 1.5;
 function mockAddressAhead(): string {
   const c = Math.cos(player.yaw);
   const sn = Math.sin(player.yaw);
-  // to the right and well ahead: thirty metres off, clear of the contract straight ahead
-  const right = 18;
-  const lz = -24;
+  // well to the right: thirty metres off, where the contract straight ahead is out of the picture
+  const right = 30;
+  const lz = -14;
   const at = { x: player.x + c * right + sn * lz, z: player.z + c * lz - sn * right };
   return mockAddressAt(at.x, at.z);
 }
