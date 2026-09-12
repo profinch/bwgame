@@ -1551,7 +1551,7 @@ function takeDemoJump(): boolean {
         mockPeer.on = false;
         live?.peers.delete(MOCK_PEER);
       },
-      scene: async (which, wait) => {
+      scene: async (which) => {
         // a travel still under way from before finishes first, whatever the scene
         if (tourTravel) await tourTravel.catch(() => undefined);
         if (which === 'any') return null;
