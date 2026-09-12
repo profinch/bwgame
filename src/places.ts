@@ -757,13 +757,16 @@ const NOTE_SIGNS = 16;
 const NOTE_HEAD = 1.7;
 
 /**
- * A building with a note written into it carries the note on its front wall
- * at head height, in small runes — the size of the signs on a wallet's posts, a word a
- * column starting level, the columns side by side as posts stand — cut the same way as all
- * writing here, so it reads the same everywhere — raised rather than cut, so
- * the wall itself is left as it is and the strokes stand out of it by a
- * finger's breadth. A building going up shows the signs its height has
- * reached.
+ * A building with a note written into it has the note cut into its front
+ * wall, in small runes at head height — the size of the signs on a wallet's
+ * posts, a word a column, the columns side by side as posts stand — cut the
+ * same way as all writing here: the strokes are grooves, the wall is left
+ * standing between them. The wall itself is one box pulled in by the depth of
+ * the cut, and its face is laid back over it flush — the stone between the
+ * strokes where the words are, plain slabs everywhere else — so nothing reads
+ * as a plaque: it is the wall, with letters cut in. A building going up shows
+ * as much of the wall as it has grown; a note just written is cut in a word
+ * at a time.
  */
 function notedBuilding(structure: Structure, base: number, origin: { x: number; z: number }): Float32Array {
   const cx = structure.x - origin.x;
@@ -776,8 +779,20 @@ function notedBuilding(structure: Structure, base: number, origin: { x: number; 
 
   const sink = structure.sink ?? 0;
   const grown = structure.grown ?? 1;
-  const reached = structure.tall * grown;
-  put(0, base - sink, 0, structure.wide, sink + reached, structure.deep);
+  const bottom = base - sink;
+  const top = base + structure.tall * grown;
+  const across = POST / WALL;
+  const cutIn = Math.max(across * 1.6, 0.003);
+  // the wall, pulled in by the cut; its face goes back on flush, in pieces
+  put(0, bottom, -cutIn / 2, structure.wide, top - bottom, structure.deep - cutIn);
+  const faceZ = structure.deep / 2 - cutIn / 2;
+  /** A flush slab of the face, from y0 to y1 and lx0 to lx1, as much of it as has grown. */
+  const slab = (lx0: number, lx1: number, y0: number, y1: number) => {
+    const lo = Math.max(y0, bottom);
+    const hi = Math.min(y1, top);
+    if (hi - lo < 1e-4 || lx1 - lx0 < 1e-4) return;
+    put((lx0 + lx1) / 2, lo, faceZ, lx1 - lx0, hi - lo, cutIn);
+  };
 
   // as many words as the wall has room for, a post's width each
   const room = Math.max(0, Math.floor((structure.wide - POST) / POST));
@@ -787,8 +802,13 @@ function notedBuilding(structure: Structure, base: number, origin: { x: number; 
     .filter(Boolean)
     .slice(0, Math.min(NOTE_WORDS, room))
     .map((word) => word.slice(0, NOTE_SIGNS));
-  const across = POST / WALL;
-  const cutIn = Math.max(across * 1.6, 0.003);
+  const left = -structure.wide / 2;
+  const right = structure.wide / 2;
+  if (words.length === 0) {
+    slab(left, right, bottom, top);
+    return new Float32Array(out);
+  }
+
   // the writing ends at head height above the ground at the foot of the wall
   // it is on — not above the base, which on a slope is the high side — and a
   // longer word reaches higher up the wall rather than lower down it. The
@@ -798,20 +818,29 @@ function notedBuilding(structure: Structure, base: number, origin: { x: number; 
   const lines = Math.max(1, ...words.map((word) => [...word].length));
   const foot = footGround + NOTE_HEAD - (EDGE + 2) * across;
   const tall = Math.min(base + structure.tall - foot, (lines * 11 + 2 * EDGE + 2) * across);
-  // every stroke of every word, in reading order — word by word, down each —
-  // so a note just written comes up before your eyes the way it is read
-  const strokes: { at: number; col: number; row: number; cols: number; rows: number; down: number }[] = [];
+  const region = { lx0: left + POST / 2, lx1: left + POST / 2 + POST * words.length };
+
+  // the face round the words: below them, above them, to either side
+  slab(left, right, bottom, foot);
+  slab(left, right, foot + tall, top);
+  slab(left, region.lx0, foot, foot + tall);
+  slab(region.lx1, right, foot, foot + tall);
+
+  // the words, a column each: cut in so far, or a slab still, if the note is
+  // just being written and has not got to them yet
+  const carved = Math.ceil(words.length * Math.min(1, structure.inked ?? 1));
   words.forEach((word, i) => {
-    const { down, patches } = carve([word], tall, POST, false, true);
-    const at = -structure.wide / 2 + POST * (i + 1);
-    for (const patch of patches) strokes.push({ at, down, ...patch });
-  });
-  const shown = Math.ceil(strokes.length * Math.min(1, structure.inked ?? 1));
-  strokes.slice(0, shown).forEach(({ at, down, col, row, cols, rows }) => {
-    // shown once the building has grown past it, measured from the base as growth is
-    const top = foot - base + tall - row * down;
-    if (top > reached + 1e-6) return;
-    put(at + (col + cols / 2 - WALL / 2) * across, foot + tall - (row + rows) * down, structure.deep / 2 + cutIn / 2, cols * across, rows * down, cutIn);
+    const lx = region.lx0 + POST * i;
+    if (i >= carved) {
+      slab(lx, lx + POST, foot, foot + tall);
+      return;
+    }
+    const { down, patches } = carve([word], tall, POST);
+    for (const { col, row, cols, rows } of patches) {
+      const y0 = foot + tall - (row + rows) * down;
+      const y1 = y0 + rows * down;
+      slab(lx + col * across, lx + (col + cols) * across, y0, y1);
+    }
   });
   return new Float32Array(out);
 }

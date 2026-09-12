@@ -19,36 +19,35 @@ const noted = (note: string, grown?: number) =>
   }) as unknown as Structure;
 
 describe('a note on a building', () => {
-  it('is cut into the front wall as runes', () => {
+  it('is cut into the front wall: the wall pulled in, its face laid back flush but for the strokes', () => {
     const pieces = piecesOf(noted('profinch was here'), 10);
     const count = pieces.length / INSTANCE_FLOATS;
     expect(count).toBeGreaterThan(20);
-    // the wall is left as it is; the signs, a post's cells in size, stand out
-    // of the front face by a finger's breadth, low on the wall
     const across = 0.5 / 30;
     const cutIn = 1.6 * across;
-    expect(pieces[5]).toBeCloseTo(5, 5);
+    // the body is pulled in by the cut; every other piece is a slab of the face, flush with where the wall was
+    expect(pieces[5]).toBeCloseTo(5 - cutIn, 5);
     for (let i = INSTANCE_FLOATS; i < pieces.length; i += INSTANCE_FLOATS) {
-      expect(pieces[i + 2]).toBeCloseTo(2.5 + cutIn / 2, 5);
-      // the writing ends about head height and reaches up from there
-      expect(pieces[i + 1]!).toBeGreaterThanOrEqual(10 + 1.5);
-      expect(pieces[i + 1]! + pieces[i + 4]!).toBeLessThan(10 + 4);
-      // a stroke is never wider than a sign
-      expect(pieces[i + 3]!).toBeLessThanOrEqual(across * 9 + 1e-6);
+      expect(pieces[i + 2]).toBeCloseTo(2.5 - cutIn / 2, 5);
+      expect(pieces[i + 5]).toBeCloseTo(cutIn, 5);
     }
+    // some of the face is in small pieces about head height: the stone between the strokes
+    const small = [];
+    for (let i = INSTANCE_FLOATS; i < pieces.length; i += INSTANCE_FLOATS) if (pieces[i + 3]! < 0.1) small.push(pieces[i + 1]!);
+    expect(small.length).toBeGreaterThan(10);
+    expect(Math.min(...small)).toBeGreaterThan(10 + 1.2);
+    expect(Math.max(...small)).toBeLessThan(10 + 4);
   });
   it('a plain building is one box', () => {
     expect(piecesOf(noted(''), 10).length / INSTANCE_FLOATS).toBe(1);
   });
-  it('going up, the wall shows the signs its height has reached', () => {
-    // the writing ends at head height: at a tenth of the height none of it has
-    // come up yet, at a third all of it has
-    const low = piecesOf(noted('profinch was here', 0.1), 10).length;
-    const half = piecesOf(noted('profinch was here', 0.3), 10).length;
-    const whole = piecesOf(noted('profinch was here', 1), 10).length;
-    expect(low).toBe(INSTANCE_FLOATS);
-    expect(half).toBeGreaterThan(low);
-    expect(half).toBeLessThan(whole);
-    expect(piecesOf(noted('profinch was here', 0.2), 10)[4]).toBeCloseTo(9 * 0.2, 5);
+  it('going up, the wall rises to its height; being written, the words are cut in one at a time', () => {
+    const low = piecesOf(noted('profinch was here', 0.1), 10);
+    expect(low[4]).toBeCloseTo(9 * 0.1, 5);
+    const none = { ...noted('profinch was here'), inked: 0 } as Structure;
+    const half = { ...noted('profinch was here'), inked: 0.5 } as Structure;
+    const whole = { ...noted('profinch was here'), inked: 1 } as Structure;
+    expect(piecesOf(none, 10).length).toBeLessThan(piecesOf(half, 10).length);
+    expect(piecesOf(half, 10).length).toBeLessThan(piecesOf(whole, 10).length);
   });
 });
