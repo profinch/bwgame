@@ -127,11 +127,14 @@ export const STEPS: readonly Step[] = [
     scene: 'start',
     says: 'here is where you stand: the chain, the depth, the address under your feet, what is near — and the block passing overhead. its transactions are the ribbons in the sky, each from its sender toward its receiver.',
     async play(d, wait) {
+      // the metrics turned over while they are the subject, then back as they are
       d.mark('.hud.bottom');
+      await wait(3000);
+      d.mark(null);
       d.look(0, 0.25);
       await wait(2500);
       d.look(0, 0);
-      await wait(4000);
+      await wait(3000);
       d.stop();
     },
   },
