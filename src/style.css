@@ -957,9 +957,10 @@ body.touring #view {
   cursor: default;
 }
 
+/* the thing a step is about is turned over — the page's own dark, on one element */
 .tour-marked {
-  outline: 1px dashed color-mix(in srgb, var(--fg) 60%, transparent);
-  outline-offset: 6px;
+  filter: invert(1);
+  transition: filter 0.4s ease;
 }
 
 /* a panel put away is not on the page at all */

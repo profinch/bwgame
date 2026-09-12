@@ -1312,7 +1312,7 @@ function takeDemoJump(): boolean {
         where.value = '';
         for (const sign of text) {
           where.value += sign;
-          await wait(70);
+          await wait(110);
         }
       },
       go: async () => {
@@ -1394,7 +1394,7 @@ function takeDemoJump(): boolean {
         field.value = '';
         for (const sign of text) {
           field.value += sign;
-          await wait(70);
+          await wait(110);
         }
       },
       clearField: (selector) => {
