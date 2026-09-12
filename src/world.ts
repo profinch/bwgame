@@ -762,6 +762,29 @@ function head(): [number, number, number] {
   return [player.x, player.y + EYE, player.z];
 }
 
+/**
+ * The eye's place, brought in along the line from the head until it is clear
+ * of every block: tried from the far end in steps of a quarter metre, with a
+ * hand's breadth to spare from any wall.
+ */
+function outsideWalls(from: [number, number, number], to: [number, number, number]): [number, number, number] {
+  const inside = (x: number, y: number, z: number) =>
+    obstacles.some((block) => y < block.top + 0.3 && over(block, x, z, 0.3));
+  const dx = to[0] - from[0];
+  const dy = to[1] - from[1];
+  const dz = to[2] - from[2];
+  const length = Math.hypot(dx, dy, dz);
+  const steps = Math.ceil(length / 0.25);
+  for (let i = steps; i >= 1; i--) {
+    const t = i / steps;
+    const x = from[0] + dx * t;
+    const y = from[1] + dy * t;
+    const z = from[2] + dz * t;
+    if (!inside(x, y, z)) return [x, y, z];
+  }
+  return from;
+}
+
 /** Whether a point is over a block's footprint, in that block's own frame. */
 function over(block: (typeof obstacles)[number], x: number, z: number, margin = 0): boolean {
   const c = Math.cos(block.turn);
@@ -1953,6 +1976,11 @@ loop({
     let at: [number, number, number] = overShoulder
       ? [eyes[0] - look[0] * BEHIND, eyes[1] - look[1] * BEHIND + 1.1 + lift, eyes[2] - look[2] * BEHIND]
       : eyes;
+    // the eye stays out of the buildings: walked back against a wall, it
+    // would be inside — and the inside of a building is not drawn — so it is
+    // brought forward along its own line to the last point outside. Drawings
+    // have no walls and stop nothing.
+    if (overShoulder) at = outsideWalls(eyes, at);
     let ahead: [number, number, number] = overShoulder
       ? eyes
       : [at[0] + look[0], at[1] + look[1], at[2] + look[2]];
