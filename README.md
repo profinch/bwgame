@@ -79,9 +79,14 @@ where it stands and how large it is, and the walls are what the owner has not sa
 into the plot (`inscribe`) turns the drawing into the building. A plot can be handed to somebody
 else (`transfer`): ground is given, sold and inherited.
 
-Every plot the factory has made is indexed by a subgraph, so a client arriving anywhere asks one
-question and gets everything standing near it — the address, who holds it, what is written into
-it, and the address read as coordinates, down to the tile it falls in.
+Every plot the factories have made is indexed by a subgraph, so a client arriving anywhere asks one
+question and gets everything standing near it — the address, who holds it, everything ever written
+into it, and the address read as coordinates, down to the tile it falls in. What a wallet holds on
+mainnet — every token, and each token's supply, which is what the posts on its plate stand for —
+comes from The Graph's Token API. Both are asked by one live server for everybody, which pushes the
+world to every page over a socket; Blockscout and the factories' own logs are the fallbacks when
+neither answers. A place anybody has gone to and found standing is remembered by that server and
+seen by all.
 
 ## Made of nothing
 
@@ -113,7 +118,8 @@ link: `?at=0x…` or `?at=name.eth`; `?chain=mainnet` walks the mainnet instead.
 |---|---|
 | plot factory (Sepolia) | [`0xcEa322619d375B381bff95e53a02Ef92Ea81B5Df`](https://eth-sepolia.blockscout.com/address/0xcEa322619d375B381bff95e53a02Ef92Ea81B5Df), deployed in block 11674690 |
 | source, verified | [Sourcify](https://repo.sourcify.dev/11155111/0xcEa322619d375B381bff95e53a02Ef92Ea81B5Df) · `contracts/src/Plot.sol` |
-| subgraph | [`ground-state`](https://thegraph.com/studio/subgraph/ground-state) on Subgraph Studio — [query](https://api.studio.thegraph.com/query/1760017/ground-state/v0.5.0), source in `subgraph/` |
+| subgraph | [`ground-state`](https://thegraph.com/studio/subgraph/ground-state) on Subgraph Studio — [query](https://api.studio.thegraph.com/query/1760017/ground-state/v0.5.0), source in `subgraph/`; read by the live server, pushed to pages |
+| token api | The Graph's Token API (Pinax), asked by the live server for mainnet wallets' holdings — `live/server.js`, `/live/holdings` |
 | live server | `wss://gs.bwtoken.io/live` — who else is here, and word of a claim as the indexer has it; source in `live/` |
 | names (ENSv2, Sepolia) | `groundstate.eth` on the ENSv2 beta → registry [`0xbef600d2b4b19918ed7543bfecf61f412d8e210c`](https://eth-sepolia.blockscout.com/address/0xbef600d2b4b19918ed7543bfecf61f412d8e210c) (a `UserRegistry` via the VerifiableFactory), resolver and registrar [`Names` `0x2E32A8CE61f46c7276Bc3786e0a7AE32da2E29ED`](https://eth-sepolia.blockscout.com/address/0x2E32A8CE61f46c7276Bc3786e0a7AE32da2E29ED) — `contracts/src/Names.sol` |
 | first named plot | `first.groundstate.eth` → [`0x3095c27de366b76074b604d83c7440d22fa33aad`](https://eth-sepolia.blockscout.com/address/0x3095c27de366b76074b604d83c7440d22fa33aad) |

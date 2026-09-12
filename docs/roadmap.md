@@ -14,9 +14,12 @@ after the start), and what comes after. The hackathon is where this begins, not 
 - The plot contract, third generation: a proxy its owner can write into, name, transfer, point at
   any contract of their own, and seal for good. Verified on Sourcify and Blockscout. Earlier
   generations stand as relics.
-- **The Graph:** a subgraph over the factory with every plot as a dynamic data source — owner,
-  note, implementation, sealed, name, salt, the address decoded into coordinates and tiles; asked
-  incrementally; the factory's logs as fallback.
+- **The Graph, two products composed:** a subgraph over the three factories with every plot as a
+  dynamic data source — owner, note, every inscription, implementation, sealed, name, salt, the
+  address decoded into coordinates and tiles; and the **Token API** for what a wallet holds on
+  mainnet — every token and its supply — which is what the posts on a wallet's plate stand for.
+  Both through the live server, one asker for everybody; Blockscout and the factory's logs as
+  fallbacks.
 - **ENSv2 on Sepolia:** `groundstate.eth` pointing its subregistry at a registry of ours; `Names`
   as its only registrar and its ENSIP-10 wildcard resolver; non-transferable names that belong to
   the place; travel by name.

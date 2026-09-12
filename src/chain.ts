@@ -80,8 +80,34 @@ export async function accountAt(address: string): Promise<Account | null> {
  * Whatever cannot be found is not guessed at. A stone says what was answered.
  */
 export async function holdingsOf(address: string): Promise<Holding[]> {
+  const graphed = chain.holdingsFeed ? await fromTokenApi(address) : null;
+  if (graphed) return graphed;
   const indexed = chain.indexer ? await fromIndexer(address) : null;
   return indexed ?? (await fromTokenList(address));
+}
+
+/**
+ * What The Graph's Token API says a wallet holds, through the live server —
+ * every fungible token, with its supply. Null if it did not answer, in which
+ * case the indexer is asked instead.
+ */
+async function fromTokenApi(address: string): Promise<Holding[] | null> {
+  try {
+    const response = await fetch(`${chain.holdingsFeed}&address=${address}`, { headers: { accept: 'application/json' } });
+    if (!response.ok) return null;
+    const answer = (await response.json()) as { holdings?: { symbol?: string; amount?: string; decimals?: number; supply?: string }[] };
+    if (!Array.isArray(answer.holdings)) return null;
+    const held: Holding[] = [];
+    for (const row of answer.holdings.slice(0, AT_MOST)) {
+      if (!row.symbol || !row.amount) continue;
+      const amount = BigInt(row.amount);
+      if (amount <= 0n) continue;
+      held.push({ symbol: row.symbol, amount, decimals: Number(row.decimals ?? 18), supply: row.supply ? BigInt(row.supply) : undefined });
+    }
+    return held;
+  } catch {
+    return null;
+  }
 }
 
 /** How many tokens one wallet is asked about at once. */

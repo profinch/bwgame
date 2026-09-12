@@ -68,6 +68,8 @@ export interface Chain {
   plotsFeed?: string;
   /** The live server's memory of revealed places: every address anybody went to and found standing. */
   revealedFeed?: string;
+  /** The live server's way to The Graph's Token API for what a wallet holds, asked before Blockscout. */
+  holdingsFeed?: string;
   /**
    * An indexer that can say what a wallet holds.
    *
@@ -103,6 +105,9 @@ export const CHAINS: Record<string, Chain> = {
     home: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
     explorer: 'https://etherscan.io/address/',
     indexer: 'https://eth.blockscout.com',
+    // what a wallet holds comes from The Graph's Token API, through the live
+    // server, which holds the key; Blockscout only if that does not answer
+    holdingsFeed: 'https://gs.bwtoken.io/live/holdings?network=mainnet',
     coin: { symbol: 'eth', supply: 120_500_000n * 10n ** 18n },
     tokens: [
       { at: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48', symbol: 'usdc', decimals: 6 },

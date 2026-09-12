@@ -56,6 +56,16 @@ const REVEALED_FILE = process.env.REVEALED_FILE ?? '/data/revealed.json';
 /** The most places kept, and the least time between one person's reports. */
 const REVEALED_MOST = 20_000;
 const SAWS_AT_MOST_EVERY = 1500;
+/**
+ * The Graph's Token API (run by Pinax): what a wallet holds, every token, on
+ * the networks it covers — mainnet among them, Sepolia not. Asked from here
+ * with the team's key, which does not go to the browser; answers kept a
+ * minute, a token's supply kept for good. Without a key the pages fall back
+ * to Blockscout, as they did.
+ */
+const TOKEN_API = process.env.TOKEN_API ?? 'https://api.pinax.network';
+const TOKEN_API_KEY = process.env.TOKEN_API_JWT ?? process.env.TOKEN_API_KEY ?? '';
+const HOLDINGS_KEPT_FOR = 60_000;
 /** How long the subgraph has to be silent before the chain is read instead, and how often then. */
 const CHAIN_AFTER = 120_000;
 const CHAIN_EVERY = 600_000;
@@ -89,6 +99,59 @@ try {
 } catch (error) {
   console.error('the revealed places could not be read:', error?.message ?? error);
 }
+/** address@network -> { at, holdings } */
+const holdingsKept = new Map();
+/** contract@network -> total supply as a string, or '' when the API had none */
+const supplyKept = new Map();
+
+async function tokenApi(path, params) {
+  const url = new URL(`${TOKEN_API}${path}`);
+  for (const [k, v] of Object.entries(params)) url.searchParams.set(k, String(v));
+  const response = await fetch(url, { headers: { authorization: `Bearer ${TOKEN_API_KEY}`, accept: 'application/json' } });
+  if (!response.ok) throw new Error(`token api ${response.status} for ${path}`);
+  const answer = await response.json();
+  return Array.isArray(answer?.data) ? answer.data : [];
+}
+
+/**
+ * Every fungible token a wallet holds on a network, with each token's total
+ * supply, so a holding can be read as a share of it. Null when there is no
+ * key to ask with or the network is not one the API covers.
+ */
+async function holdingsOf(network, address) {
+  if (!TOKEN_API_KEY || !/^[a-z0-9-]{1,32}$/.test(network) || !/^0x[0-9a-fA-F]{40}$/.test(address)) return null;
+  const key = `${address.toLowerCase()}@${network}`;
+  const kept = holdingsKept.get(key);
+  if (kept && Date.now() - kept.at < HOLDINGS_KEPT_FOR) return kept.holdings;
+  const rows = await tokenApi('/v1/evm/balances', { network, address, limit: 100, page: 1 });
+  const holdings = [];
+  for (const row of rows) {
+    if (!row?.symbol || !row.contract || !row.amount) continue;
+    let amount;
+    try {
+      amount = BigInt(String(row.amount));
+    } catch {
+      continue;
+    }
+    if (amount <= 0n) continue;
+    const supplyKey = `${String(row.contract).toLowerCase()}@${network}`;
+    if (!supplyKept.has(supplyKey)) {
+      try {
+        const [token] = await tokenApi('/v1/evm/tokens', { network, contract: row.contract });
+        const supply = token?.total_supply;
+        supplyKept.set(supplyKey, supply === undefined || supply === null ? '' : BigInt(Math.round(Number(supply))).toString());
+      } catch {
+        supplyKept.set(supplyKey, '');
+      }
+    }
+    const supply = supplyKept.get(supplyKey);
+    holdings.push({ symbol: String(row.symbol), amount: amount.toString(), decimals: Number(row.decimals ?? 18), supply: supply || undefined });
+  }
+  const answer = { source: 'the graph token api', network, address: address.toLowerCase(), holdings };
+  holdingsKept.set(key, { at: Date.now(), holdings: answer });
+  return answer;
+}
+
 let saveDue = null;
 function saveRevealed() {
   if (saveDue) return;
@@ -128,6 +191,20 @@ const http = createServer((request, response) => {
       'access-control-allow-origin': '*',
     });
     response.end(JSON.stringify({ block: graphBlock, plots: rows }));
+    return;
+  }
+  // what a wallet holds, from The Graph's Token API
+  if (url.pathname.endsWith('/holdings')) {
+    void holdingsOf(url.searchParams.get('network') ?? '', url.searchParams.get('address') ?? '').then(
+      (answer) => {
+        response.writeHead(answer ? 200 : 503, { 'content-type': 'application/json', 'cache-control': 'no-store', 'access-control-allow-origin': '*' });
+        response.end(JSON.stringify(answer ?? { error: 'no token api here' }));
+      },
+      (error) => {
+        response.writeHead(502, { 'content-type': 'application/json', 'access-control-allow-origin': '*' });
+        response.end(JSON.stringify({ error: String(error?.message ?? error) }));
+      },
+    );
     return;
   }
   // the revealed places, every one
