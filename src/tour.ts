@@ -60,9 +60,10 @@ export interface Driver {
   typeInto(selector: string, text: string, wait: (ms: number) => Promise<void>): Promise<void>;
   clearField(selector: string): void;
   /**
-   * Somebody else, walking to a spot this far from you — to your right and
-   * ahead, in the way you face — at a walking pace, or put there at once, to
-   * begin; digging there or not.
+   * Somebody else, walking to a spot this far from you — `right` metres to
+   * your right and `ahead` metres in front, in the way you face; negative is
+   * left, or behind — at a walking pace, or put there at once, to begin;
+   * digging there or not.
    */
   peer(right: number, ahead: number, dig: boolean, atOnce?: boolean): void;
   peerGone(): void;
@@ -186,15 +187,15 @@ export const STEPS: readonly Step[] = [
       // and clear of the plate, stops a few steps ahead to the left, digs, and
       // walks off to the left — in view the whole way, and staying
       await wait(3000);
-      d.peer(9, -11, false, true);
+      d.peer(9, 11, false, true);
       await wait(400);
-      d.peer(-3, -6, false);
+      d.peer(-3, 6, false);
       await wait(9000);
-      d.peer(-3, -6, true);
+      d.peer(-3, 6, true);
       await wait(4500);
-      d.peer(-3, -6, false);
+      d.peer(-3, 6, false);
       await wait(600);
-      d.peer(-9, -11, false);
+      d.peer(-9, 11, false);
     },
   },
   {
