@@ -20,6 +20,8 @@ export interface Peer {
   z: number;
   yaw: number;
   dig: boolean;
+  /** Whether they stand here as a person: a selfie check with World, verified by the server. */
+  human: boolean;
   /** Where they are drawn, on the way to where they were said to be. */
   drawnX: number;
   drawnZ: number;
@@ -31,9 +33,9 @@ export function peersIn(message: unknown): Omit<Peer, 'drawnX' | 'drawnZ' | 'dra
   const said = message as { t?: string; peers?: unknown };
   if (said?.t !== 'peers' || !Array.isArray(said.peers)) return null;
   const out: Omit<Peer, 'drawnX' | 'drawnZ' | 'drawnYaw'>[] = [];
-  for (const row of said.peers as { id?: number; x?: number; z?: number; yaw?: number; dig?: boolean }[]) {
+  for (const row of said.peers as { id?: number; x?: number; z?: number; yaw?: number; dig?: boolean; human?: boolean }[]) {
     if (typeof row.id !== 'number' || typeof row.x !== 'number' || typeof row.z !== 'number') continue;
-    out.push({ id: row.id, x: row.x, z: row.z, yaw: typeof row.yaw === 'number' ? row.yaw : 0, dig: Boolean(row.dig) });
+    out.push({ id: row.id, x: row.x, z: row.z, yaw: typeof row.yaw === 'number' ? row.yaw : 0, dig: Boolean(row.dig), human: row.human === true });
   }
   return out;
 }
@@ -92,6 +94,8 @@ export class Live {
     socket.addEventListener('open', () => {
       this.retryIn = 1000;
       socket.send(JSON.stringify({ t: 'hi', room: this.room }));
+      // and who this is, if a selfie check has said so: the room is joined as a stranger otherwise
+      if (this.token) socket.send(JSON.stringify({ t: 'human', token: this.token }));
       this.lastSaidWhat = '';
     });
     socket.addEventListener('message', (event) => {
@@ -112,6 +116,7 @@ export class Live {
             had.z = said.z;
             had.yaw = said.yaw;
             had.dig = said.dig;
+            had.human = said.human;
           } else {
             this.peers.set(said.id, { ...said, drawnX: said.x, drawnZ: said.z, drawnYaw: said.yaw });
           }
@@ -119,8 +124,11 @@ export class Live {
         for (const id of [...this.peers.keys()]) if (!seen.has(id)) this.peers.delete(id);
         return;
       }
-      const said = message as { t?: string; id?: number; block?: number; plots?: unknown; revealed?: unknown; addresses?: unknown };
-      if (said?.t === 'you' && typeof said.id === 'number') this.me = said.id;
+      const said = message as { t?: string; id?: number; human?: boolean; block?: number; plots?: unknown; revealed?: unknown; addresses?: unknown };
+      if (said?.t === 'you' && typeof said.id === 'number') {
+        this.me = said.id;
+        this.human = Boolean(said.human);
+      }
       if (said?.t === 'world') {
         const world: World = { version: (this.world?.version ?? 0) + 1, block: Number(said.block ?? 0) || 0, plots: new Map(), revealed: new Set() };
         if (Array.isArray(said.plots)) for (const row of said.plots as { id?: unknown }[]) if (typeof row?.id === 'string') world.plots.set(row.id.toLowerCase(), row);
@@ -156,6 +164,22 @@ export class Live {
     if (this.closed || this.paused) return;
     setTimeout(() => this.connect(), this.retryIn);
     this.retryIn = Math.min(30_000, this.retryIn * 2);
+  }
+
+  /** Whether the server counts this connection as a person, having seen a token it issued. */
+  human = false;
+  private token: string | null = null;
+
+  /**
+   * The token a verified selfie check earned, or none: shown to the server on
+   * every connection from now on, so this one stands in the room as a person
+   * — whose word about a place is kept for everybody at once.
+   */
+  asPerson(token: string | null): void {
+    this.token = token;
+    const socket = this.socket;
+    if (socket && socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ t: 'human', token: token ?? '' }));
+    else if (!token) this.human = false;
   }
 
   /** You went to an address and found something standing: the place is remembered for everybody. */

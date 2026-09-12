@@ -68,6 +68,8 @@ export interface Chain {
   plotsFeed?: string;
   /** The live server's memory of revealed places: every address anybody went to and found standing. */
   revealedFeed?: string;
+  /** The live server's World ID end: a signed request to hand IDKit, and where a proof is verified. */
+  humanFeed?: string;
   /** The live server's way to The Graph's Token API for what a wallet holds, asked before Blockscout. */
   holdingsFeed?: string;
   /**
@@ -161,6 +163,7 @@ export const CHAINS: Record<string, Chain> = {
     // server's copy of its answer, and only that server asks Studio
     plotsFeed: 'https://gs.bwtoken.io/live/plots',
     revealedFeed: 'https://gs.bwtoken.io/live/revealed',
+    humanFeed: 'https://gs.bwtoken.io/live/human',
     tokens: [
       { at: '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238', symbol: 'usdc', decimals: 6 },
       { at: '0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14', symbol: 'weth', decimals: 18 },

@@ -16,9 +16,11 @@
  *   ROOM       the room the subgraph's claims belong to (sepolia)
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { createHash, randomBytes } from 'node:crypto';
 import { dirname } from 'node:path';
 import { createServer } from 'node:http';
 import { WebSocketServer } from 'ws';
+import { signRequest } from '@worldcoin/idkit-server';
 
 const PORT = Number(process.env.PORT ?? 8790);
 const SUBGRAPH = process.env.SUBGRAPH ?? '';
@@ -57,6 +59,46 @@ const REVEALED_FILE = process.env.REVEALED_FILE ?? '/data/revealed.json';
 const REVEALED_MOST = 20_000;
 const SAWS_AT_MOST_EVERY = 1500;
 /**
+ * How much a stranger's word weighs against a person's, in the shared memory.
+ *
+ * Anybody can open fifty tabs and be fifty strangers, and fill the memory with
+ * whatever they like — or with nothing but their own wallet, fifty times. A
+ * person, checked by World (a selfie: one live person behind the screen), is
+ * counted whole: what they found is kept for everybody at once. A stranger's
+ * word is heard by the room, and kept only once this many strangers have said
+ * the same. Not a wall — three tabs are three strangers — but the cost of
+ * filling the memory becomes work rather than a loop, which is the point.
+ */
+const STRANGER_WORD = 1 / 3;
+
+/**
+ * World ID, Selfie Check: who here is a person.
+ *
+ * The check runs in the World App against a selfie; IDKit brings the proof
+ * back to the page, and the page hands it here to be verified by World's
+ * Developer Portal — with the RP signature this server put on the request,
+ * because a request has to be signed by the relying party and the key never
+ * leaves it. A proof that verifies becomes a token, good for as long as the
+ * credential is (ninety days), which the page shows on each connection to
+ * stand in the room as a person. Nothing about the person is kept: a hash of
+ * the token and a date.
+ *
+ * Without the keys in the environment the pages are told so, and everybody
+ * is a stranger — the world works as it did.
+ */
+const WORLD = {
+  appId: process.env.WORLD_APP_ID ?? '',
+  rpId: process.env.WORLD_RP_ID ?? '',
+  signingKey: process.env.WORLD_RP_SIGNING_KEY ?? '',
+  action: process.env.WORLD_ACTION ?? 'stand-as-a-person',
+  environment: process.env.WORLD_ENV ?? 'production',
+  verifyUrl: process.env.WORLD_VERIFY_URL ?? 'https://developer.world.org/api/v4/verify',
+};
+const worldSet = Boolean(WORLD.appId && WORLD.rpId && WORLD.signingKey);
+const HUMANS_FILE = process.env.HUMANS_FILE ?? '/data/humans.json';
+/** How long a token stands for: the credential's own ninety days. */
+const HUMAN_FOR = 90 * 24 * 3600 * 1000;
+/**
  * The Graph's Token API (run by Pinax): what a wallet holds, every token, on
  * the networks it covers — mainnet among them, Sepolia not. Asked from here
  * with the team's key, which does not go to the browser; answers kept a
@@ -91,11 +133,17 @@ let nextId = 1;
 /** room -> id -> person */
 const rooms = new Map();
 
-/** address -> { at: when first seen, count: how many times } */
+/**
+ * address -> { at: when first seen, count: how many times, weight: how much
+ * word there is for it, kept: whether it is remembered for everybody }. A row
+ * kept before weights were counted is kept: it was a person's word then.
+ */
 const revealed = new Map();
 try {
   if (existsSync(REVEALED_FILE)) {
-    for (const [address, it] of Object.entries(JSON.parse(readFileSync(REVEALED_FILE, 'utf8')))) revealed.set(address, it);
+    for (const [address, it] of Object.entries(JSON.parse(readFileSync(REVEALED_FILE, 'utf8')))) {
+      revealed.set(address, { ...it, weight: it.weight ?? 1, kept: it.kept ?? true });
+    }
     console.log(`${revealed.size} revealed place(s) remembered from ${REVEALED_FILE}`);
   }
 } catch (error) {
@@ -229,6 +277,97 @@ async function holdingsOf(network, address) {
   return asked ? { source: 'the graph token api', network, address: address.toLowerCase(), holdings } : null;
 }
 
+/** The places remembered for everybody: a person's word, or enough strangers'. */
+const keptPlaces = () => [...revealed.entries()].filter(([, it]) => it.kept).map(([address]) => address);
+
+/** sha256(token) -> until (ms). Who is a person here, for as long as the credential is. */
+const humans = new Map();
+try {
+  if (existsSync(HUMANS_FILE)) {
+    const now = Date.now();
+    for (const [hash, until] of Object.entries(JSON.parse(readFileSync(HUMANS_FILE, 'utf8')))) if (until > now) humans.set(hash, until);
+    console.log(`${humans.size} person(s) remembered from ${HUMANS_FILE}`);
+  }
+} catch (error) {
+  console.error('the people could not be read:', error?.message ?? error);
+}
+function saveHumans() {
+  try {
+    mkdirSync(dirname(HUMANS_FILE), { recursive: true });
+    writeFileSync(HUMANS_FILE, JSON.stringify(Object.fromEntries(humans)));
+  } catch (error) {
+    console.error('the people could not be kept:', error?.message ?? error);
+  }
+}
+const hashOf = (token) => createHash('sha256').update(String(token)).digest('hex');
+/** Whether a token stands for a person still. */
+function personWith(token) {
+  if (typeof token !== 'string' || !/^[0-9a-f]{64}$/.test(token)) return false;
+  const until = humans.get(hashOf(token));
+  return typeof until === 'number' && until > Date.now();
+}
+
+/** A signed request for the page to hand IDKit: the RP context, fresh each time. */
+function humanRequest() {
+  const { sig, nonce, createdAt, expiresAt } = signRequest({ signingKeyHex: WORLD.signingKey, action: WORLD.action });
+  return {
+    app_id: WORLD.appId,
+    rp_id: WORLD.rpId,
+    action: WORLD.action,
+    environment: WORLD.environment,
+    rp_context: { rp_id: WORLD.rpId, nonce, created_at: createdAt, expires_at: expiresAt, signature: sig },
+  };
+}
+
+/**
+ * A proof from IDKit, verified by World; a token for the person if it holds.
+ * The proof is passed on whole — the verifier knows its shape better than we
+ * do — and only its verdict is read: success, for our action.
+ */
+async function verifyHuman(result) {
+  if (!result || typeof result !== 'object') return { error: 'no proof' };
+  const response = await fetch(`${WORLD.verifyUrl}/${WORLD.rpId}`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', accept: 'application/json' },
+    body: JSON.stringify(result),
+  });
+  let answer = null;
+  try {
+    answer = await response.json();
+  } catch {
+    // an empty or broken answer is a refusal
+  }
+  if (!response.ok || !answer?.success) return { error: answer?.detail ?? answer?.code ?? `the verifier said ${response.status}` };
+  if (answer.action && answer.action !== WORLD.action) return { error: 'a proof for another action' };
+  const token = randomBytes(32).toString('hex');
+  const until = Date.now() + HUMAN_FOR;
+  humans.set(hashOf(token), until);
+  saveHumans();
+  return { token, until };
+}
+
+/** The body of a request, as JSON, up to a size; null if it is not that. */
+function readJson(request, limit) {
+  return new Promise((resolve) => {
+    let body = '';
+    request.on('data', (chunk) => {
+      body += chunk;
+      if (body.length > limit) {
+        resolve(null);
+        request.destroy();
+      }
+    });
+    request.on('end', () => {
+      try {
+        resolve(JSON.parse(body));
+      } catch {
+        resolve(null);
+      }
+    });
+    request.on('error', () => resolve(null));
+  });
+}
+
 let saveDue = null;
 function saveRevealed() {
   if (saveDue) return;
@@ -236,7 +375,9 @@ function saveRevealed() {
     saveDue = null;
     try {
       mkdirSync(dirname(REVEALED_FILE), { recursive: true });
-      writeFileSync(REVEALED_FILE, JSON.stringify(Object.fromEntries(revealed)));
+      const rows = {};
+      for (const [address, it] of revealed) if (it.kept) rows[address] = { at: it.at, count: it.count, weight: it.weight, kept: true };
+      writeFileSync(REVEALED_FILE, JSON.stringify(rows));
     } catch (error) {
       console.error('the revealed places could not be kept:', error?.message ?? error);
     }
@@ -302,17 +443,50 @@ const http = createServer((request, response) => {
     })();
     return;
   }
-  // the revealed places, every one
+  // the revealed places, every one remembered for everybody
   if (url.pathname.endsWith('/revealed')) {
     response.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store', 'access-control-allow-origin': '*' });
-    response.end(JSON.stringify({ addresses: [...revealed.keys()] }));
+    response.end(JSON.stringify({ addresses: keptPlaces() }));
+    return;
+  }
+  // World ID: a signed request to hand IDKit (GET), or a proof to verify (POST)
+  if (url.pathname.endsWith('/human')) {
+    const open = { 'content-type': 'application/json', 'cache-control': 'no-store', 'access-control-allow-origin': '*', 'access-control-allow-headers': 'content-type' };
+    if (request.method === 'OPTIONS') {
+      response.writeHead(204, { ...open, 'access-control-allow-methods': 'GET, POST, OPTIONS' });
+      response.end();
+      return;
+    }
+    if (!worldSet) {
+      response.writeHead(503, open);
+      response.end(JSON.stringify({ error: 'no world id here' }));
+      return;
+    }
+    if (request.method === 'POST') {
+      void readJson(request, 64_000).then(
+        (body) => verifyHuman(body?.result).then((verdict) => {
+          response.writeHead(verdict.token ? 200 : 403, open);
+          response.end(JSON.stringify(verdict));
+        }),
+        (error) => {
+          response.writeHead(502, open);
+          response.end(JSON.stringify({ error: String(error?.message ?? error) }));
+        },
+      ).catch((error) => {
+        response.writeHead(502, open);
+        response.end(JSON.stringify({ error: String(error?.message ?? error) }));
+      });
+      return;
+    }
+    response.writeHead(200, open);
+    response.end(JSON.stringify(humanRequest()));
     return;
   }
   // a plain request gets a plain answer, so a health check has something to read
   response.writeHead(200, { 'content-type': 'application/json' });
   const counts = {};
   for (const [name, people] of rooms) counts[name] = people.size;
-  response.end(JSON.stringify({ rooms: counts, plots: plots.size, block: graphBlock, revealed: revealed.size }));
+  response.end(JSON.stringify({ rooms: counts, plots: plots.size, block: graphBlock, revealed: keptPlaces().length, heard: revealed.size, people: humans.size, worldId: worldSet }));
 });
 
 const sockets = new WebSocketServer({ server: http, maxPayload: 4096 });
@@ -321,6 +495,8 @@ sockets.on('connection', (socket) => {
   const id = nextId++;
   let inRoom = null;
   let person = null;
+  /** Whether this connection has shown a token that stands for a person. */
+  let human = false;
 
   socket.on('message', (raw) => {
     let message;
@@ -334,30 +510,48 @@ sockets.on('connection', (socket) => {
     if (message.t === 'hi' && typeof message.room === 'string' && /^[a-z0-9-]{1,32}$/.test(message.room)) {
       if (inRoom) room(inRoom).delete(id);
       inRoom = message.room;
-      person = { id, x: 0, z: 0, yaw: 0, dig: false, seen: Date.now(), socket };
+      person = { id, x: 0, z: 0, yaw: 0, dig: false, human, seen: Date.now(), socket };
       room(inRoom).set(id, person);
-      tell(socket, { t: 'you', id });
+      tell(socket, { t: 'you', id, human });
       // and the world as it stands: every plot the index has said, every
-      // place anybody has revealed — so nothing need be asked over HTTP
-      tell(socket, { t: 'world', block: graphBlock, plots: [...plots.values()], revealed: [...revealed.keys()] });
+      // place remembered for everybody — so nothing need be asked over HTTP
+      tell(socket, { t: 'world', block: graphBlock, plots: [...plots.values()], revealed: keptPlaces() });
+      return;
+    }
+    // a token from a verified selfie check: this one stands here as a person
+    if (message.t === 'human') {
+      human = personWith(message.token);
+      if (person) person.human = human;
+      tell(socket, { t: 'you', id, human });
       return;
     }
     // somebody went to an address and found something standing there: the
-    // place is remembered for everybody, and everybody in the room is told
+    // room is told, and the place is remembered for everybody on a person's
+    // word, or on enough strangers' — see STRANGER_WORD
     if (message.t === 'saw' && person && typeof message.address === 'string' && /^0x[0-9a-fA-F]{40}$/.test(message.address)) {
       const now = Date.now();
       if (now - (person.lastSaw ?? 0) < SAWS_AT_MOST_EVERY) return;
       person.lastSaw = now;
       const address = message.address.toLowerCase();
-      const had = revealed.get(address);
-      if (had) {
-        had.count += 1;
-        return;
+      const worth = person.human ? 1 : STRANGER_WORD;
+      let it = revealed.get(address);
+      if (it) {
+        it.count += 1;
+        // one voice counts once, however often it speaks
+        if (it.kept || it.by.has(id)) return;
+        it.by.add(id);
+        it.weight += worth;
+      } else {
+        if (revealed.size >= REVEALED_MOST) return;
+        it = { at: now, count: 1, weight: worth, kept: false, by: new Set([id]) };
+        revealed.set(address, it);
+        // heard by the room at once, whoever said it
+        if (inRoom) for (const other of room(inRoom).values()) if (other.id !== id) tell(other.socket, { t: 'revealed', addresses: [address] });
       }
-      if (revealed.size >= REVEALED_MOST) return;
-      revealed.set(address, { at: now, count: 1 });
-      saveRevealed();
-      if (inRoom) for (const other of room(inRoom).values()) if (other.id !== id) tell(other.socket, { t: 'revealed', addresses: [address] });
+      if (it.weight >= 1 - 1e-9 && !it.kept) {
+        it.kept = true;
+        saveRevealed();
+      }
       return;
     }
     // leaving, said out loud: gone at once, however long the edge in front of
@@ -400,7 +594,7 @@ setInterval(() => {
     // everybody is told what changed for them — including that the room has
     // emptied: left untold, the one who stayed would keep seeing the one who
     // left, standing where they last stood
-    const everyone = [...people.values()].map((p) => ({ id: p.id, x: p.x, z: p.z, yaw: p.yaw, dig: p.dig }));
+    const everyone = [...people.values()].map((p) => ({ id: p.id, x: p.x, z: p.z, yaw: p.yaw, dig: p.dig, human: Boolean(p.human) }));
     for (const person of people.values()) {
       const word = JSON.stringify({ t: 'peers', peers: everyone.filter((p) => p.id !== person.id) });
       if (word === person.told) continue;
@@ -577,4 +771,4 @@ setTimeout(() => {
   if (plots.size === 0) void readTheChain();
 }, 5000);
 
-http.listen(PORT, () => console.log(`live on :${PORT}, watching ${SUBGRAPH || 'nothing'} for ${ROOM}`));
+http.listen(PORT, () => console.log(`live on :${PORT}, watching ${SUBGRAPH || 'nothing'} for ${ROOM}; world id ${worldSet ? `on (${WORLD.environment}, action ${WORLD.action})` : 'off'}`));

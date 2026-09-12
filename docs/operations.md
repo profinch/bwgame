@@ -26,7 +26,7 @@ not on the server). From macOS set `COPYFILE_DISABLE=1` or tar ships `._*` files
 
 ## The live server
 
-`live/server.js`, Node 22, one dependency (`ws`). Runs as a Docker container on the server, on the
+`live/server.js`, Node 22, two dependencies (`ws`, `@worldcoin/idkit-server` for the RP signature). Runs as a Docker container on the server, on the
 same network as nginx, with `SUBGRAPH` (the subgraph query URL) and `ROOM` (the chain whose claims
 it watches) in the environment, and a volume at `/data` (`-v gs-live-data:/data`) where it keeps
 the revealed places (`revealed.json`), and `TOKEN_API_JWT` — the team's key for The Graph's Token API
@@ -35,6 +35,15 @@ or with `&stream=1` a line a token as each supply comes in, which is how the pag
 posts stand up one at a time; answers kept five minutes, supplies for good); the key never reaches the browser, and without it the pages fall back to Blockscout. Presence is in memory; the subgraph's rows are re-read on
 start. Rebuild the image and recreate the container to update — with the volume, or the revealed
 places are forgotten.
+
+World ID (Selfie Check) is on when the environment carries `WORLD_APP_ID`, `WORLD_RP_ID` and
+`WORLD_RP_SIGNING_KEY` from the Developer Portal (the RP signing key is secp256k1, hex; it never
+leaves the server), with `WORLD_ACTION` (default `stand-as-a-person`, must be the action created in
+the portal) and `WORLD_ENV` (`production` or `sandbox`). The server answers `GET /live/human` with a
+signed request for IDKit and `POST /live/human` with a token once World has verified the proof;
+tokens are kept as hashes with their expiry in `humans.json` on the same volume. Without the keys
+the endpoint says 503, the panel says so, and everybody is a stranger. `WORLD_VERIFY_URL` points
+the verification elsewhere for testing (a stub on localhost, see the scratch runs).
 
 ## The subgraph
 

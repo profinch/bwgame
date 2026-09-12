@@ -15,6 +15,8 @@ export const PANELS: readonly { key: string }[] = [
   { key: 'claim' },
   // your own plot, when you stand on it: write, point at code, name, seal
   { key: 'owner' },
+  // standing here as a person: the selfie check, and what it earns
+  { key: 'person' },
 ];
 
 const KEPT_AS = 'gs-panels-off';

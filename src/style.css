@@ -651,7 +651,8 @@ html[data-t="dark"] {
   cursor: pointer;
 }
 
-.hud.claim button {
+.hud.claim button,
+.hud.person button {
   padding: 5px 10px;
   border: 1px solid color-mix(in srgb, var(--line) 30%, transparent);
   background: transparent;
@@ -662,11 +663,13 @@ html[data-t="dark"] {
   cursor: pointer;
 }
 
-.hud.claim button:hover {
+.hud.claim button:hover,
+.hud.person button:hover {
   border-color: var(--fg);
 }
 
-.hud.claim button:disabled {
+.hud.claim button:disabled,
+.hud.person button:disabled {
   opacity: 0.45;
   cursor: progress;
 }
@@ -983,7 +986,8 @@ body.touring #view {
 body.off-metrics .hud.bottom,
 body.off-jump .hud.jump,
 body.off-claim .hud.claim,
-body.off-owner .hud.own {
+body.off-owner .hud.own,
+body.off-person .hud.person {
   display: none !important;
 }
 
@@ -1506,4 +1510,65 @@ body.touch .touchpad-buttons {
   .navlinks a {
     padding: 5px 5px;
   }
+}
+
+/* standing here as a person: the selfie check. Under the header on the right,
+   as the owner panel is on the left; the same stone as the other panels */
+.hud.person {
+  top: 77px;
+  left: auto;
+  right: 24px;
+  bottom: auto;
+  pointer-events: auto;
+  width: 320px;
+  min-height: 200px;
+  padding: 12px 16px;
+  align-content: start;
+  border-radius: 22px;
+  border: 1px solid color-mix(in srgb, var(--line) 8%, transparent);
+  background: color-mix(in srgb, var(--bg) 78%, transparent);
+  display: grid;
+  gap: 6px;
+}
+
+.hud.person p {
+  margin: 0;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: #2a2a28;
+}
+
+.hud.person .person-note,
+.hud.person .person-how {
+  font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  color: #4a4a48;
+  white-space: pre-line;
+}
+
+.hud.person .person-do,
+.hud.person .person-links {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.hud.person .person-code {
+  display: grid;
+  gap: 6px;
+  justify-items: start;
+}
+
+.hud.person .person-qr {
+  width: 168px;
+  height: 168px;
+  border-radius: 6px;
+  background: #fff;
+}
+
+.hud.person .person-open {
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: #2a2a28;
+  text-decoration: none;
+  border-bottom: 1px dotted currentColor;
 }

@@ -150,8 +150,9 @@ seal, name, and the address decoded into coordinates and into the cells and tile
 that "everything near here" is one query. Clients ask for what has changed since the block their
 last answer was current at, and fall back to the factory's logs when no index answers.
 
-A small server passes the present moment between clients: who stands where, and word of a claim as
-soon as the index has it. It stores nothing. The world works without it.
+A small server passes the present moment between clients: who stands where, word of a claim as
+soon as the index has it, and which places anybody has found standing. It keeps that last list
+and nothing about anybody. The world works without it.
 
 ## 9. Considerations
 
@@ -167,11 +168,13 @@ mempool for salts.
 mined ones could, if someone dug into a taken cell. The factory does not forbid this and the world
 does not yet decide it.
 
-*Sybil.* A place resolves faster with more people present, which invites one person with many tabs.
-A proof of personhood lets a verified human count as a unit and others as a fraction.
+*Sybil.* A place resolves faster with more people present, and what one finds is kept for all,
+which invites one person with many tabs. A proof of personhood (World ID's Selfie Check) lets a
+verified person count as a unit and a stranger as a fraction: a person's word is kept at once, a
+stranger's when three agree. It weighs; it does not gate.
 
 *Enumeration.* The world cannot list a chain. It is discovered. A shared memory of what has been
-revealed, so that a place seen by one is seen by all, is the next thing to build.
+revealed, kept by the small server, makes a place seen by one seen by all.
 
 *Cost.* Public gateways will not scan logs; an indexer is not an optimisation here but a
 necessity, and the index is the only copy of the chain the project keeps.

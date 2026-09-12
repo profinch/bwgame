@@ -54,6 +54,12 @@ What was decided, and why. What was refused, and why. Dated where the date matte
 - **The header is bwtoken.io's nav to the pixel**, so a tab switch between the two moves nothing;
   the menu is the site's — *map*, *blockchain* with the corners round it — and the chains hang
   under it in the site's sub-bar. The line by the mark: *the chain on foot*.
+- **A person's word weighs three strangers'** (13.09.2026): World ID's Selfie Check is used as a
+  weight in the shared memory of revealed places, not as a gate on anything. Nothing in the world
+  is closed to a stranger — the world shows the chain, and the chain has no persons — but what is
+  *kept* for everybody rests on a person's word at once and on strangers' only when three agree.
+  A person is drawn in the walker's grey, a stranger in white; nothing else about them is known
+  or shown. The token lives in the browser for the credential's ninety days.
 - **English in code, comments, commits and UI, lowercase in UI.** One contributor in the history.
 
 ## Refused

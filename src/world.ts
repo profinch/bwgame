@@ -42,6 +42,7 @@ import { type Stroke, glassOf, inkOf, strokesOf } from './blueprint';
 import { Chips } from './chips';
 import { claimAt, claimedPlots, formerPlots, implementationOf, isPlot, knownPlots, noteOf, ownerOf, plotNameOf, relicOf, revealedPlaces, worldFrom } from './plot';
 import { ownGround } from './owning';
+import { beHuman } from './human';
 import { Panels } from './panels';
 import { type Driver, Tour } from './tour';
 import { Live } from './live';
@@ -59,6 +60,7 @@ const badge = document.querySelector<HTMLElement>('.mark');
 const going = document.querySelector<HTMLFormElement>('.go');
 const claiming = document.querySelector<HTMLElement>('.claim');
 const owning = document.querySelector<HTMLElement>('.own');
+const personage = document.querySelector<HTMLElement>('.hud.person')!;
 const near = document.querySelector<HTMLElement>('.near');
 if (!canvas || !stat || !place || !badge || !going || !claiming || !owning || !near)
   throw new Error('the page is missing its parts');
@@ -760,6 +762,9 @@ const live = chain.live
 // what the socket says of the world is the first word on plots and revealed
 // places; the HTTP feed is for when there is no socket
 worldFrom(() => live?.world ?? null);
+// standing here as a person: the selfie check, and the weight it gives your word
+const person = beHuman(personage, chain.humanFeed ?? null, live);
+personage.hidden = false;
 /** What the walker turns into while digging. Only one of the two is ever drawn. */
 const drill = renderer.add(auger(), new Float32Array(INSTANCE_FLOATS), true);
 /** How far the auger has turned. */
@@ -1753,7 +1758,7 @@ function takeDemoJump(): boolean {
           const x = homeCell.x + origin.x + player.x + dx;
           const z = homeCell.z + origin.z + player.z + dz;
           const yaw = Math.atan2(dx, dz) + Math.PI;
-          live.peers.set(MOCK_PEER, { id: MOCK_PEER, x, z, yaw, dig, drawnX: x, drawnZ: z, drawnYaw: yaw });
+          live.peers.set(MOCK_PEER, { id: MOCK_PEER, x, z, yaw, dig, human: false, drawnX: x, drawnZ: z, drawnYaw: yaw });
         }
       },
       peerGone: () => {
@@ -1775,6 +1780,7 @@ function takeDemoJump(): boolean {
         driver.claimButtons(false, false);
         taking.pause(false);
         ownPanel.pause(false);
+        person.pause(false);
         for (const field of document.querySelectorAll<HTMLInputElement>('.go input, .hud.own input')) field.value = '';
         if (beforeTour) driver.cores(beforeTour.cores, beforeTour.coresOf);
         // the tour's plots and its player gone
@@ -1850,6 +1856,7 @@ function takeDemoJump(): boolean {
         live?.peers.delete(MOCK_PEER);
         taking.pause(false);
         ownPanel.pause(false);
+        person.pause(false);
       },
     };
     // the onboarding: the corners on its word while it runs; when it ends,
@@ -1858,6 +1865,7 @@ function takeDemoJump(): boolean {
       driver.clean();
       panels.restore();
       live?.pause(false);
+      person.pause(false);
       if (mockSkyTimer) clearInterval(mockSkyTimer);
       mockSkyTimer = null;
       if (beforeTour) {
@@ -1890,6 +1898,7 @@ function takeDemoJump(): boolean {
       panels.suspend();
       // out of the room: the game does not see the tour, nor the tour the game
       live?.pause(true);
+      person.pause(true);
       // and a sky of its own: a block of made-up movements every so often, a few of them failed
       const mockSky = () => {
         const anyAddress = () => {
@@ -2177,9 +2186,12 @@ loop({
         const z = peer.drawnZ - homeCell.z - origin.z;
         if (Math.abs(x) > GROUND / 2 || Math.abs(z) > GROUND / 2) continue;
         const y = supportAt(x, z, ground.surfaceAt(x, z) + STEP_UP);
-        // their auger turns with ours: the rate is theirs, but the turning is a sign, not a measure
-        if (peer.dig) digging.push(x, y - POINT / 2, z, 1, 1, 1, spin, 0.92, 0.6, 0);
-        else standing.push(x, y, z, 1, 1, 1, peer.drawnYaw, 0.92, 0.6, 0);
+        // a person — checked with World — stands in the same grey as you; a
+        // stranger is drawn in white, a figure with nobody vouched for behind it.
+        // Their auger turns with ours: the rate is theirs, but the turning is a sign, not a measure
+        const shade = peer.human ? 0.5 : 0.92;
+        if (peer.dig) digging.push(x, y - POINT / 2, z, 1, 1, 1, spin, shade, 0.6, 0);
+        else standing.push(x, y, z, 1, 1, 1, peer.drawnYaw, shade, 0.6, 0);
       }
       renderer.update(others, new Float32Array(standing));
       renderer.update(othersDigging, new Float32Array(digging));
