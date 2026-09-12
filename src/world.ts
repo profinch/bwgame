@@ -1838,6 +1838,16 @@ loop({
       rateNow,
       GRAVITY,
     );
+    // and the ground comes up round anyone else's auger as round ours
+    if (live) {
+      for (const peer of live.peers.values()) {
+        if (!peer.dig) continue;
+        const x = peer.drawnX - homeCell.x - origin.x;
+        const z = peer.drawnZ - homeCell.z - origin.z;
+        if (Math.abs(x) > GROUND / 2 || Math.abs(z) > GROUND / 2) continue;
+        chips.shed(seconds, { x, y: ground.surfaceAt(x, z), z }, 1.4e7);
+      }
+    }
     traffic.step(seconds);
     // where you are, for everybody else; and everybody else a little closer to
     // where they were last said to be
@@ -1895,11 +1905,7 @@ loop({
         if (Math.abs(x) > GROUND / 2 || Math.abs(z) > GROUND / 2) continue;
         const y = supportAt(x, z, ground.surfaceAt(x, z) + STEP_UP);
         // their auger turns with ours: the rate is theirs, but the turning is a sign, not a measure
-        if (peer.dig) {
-          digging.push(x, y - POINT / 2, z, 1, 1, 1, spin, 0.92, 0.6, 0);
-          // and the ground comes up round theirs as round ours
-          chips.shed(seconds, { x, y, z }, 1.4e7);
-        }
+        if (peer.dig) digging.push(x, y - POINT / 2, z, 1, 1, 1, spin, 0.92, 0.6, 0);
         else standing.push(x, y, z, 1, 1, 1, peer.drawnYaw, 0.92, 0.6, 0);
       }
       renderer.update(others, new Float32Array(standing));
