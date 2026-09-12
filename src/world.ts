@@ -1603,6 +1603,11 @@ function takeDemoJump(): boolean {
       firstStand = null;
       walletStand = null;
       taking.stop();
+      // begun from the welcome, the first descent is still under way: it is
+      // brought down to the same short drop the tour uses everywhere, so the
+      // tour begins the same whether from the welcome or from the menu
+      descent = Math.min(descent, 60);
+      holdDescent = false;
       show('onboarding');
       tour!.start();
     };
