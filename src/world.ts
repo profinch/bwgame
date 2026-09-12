@@ -699,10 +699,11 @@ async function travelTo(
    */
   stand?: { x: number; z: number; yaw: number; drop: number },
 ): Promise<Structure | null> {
-  taking.stop();
   travelledTo = address;
   const at = offsetOf(address);
   arriveAt(at.x, at.z);
+  // stopped after the move, so what the panel then says is measured from here
+  taking.stop();
   if (stand) {
     player.x = stand.x;
     player.z = stand.z;
@@ -2331,8 +2332,8 @@ window.addEventListener('keydown', (event) => {
   if (event.code !== 'KeyH' || typing() || tour?.running) return;
   if (event.metaKey || event.ctrlKey || event.altKey) return;
   event.preventDefault();
-  taking.stop();
   arriveAt(0, 0, FIRST_RING);
+  taking.stop();
   void raiseNearby();
   arrived = '';
 });

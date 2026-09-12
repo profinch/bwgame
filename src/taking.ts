@@ -96,7 +96,8 @@ export function takeGround(
   }
   const factory = chain.plots;
   const home = placeOf(bytesOf(HOME));
-  said.textContent = 'nobody has claimed this ground. dig here to take it: the longer you dig, the closer the plot';
+  const IDLE = 'nobody has claimed this ground. dig here to take it: the longer you dig, the closer the plot';
+  said.textContent = IDLE;
 
   // --- what was found before ------------------------------------------------
 
@@ -195,6 +196,14 @@ export function takeGround(
   };
 
   const stop = () => {
+    // a dig broken off by going somewhere else leaves nothing of itself on
+    // the panel: its count and its "closest so far" were measured from where
+    // it was aimed, and "here" is now elsewhere. What was found is on the
+    // shelf, and offered from here if it is near — see showEarlier
+    if (digging) {
+      counted.textContent = '';
+      said.textContent = IDLE;
+    }
     digging?.stop();
     digging = null;
     spec = null;
@@ -318,7 +327,7 @@ export function takeGround(
     pause(on: boolean) {
       held = on;
       if (!on) {
-        said.textContent = 'nobody has claimed this ground. dig here to take it: the longer you dig, the closer the plot';
+        said.textContent = IDLE;
         showEarlier();
       }
     },
