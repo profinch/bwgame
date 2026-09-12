@@ -123,7 +123,13 @@ async function holdingsOf(network, address) {
   const key = `${address.toLowerCase()}@${network}`;
   const kept = holdingsKept.get(key);
   if (kept && Date.now() - kept.at < HOLDINGS_KEPT_FOR) return kept.holdings;
-  const rows = await tokenApi('/v1/evm/balances', { network, address, limit: 100, page: 1 });
+  // ten a page on the free plan; a wallet with more is read a few pages deep
+  const rows = [];
+  for (let page = 1; page <= 5; page++) {
+    const part = await tokenApi('/v1/evm/balances', { network, address, limit: 10, page });
+    rows.push(...part);
+    if (part.length < 10) break;
+  }
   const holdings = [];
   for (const row of rows) {
     if (!row?.symbol || !row.contract || !row.amount) continue;
@@ -137,9 +143,15 @@ async function holdingsOf(network, address) {
     const supplyKey = `${String(row.contract).toLowerCase()}@${network}`;
     if (!supplyKept.has(supplyKey)) {
       try {
+        // the API gives supplies in token units, decimal-scaled; a post is
+        // sized by the share of the whole, so the whole is put back in raw units
         const [token] = await tokenApi('/v1/evm/tokens', { network, contract: row.contract });
-        const supply = token?.total_supply;
-        supplyKept.set(supplyKey, supply === undefined || supply === null ? '' : BigInt(Math.round(Number(supply))).toString());
+        const supply = token?.total_supply ?? token?.circulating_supply;
+        const decimals = Number(token?.decimals ?? row.decimals ?? 18);
+        supplyKept.set(
+          supplyKey,
+          supply === undefined || supply === null || !Number.isFinite(Number(supply)) ? '' : (BigInt(Math.round(Number(supply))) * 10n ** BigInt(decimals)).toString(),
+        );
       } catch {
         supplyKept.set(supplyKey, '');
       }

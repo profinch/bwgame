@@ -45,6 +45,7 @@ busiest place on the chain.
 | what | where |
 |---|---|
 | the world | https://gs.bwtoken.io (root: the world on Sepolia; `/map.html`: the map; `/world.html` redirects to the root) |
-| subgraph | Subgraph Studio `ground-state`, v0.5.0 (all three factories) — https://api.studio.thegraph.com/query/1760017/ground-state/v0.5.0 |
+| subgraph | published to The Graph Network (Arbitrum One) 13.09.2026: id `Bytw4sRqQ2PYxAmju23BYVdrdLcZayCw9hP3AnPBdEvm`, deployment `QmcnU8jUTopRQ7KbE4U5QM1PSXmbKcCGJbUAQwnnVDosco` (= Studio v0.5.0, all three factories); queried through the gateway `https://gateway.thegraph.com/api/<key>/subgraphs/id/Bytw4s…dEvm` by the live server; Studio's `…/ground-state/v0.5.0` remains as the pages' fallback |
+| token api | The Graph's Token API (Pinax), free plan: mainnet balances ten a page, asked by the live server |
 | live server | `wss://gs.bwtoken.io/live`; the plots feed at `https://gs.bwtoken.io/live/plots` |
 | source | https://github.com/profinch/bwgame |

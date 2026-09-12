@@ -52,10 +52,11 @@ npx graph auth <deploy key>                       # once
 npx graph deploy ground-state --version-label vX.Y.Z --node https://api.studio.thegraph.com/deploy/
 ```
 
-Clients (`subgraph` in `src/chains.ts`) and the live server (`SUBGRAPH` in its environment) query
-a **numbered** version, not `version/latest`: Studio throttles `version/latest` and answered 429 to
-everyone on 12.09.2026, while numbered versions answered. After a deploy, change both and recreate
-the live container.
+The live server queries the published subgraph through the gateway, `SUBGRAPH` in its environment
+being `https://gateway.thegraph.com/api/<api key>/subgraphs/id/<subgraph id>`; the key is Studio's
+(free: 100 000 queries a month) and never leaves the server. Clients keep Studio's numbered version
+in `src/chains.ts` as a fallback for a page without a socket. After a new deploy, publish the new
+version in Studio too (a transaction on Arbitrum One); the id, and so the URL, stays.
 When the factory or `Names` is redeployed, change the addresses and start blocks in
 `subgraph/subgraph.yaml` (an old factory stays as a `Plots*` data source: its plots are relics)
 and deploy a new version. Public gateways are not trusted for old logs: publicnode answered an
