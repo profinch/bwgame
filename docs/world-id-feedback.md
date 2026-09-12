@@ -1,6 +1,7 @@
 # World ID, Selfie Check: what integrating it was like
 
-*Ground State, ETHOnline 2026 — feedback for the World team, written 13.09.2026 while building it.*
+*Ground State, ETHOnline 2026 — feedback for the World team, written 13.09.2026 while building it,
+and finished the same night after the first live check passed.*
 
 ## What we built with it
 
@@ -46,28 +47,43 @@ server with `@worldcoin/idkit-server`, and the proof goes from the page to the s
 4. **Where the RP ID and signing key come from** is stated nowhere we could find on
    docs.world.org: the signatures page says "from the Developer Portal" and stops. A screenshot
    or a path ("Developer Portal → app → Relying Party → create key") would do.
-5. **Sandbox access is a form and a wait.** For a hackathon that runs over a weekend, an
+5. **The credential page says Selfie Check (Beta) is "access-gated" and needs a feature flag.**
+   We spent an evening planning around that — a message to the team, a sandbox enrolment — and
+   then the live check simply passed in production, for a World ID that already had Selfie
+   Check enrolled, with no flag asked for. Either the gate is on the user's side (the credential
+   has to exist in their World App) and the page should say so, or the gate is off and the page is
+   stale. Say which; it decides whether an integrator can test on their own phone tonight.
+6. **Sandbox access is a form and a wait.** For a hackathon that runs over a weekend, an
    integrator who finds the docs on Friday night cannot test a live selfie before Monday. The
    sandbox docs also do not say whether the sandbox needs its own `app_id`/`rp_id` or the
-   production ones with `environment: "sandbox"` — we read the latter from the IDKit types.
-6. **`docs.idkit.com` does not resolve** (DNS), though search engines still point at it.
-7. **Small:** the verify reference says the `identifier` for Selfie Check is `"selfie"` with
+   production ones with `environment: "sandbox"` — we read the latter from the IDKit types. (We
+   ended up not needing the sandbox at all, see 5.)
+7. **`docs.idkit.com` does not resolve** (DNS), though search engines still point at it.
+8. **Small:** the verify reference says the `identifier` for Selfie Check is `"selfie"` with
    `"face"` accepted as an alias. The credential page never mentions either word.
 
 ## Developer Portal
 
-We did not get through this part before submission. Selfie Check (Beta) is behind a feature flag
-that "your World point of contact" enables, and a solo hackathon team has no point of contact;
-the sandbox app is behind an enrolment request. Everything is wired so that setting
-`WORLD_APP_ID`, `WORLD_RP_ID` and `WORLD_RP_SIGNING_KEY` on the server turns it on; the client,
-the server, the weighting, the drawing and the persistence are tested end to end against a stub
-verifier, and the IDKit request itself is made against the real sandbox bridge (the QR code on
-the panel is a live `sandbox.world.org/verify` link).
+Registering the app and the relying party took minutes, and the portal gave us everything the
+server needs on one screen: App ID, RP ID, signer address, private key. Two things to say:
+
+- **The portal and the SDK use different words for the same key.** The portal shows "Signer
+  address" and "Private key"; the docs say "RP signing key" and the SDK wants `signingKeyHex`.
+  It is the same secp256k1 key, and a newcomer has to guess that. One name across the three.
+- **Nothing on that screen says what the action is or where to create one.** We used an action
+  name of our own (`stand-as-a-person`) in the request and the verifier accepted it — which was
+  a relief, and also a surprise, because the IDKit docs recommend `action_description` "only for
+  actions created on-the-fly" without saying that on-the-fly is the default.
+
+The first live check passed on the production environment on 13.09.2026, on an Android World ID
+that already had Selfie Check enrolled. Before that the whole flow — client, server, weighting,
+drawing, persistence — had been tested end to end against a stub verifier and the real bridge.
 
 ## What would have made it a day shorter
 
 - A "vanilla JS, no React, own backend" quick start in one page: the eight lines of server code,
   the ten lines of client code, the field mapping, the verify call.
-- The sandbox app installable from a public TestFlight link for hackathon periods.
+- A plain statement of who needs what for Selfie Check: what the user's World App must have,
+  what the app must have, and what needs nobody's permission.
 - A test vector for the verify endpoint: one complete IDKit result JSON that verifies against a
   known `rp_id` in sandbox, so an integrator can test the server half before the app half.

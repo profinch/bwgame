@@ -32,9 +32,8 @@ after the start), and what comes after. The hackathon is where this begins, not 
 - **World ID, Selfie Check** (13.09.2026): who here is a person. IDKit in the page, the RP
   signature and the verification on the live server, a token for ninety days. A person's word
   about a place is kept for everybody at once; a stranger's is heard by the room and kept once
-  three strangers agree; a person stands in your grey, a stranger in white. Wired end to end and
-  tested against a stub verifier; waits on World's keys and the Beta flag to go live
-  ([world-id-feedback.md](world-id-feedback.md)).
+  three strangers agree; a person stands in your grey, a stranger in white. Live on production:
+  the first check passed 13.09.2026 ([world-id-feedback.md](world-id-feedback.md)).
 - Onboarding: a welcome, an arrival descent, a guiding panel, a "what's near" line, how to play,
   and a walk round in nine steps — offered the first time, in the menu after.
 - Mobile: a thumb stick, on-screen buttons, a one-column layout, battery-aware defaults.
@@ -44,9 +43,8 @@ after the start), and what comes after. The hackathon is where this begins, not 
 
 ## In scope for the hackathon, not yet done
 
-- **World ID keys on the server:** app, RP id and signing key from the Developer Portal, the
-  Selfie Check Beta flag, sandbox enrolment. The code is done; the panel says "not set up on
-  this server yet" until then. Later: naming weighed the same way, so a name belongs to a person.
+- Nothing left on the tracks. Later for World ID: naming weighed the same way, so a name
+  belongs to a person.
 
 ## After the hackathon
 
