@@ -753,12 +753,12 @@ function carvedBlock(
  */
 const NOTE_WORDS = 12;
 const NOTE_SIGNS = 16;
-/** How high above the ground the note's foot is, and how high the writing may reach. */
-const NOTE_FOOT = 0.15;
+/** Where the writing ends: at head height above the ground at the foot of the wall, whatever the words. */
+const NOTE_HEAD = 1.7;
 
 /**
- * A building with a note written into it carries the note low on its front
- * wall, in small runes — the size of the signs on a wallet's posts, a word a
+ * A building with a note written into it carries the note on its front wall
+ * at head height, in small runes — the size of the signs on a wallet's posts, a word a
  * column starting level, the columns side by side as posts stand — cut the same way as all
  * writing here, so it reads the same everywhere — raised rather than cut, so
  * the wall itself is left as it is and the strokes stand out of it by a
@@ -789,12 +789,14 @@ function notedBuilding(structure: Structure, base: number, origin: { x: number; 
     .map((word) => word.slice(0, NOTE_SIGNS));
   const across = POST / WALL;
   const cutIn = Math.max(across * 1.6, 0.003);
-  // a hand above the ground at the foot of the wall it is on, not above the base
+  // the writing ends at head height above the ground at the foot of the wall
+  // it is on — not above the base, which on a slope is the high side — and a
+  // longer word reaches higher up the wall rather than lower down it. The
+  // columns are one height, the longest word's, and hang from the top: the
+  // words start level and end where they end, the longest at the head.
   const footGround = structure.frontFoot ?? base;
-  const foot = footGround + NOTE_FOOT;
-  // one height for every column, that of the longest word, and the writing
-  // hangs from the top of it: the words start level and end where they end
   const lines = Math.max(1, ...words.map((word) => [...word].length));
+  const foot = footGround + NOTE_HEAD - (EDGE + 2) * across;
   const tall = Math.min(base + structure.tall - foot, (lines * 11 + 2 * EDGE + 2) * across);
   // every stroke of every word, in reading order — word by word, down each —
   // so a note just written comes up before your eyes the way it is read

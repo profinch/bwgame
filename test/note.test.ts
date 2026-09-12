@@ -30,8 +30,9 @@ describe('a note on a building', () => {
     expect(pieces[5]).toBeCloseTo(5, 5);
     for (let i = INSTANCE_FLOATS; i < pieces.length; i += INSTANCE_FLOATS) {
       expect(pieces[i + 2]).toBeCloseTo(2.5 + cutIn / 2, 5);
-      expect(pieces[i + 1]!).toBeGreaterThanOrEqual(10 + 0.15);
-      expect(pieces[i + 1]! + pieces[i + 4]!).toBeLessThan(10 + 3);
+      // the writing ends about head height and reaches up from there
+      expect(pieces[i + 1]!).toBeGreaterThanOrEqual(10 + 1.5);
+      expect(pieces[i + 1]! + pieces[i + 4]!).toBeLessThan(10 + 4);
       // a stroke is never wider than a sign
       expect(pieces[i + 3]!).toBeLessThanOrEqual(across * 9 + 1e-6);
     }
@@ -40,10 +41,10 @@ describe('a note on a building', () => {
     expect(piecesOf(noted(''), 10).length / INSTANCE_FLOATS).toBe(1);
   });
   it('going up, the wall shows the signs its height has reached', () => {
-    // the writing is low on the wall: at a fifth of the height none of it has
+    // the writing ends at head height: at a tenth of the height none of it has
     // come up yet, at a third all of it has
-    const low = piecesOf(noted('profinch was here', 0.02), 10).length;
-    const half = piecesOf(noted('profinch was here', 0.15), 10).length;
+    const low = piecesOf(noted('profinch was here', 0.1), 10).length;
+    const half = piecesOf(noted('profinch was here', 0.3), 10).length;
     const whole = piecesOf(noted('profinch was here', 1), 10).length;
     expect(low).toBe(INSTANCE_FLOATS);
     expect(half).toBeGreaterThan(low);
