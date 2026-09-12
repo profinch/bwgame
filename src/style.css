@@ -440,12 +440,15 @@ body.world {
   opacity: 1;
 }
 
+/* the corners are round the whole menu from the first frame — laid out here,
+   before any script runs, at the very box the script will measure — so they
+   come with the menu rather than after it */
 .navlinks .frame {
   position: absolute;
-  left: 0;
-  top: 0;
-  width: 0;
-  height: 0;
+  left: 4px;
+  top: -1px;
+  width: calc(100% - 8px);
+  height: calc(100% + 2px);
   pointer-events: none;
   transition:
     left 0.55s cubic-bezier(0.7, 0, 0.2, 1),
