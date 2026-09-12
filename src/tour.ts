@@ -248,8 +248,8 @@ export const STEPS: readonly Step[] = [
       d.claimSays('claimed: yours, 74 m from here. walk over — it is going up', '');
       mocked = d.mockClaim();
       d.mark(null);
-      // the head turns to where it is going up, ahead and to the left
-      d.look(0.3, 0);
+      // the head turns to where it is going up, ahead and to the right, and lifts a little
+      d.look(-0.4, 0.08);
       await wait(1500);
       d.look(0, 0);
       await wait(8000);
@@ -259,7 +259,8 @@ export const STEPS: readonly Step[] = [
     scene: 'claimed',
     says: 'on your own plot the owner\'s panel is yours to act with. write into it — one transaction — and the words are cut into the wall as the drawing becomes a building.',
     async play(d, wait) {
-      d.look(0.3, 0);
+      // the head turns to the plot, ahead and to the right, and lifts a little
+      d.look(-0.4, 0.08);
       await wait(1500);
       d.look(0, 0);
       d.mark('.hud.own');
@@ -284,7 +285,8 @@ export const STEPS: readonly Step[] = [
     scene: 'written',
     says: 'point the plot at a contract of yours and that code runs at this address — a shop, a game, a gallery live here, and other contracts calling this place find it.',
     async play(d, wait) {
-      d.look(0.3, 0);
+      // the head turns to the plot, ahead and to the right, and lifts a little
+      d.look(-0.4, 0.08);
       await wait(1500);
       d.look(0, 0);
       d.mark('.hud.own');
@@ -307,7 +309,8 @@ export const STEPS: readonly Step[] = [
     scene: 'written',
     says: 'name it under groundstate.eth and people come by name: demo.groundstate.eth resolves to this plot, in any wallet that knows ENS. a name belongs to the place and goes with it.',
     async play(d, wait) {
-      d.look(0.3, 0);
+      // the head turns to the plot, ahead and to the right, and lifts a little
+      d.look(-0.4, 0.08);
       await wait(1500);
       d.look(0, 0);
       d.mark('.hud.own');
@@ -330,7 +333,8 @@ export const STEPS: readonly Step[] = [
     scene: 'written',
     says: 'seal the code and it can never change — not by you, not by anyone. whoever deals with this place knows it stays what it is. writing and naming stay possible; there is no unsealing.',
     async play(d, wait) {
-      d.look(0.3, 0);
+      // the head turns to the plot, ahead and to the right, and lifts a little
+      d.look(-0.4, 0.08);
       await wait(1500);
       d.look(0, 0);
       d.mark('.hud.own');

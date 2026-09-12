@@ -1210,14 +1210,15 @@ const mockPeer = { on: false, x: 0, z: 0, toX: 0, toZ: 0, dig: false };
 const MOCK_PEER_PACE = 1.5;
 
 /**
- * An address some steps ahead of where you stand and a little to the left —
- * clear of the contract straight ahead — the cell there, and any digits after.
+ * An address some way ahead of where you stand and to the right — clear of
+ * the contract straight ahead — the cell there, and any digits after.
  */
 function mockAddressAhead(): string {
   const c = Math.cos(player.yaw);
   const sn = Math.sin(player.yaw);
-  const right = -8;
-  const lz = -16;
+  // to the right and well ahead: thirty metres off, clear of the contract straight ahead
+  const right = 18;
+  const lz = -24;
   const at = { x: player.x + c * right + sn * lz, z: player.z + c * lz - sn * right };
   return mockAddressAt(at.x, at.z);
 }
@@ -1232,8 +1233,8 @@ function mockAddressAt(x: number, z: number): string {
 
 /** A plot of the tour's own, at an address, with a note or without: never from the chain. */
 function mockPlot(address: string, note: string): Structure {
-  // a small building, so it is seen whole from where you stand
-  const account: Account = { address, codeSize: 600, code: `0x${'a5'.repeat(600)}`, balance: 0n, nonce: 1 };
+  // the smallest building there is, so it is seen whole from where you stand
+  const account: Account = { address, codeSize: 64, code: `0x${'a5'.repeat(64)}`, balance: 0n, nonce: 1 };
   const structure = structureOf(account, [], chain.coin, { note, notes: note ? [note] : [], code: null, owner: '0x000000000000000000000000000000000000d3a0', salt: null, name: undefined });
   structure.mock = true;
   return structure;
