@@ -1540,7 +1540,9 @@ function takeDemoJump(): boolean {
           player.x = stand.x;
           player.z = stand.z;
           player.yaw = stand.yaw;
-          player.pitch = -0.05;
+          // at the plate the eyes are kept a little down, on the plate and its
+          // posts rather than on whatever stands on the horizon behind it
+          player.pitch = which === 'wallet' ? -0.18 : -0.05;
           player.y = ground.surfaceAt(player.x, player.z);
         }
         if (which === 'first' || which === 'wallet') return null;
@@ -1762,7 +1764,8 @@ loop({
         }
         had.x = homeCell.x + origin.x + player.x + mockPeer.x;
         had.z = homeCell.z + origin.z + player.z + mockPeer.z;
-        had.dig = mockPeer.dig;
+        // nobody digs while walking: the auger goes in once they have stopped
+        had.dig = mockPeer.dig && away < 0.05;
       }
     }
     // the tour looking round for you

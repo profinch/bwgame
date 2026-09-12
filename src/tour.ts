@@ -169,14 +169,13 @@ export const STEPS: readonly Step[] = [
     scene: 'wallet',
     says: 'a wallet lies as a plate on levelled ground, a post for each token it holds — the post as tall as the share of the token\'s whole supply, its name and the amount cut into it. and other people are here too: standing, walking, digging. a claim anyone makes stands up for everyone within seconds.',
     async play(d, wait) {
-      d.look(0, 0.1);
-      await wait(1500);
-      d.look(0, 0);
-      // somebody comes in from the right, well clear of the plate, and digs beside you
+      // the plate first, then somebody comes in from the right, well clear of
+      // it, stops beside you, and only then digs
+      await wait(2500);
       d.peer(11, 3, false, true);
       await wait(400);
       d.peer(-2, 1.5, false);
-      await wait(7000);
+      await wait(9500);
       d.peer(-2, 1.5, true);
       await wait(4500);
       d.peer(-2, 1.5, false);
