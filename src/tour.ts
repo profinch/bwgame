@@ -286,7 +286,6 @@ export const STEPS: readonly Step[] = [
   {
     says: 'the menu. panels puts away what you do not need, and brings it back.',
     async play(d, wait) {
-      d.mark('.navlinks');
       d.section('panels');
       await wait(1800);
       d.togglePanel('metrics');
