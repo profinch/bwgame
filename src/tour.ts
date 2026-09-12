@@ -77,8 +77,9 @@ export interface Driver {
    * Set the scene a step needs before it plays — on open ground by home, at
    * the first plot, at the wallet, with the tour's plot claimed, or written
    * into — at once, whether the step was reached in order, skipped to, or gone
-   * back to; and the same wherever the tour was begun, since every spot is a
-   * fixed one by a fixed address. The tour's plot's address comes back, if
+   * back to, and the same wherever the tour was begun, since every spot is a
+   * fixed one by a fixed address. A step opens on its picture: no drop from
+   * the sky, no turn of the head. The tour's plot's address comes back, if
    * there is one.
    */
   scene(which: Scene, wait: (ms: number) => Promise<void>): Promise<string | null>;

@@ -1555,19 +1555,19 @@ function takeDemoJump(): boolean {
         // a travel still under way from before finishes first, whatever the scene
         if (tourTravel) await tourTravel.catch(() => undefined);
         if (which === 'any') return null;
+        // a step opens on its picture: no drop from the sky, no turn of the
+        // head — the spot, the way you face, at once, whichever way the step
+        // was come to; the step's own movements begin from there
         if (which === 'open') {
           // open ground a way off home, facing away from it
-          const travelled = Math.abs(origin.x) > 0.5 || Math.abs(origin.z) > 0.5;
-          if (travelled) arriveAt(0, 0);
+          if (Math.abs(origin.x) > 0.5 || Math.abs(origin.z) > 0.5) arriveAt(0, 0);
           player.x = OPEN_STAND.x;
           player.z = OPEN_STAND.z;
           player.yaw = OPEN_STAND.yaw;
           player.pitch = -0.03;
           player.y = ground.surfaceAt(player.x, player.z);
-          if (travelled) {
-            descent = 60;
-            await wait(1600);
-          }
+          descent = 0;
+          turning = null;
           return null;
         }
         // at a place — the first plot, or the wallet — there already or taken
@@ -1576,9 +1576,8 @@ function takeDemoJump(): boolean {
         const stand = which === 'wallet' ? WALLET_STAND : FIRST_STAND;
         if (goal) {
           const at = offsetOf(goal);
-          const travelled = Math.abs(origin.x - at.x) > 0.5 || Math.abs(origin.z - at.z) > 0.5;
-          if (travelled) {
-            tourTravel = travelTo(goal, { ...stand, drop: 60 });
+          if (Math.abs(origin.x - at.x) > 0.5 || Math.abs(origin.z - at.z) > 0.5) {
+            tourTravel = travelTo(goal, { ...stand, drop: 0 });
             await tourTravel;
           }
           player.x = stand.x;
@@ -1588,7 +1587,8 @@ function takeDemoJump(): boolean {
           // posts rather than on whatever stands on the horizon behind it
           player.pitch = which === 'wallet' ? -0.22 : -0.05;
           player.y = ground.surfaceAt(player.x, player.z);
-          if (travelled) await wait(1600);
+          descent = 0;
+          turning = null;
         }
         if (which === 'first' || which === 'wallet') return null;
         // the tour's plot, as the step needs it: a drawing, or written into —
