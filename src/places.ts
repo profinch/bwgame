@@ -739,9 +739,12 @@ function carvedBlock(
   }
 }
 
-/** How much of a note is cut into a wall: this many words, this many signs each. */
-const NOTE_WORDS = 4;
-const NOTE_SIGNS = 10;
+/**
+ * How much of a note is cut into a wall: as many words as the wall has room
+ * for, up to this many, this many signs each; a longer word is cut to it.
+ */
+const NOTE_WORDS = 12;
+const NOTE_SIGNS = 16;
 /** How high above the ground the note's foot is, and how high the writing may reach. */
 const NOTE_FOOT = 0.15;
 
