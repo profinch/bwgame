@@ -56,8 +56,9 @@ In roughly the order it matters:
    page or losing what the world holds — the panels, the live room, the tour. Recorded 12.09.2026.
 5. **A subgraph with no depth in it.** The `cell` and `tile` fields cut an address at a fixed
    number of digits — the metre and the 256-metre tile of the walkable world — so the index knows
-   the depth, and a change of depth (13 → 14 on 12.09.2026) leaves it saying the wrong digits until
-   it is republished. Nobody reads the fields: the pages take every plot over the socket. Drop them
+   the depth, and a change of depth leaves it saying the wrong digits until it is republished —
+   which is why depth 14, tried on 12.09.2026, was taken back to 13 for the hackathon. Nobody reads
+   the fields: the pages take every plot over the socket. Drop them
    with the next version; "everything near here" is a range on `x` and `y`, which are the address
    as 80-bit coordinates and hold at any depth. Then fix the whitepaper's line about it (§8).
    Decided 12.09.2026; the subgraph is not to be touched before the hackathon ends.
@@ -72,7 +73,7 @@ In roughly the order it matters:
 11. **Plots on an L2 and on mainnet;** other chains as other worlds; bridges as passages.
 12. **Economy around plots:** selling, renting, lending a place — as contracts, not as our rules.
 13. **A new figure** for the walker.
-12. Beacons, a first-discoverer record, a feed of active addresses to go and see.
+14. Beacons, a first-discoverer record, a feed of active addresses to go and see.
 
 ## Never
 

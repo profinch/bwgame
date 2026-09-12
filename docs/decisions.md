@@ -7,12 +7,14 @@ What was decided, and why. What was refused, and why. Dated where the date matte
 - **The map is the address space.** Each hex digit's top two bits step x and bottom two step y;
   forty digits, forty steps. Reversible; all of 2<sup>160</sup> covered. Neighbourhood is a shared
   prefix.
-- **Depth 14.** One metre of ground is one cell at the fourteenth digit; the world is 268 435 km
-  across. Deeper is unminable, shallower is cheaper to mine into; fourteen makes an hour of digging
-  on eight threads worth about three hundred metres, a night about a hundred. It was 13 until
-  12.09.2026 (four times smaller, an hour worth seventy-five metres): the owner had it deepened, so
-  that a good place costs real work. Plots claimed at 13 keep their addresses and so their places;
-  only the distances between them read four times longer.
+- **Depth 13.** One metre of ground is one cell at the thirteenth digit; the world is 67 109 km
+  across. Deeper is unminable, shallower is cheaper to mine into; thirteen makes an hour of digging
+  on eight threads worth about seventy-five metres, a night about twenty-five. Depth 14 was tried
+  on 12.09.2026 — four times wider, sixteen times the work for a place — and taken back the same
+  day, because the subgraph's `cell` and `tile` fields are cut at the depth and republishing it
+  during the hackathon was not worth it; 13 will do for the hackathon (owner). The constant is one
+  line, everything follows it, and the searcher's copy of it (`wasm/mine.ts`) has to be rebuilt.
+  A depth-free subgraph is on the roadmap; after it, the depth can move freely.
 - **Nothing invented.** The world shows what the chain answered. No scenery, no mocks, no demo
   modes (removed 08.09.2026 at the owner's insistence). A mock, if ever, only behind a flag and
   labelled on screen.

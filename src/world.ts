@@ -480,7 +480,7 @@ let alightAngle = 0;
 /**
  * A side of a point, `off` metres from it, that is inside the world: random,
  * tried a few times, and failing that the side that faces the middle of the
- * world. Home on Sepolia stands fifty-one metres from the world's edge.
+ * world. Home on Sepolia stands twelve metres from the world's edge.
  */
 function sideInside(atX: number, atZ: number, off: number): number {
   for (let tries = 0; tries < 24; tries++) {

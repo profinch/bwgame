@@ -144,7 +144,7 @@ function permute(): void {
 }
 
 /**
- * Where the hashed address sits on the walkable grid: its first fourteen hex
+ * Where the hashed address sits on the walkable grid: its first thirteen hex
  * digits (DEPTH in src/engine/land.ts, which this has to match), the top two bits of each stepping x and the bottom two stepping z.
  * The same reading as `placeOf` in mine.ts, which is the point — the search
  * measures with the ruler the world is drawn with.
@@ -156,7 +156,7 @@ let placeZ: i32 = 0;
 @inline function placeHashed(): void {
   let x: i32 = 0;
   let z: i32 = 0;
-  for (let i = 0; i < 14; i++) {
+  for (let i = 0; i < 13; i++) {
     const byte = load<u8>(STATE + 12 + (i >> 1));
     const digit: i32 = (i & 1) == 0 ? byte >> 4 : byte & 15;
     x = (x << 2) | (digit >> 2);
