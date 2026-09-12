@@ -597,21 +597,38 @@ function turn(seconds: number): void {
 }
 
 /** And go to whatever an address holds, raising it if it is a thing. */
-async function travelTo(address: string): Promise<Structure | null> {
+async function travelTo(
+  address: string,
+  /**
+   * Where to stand on arrival, given by the tour: a spot it has stood on
+   * before and a short drop onto it, in place of the random side and the
+   * long descent — so the same step looks the same every time.
+   */
+  stand?: { x: number; z: number; yaw: number; drop: number },
+): Promise<Structure | null> {
   taking.stop();
   const at = offsetOf(address);
   arriveAt(at.x, at.z);
+  if (stand) {
+    player.x = stand.x;
+    player.z = stand.z;
+    player.yaw = stand.yaw;
+    player.y = ground.surfaceAt(player.x, player.z);
+    descent = stand.drop;
+  }
   void raiseNearby();
   const account = await accountAt(address);
   if (!account) return null;
   const structure = await standing(account);
   if (stands(account)) raise(structure);
-  // a stone with forty posts on it is ten metres across, so stand off far
-  // enough to see the whole of it rather than inside the first row — on the
-  // same side you came down on
-  const off = Math.max(ALIGHT, Math.max(structure.wide, structure.deep) / 2 + ALIGHT * 0.8);
-  player.x = Math.sin(alightAngle) * off;
-  player.z = Math.cos(alightAngle) * off;
+  if (!stand) {
+    // a stone with forty posts on it is ten metres across, so stand off far
+    // enough to see the whole of it rather than inside the first row — on the
+    // same side you came down on
+    const off = Math.max(ALIGHT, Math.max(structure.wide, structure.deep) / 2 + ALIGHT * 0.8);
+    player.x = Math.sin(alightAngle) * off;
+    player.z = Math.cos(alightAngle) * off;
+  }
   player.y = ground.surfaceAt(player.x, player.z);
   settle();
   return structure;
@@ -1545,8 +1562,12 @@ function takeDemoJump(): boolean {
           const at = offsetOf(goal);
           const travelled = Math.abs(origin.x - at.x) > 0.5 || Math.abs(origin.z - at.z) > 0.5;
           if (travelled) {
-            tourTravel = travelTo(goal);
+            // a spot stood on before: dropped straight onto it, no random side
+            // beside the building first; a new place: the usual arrival, which
+            // then becomes the spot for every later visit
+            tourTravel = travelTo(goal, stands ? { ...stands, drop: 60 } : undefined);
             await tourTravel;
+            if (!stands) descent = 60;
           }
           const stand = stands ?? { x: player.x, z: player.z, yaw: player.yaw };
           if (which === 'wallet') walletStand = stand;
