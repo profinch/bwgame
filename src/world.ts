@@ -1254,9 +1254,32 @@ function standBy(angle: number, off: number, facing: boolean): { x: number; z: n
 // back at about forty-five degrees as the camera sees it: lit, not flat
 const OPEN_STAND = standBy(5.09, 150, false);
 const FIRST_STAND = standBy(2.4, 26, true);
-// the wallet is seen from its +z side, where the posts' signs face, from
-// just off the plate's edge
-const WALLET_STAND = standBy(0.15, 9, true);
+/**
+ * The wallet the tour shows is one of its own, laid on the open ground a few
+ * steps ahead of the open stand and turned to face it, so the step is the
+ * same wherever and whenever the tour runs — no real plots on the horizon
+ * going up or being drawn, nothing from the chain at all.
+ */
+const WALLET_AHEAD = 16;
+function mockWallet(): Structure {
+  const forward = { x: -Math.sin(OPEN_STAND.yaw), z: -Math.cos(OPEN_STAND.yaw) };
+  const at = { x: OPEN_STAND.x + forward.x * WALLET_AHEAD, z: OPEN_STAND.z + forward.z * WALLET_AHEAD };
+  const cell = addressUnder(at.x, at.z);
+  let tail = '';
+  for (let i = 0; i < 40 - cell.length; i++) tail += '0123456789abcdef'[Math.floor(Math.random() * 16)];
+  const address = `0x${cell}${tail}`;
+  const account: Account = { address, codeSize: 0, code: '0x', balance: 2_400_000_000_000_000_000n, nonce: 37 };
+  const holdings = [
+    { symbol: 'usdc', amount: 12_500_000_000n, decimals: 6, supply: 40_000_000_000_000_000n },
+    { symbol: 'weth', amount: 3_100_000_000_000_000_000n, decimals: 18, supply: 3_000_000_000_000_000_000_000_000n },
+    { symbol: 'link', amount: 420_000_000_000_000_000_000n, decimals: 18, supply: 1_000_000_000_000_000_000_000_000_000n },
+  ];
+  const structure = structureOf(account, holdings, chain.coin);
+  structure.mock = true;
+  // the posts' signs face +z in the plate's own frame: turned to face the stand
+  structure.turn = OPEN_STAND.yaw;
+  return structure;
+}
 /**
  * The travel the tour has under way, if any. A travel goes on after the step
  * that began it is left — the chain is asked, then the walker is set down —
@@ -1264,8 +1287,6 @@ const WALLET_STAND = standBy(0.15, 9, true);
  * over each other and the tour would come apart under quick clicking.
  */
 let tourTravel: Promise<unknown> | null = null;
-/** The wallet the tour shows: the one that took the first ground here. */
-const TOUR_WALLET = '0x3095c19c92551bba70bcfa9aafa99d145347b5f8';
 
 function takeDemoJump(): boolean {
   const asked = demo.jump;
@@ -1547,11 +1568,14 @@ function takeDemoJump(): boolean {
       },
       peer: (right, ahead, dig, atOnce = false) => {
         if (!live) return;
-        // in the way you face: forward is -z at yaw zero, right is +x
+        // in the way you face — the box's own turn, as the shader turns it:
+        // forward is -z at yaw zero, right is +x, and (right, -ahead) is the
+        // local point carried round by the yaw
         const c = Math.cos(player.yaw);
         const sn = Math.sin(player.yaw);
-        const dx = c * right - sn * ahead;
-        const dz = -sn * right - c * ahead;
+        const lz = -ahead;
+        const dx = c * right + sn * lz;
+        const dz = c * lz - sn * right;
         mockPeer.on = true;
         mockPeer.toX = dx;
         mockPeer.toZ = dz;
@@ -1613,10 +1637,22 @@ function takeDemoJump(): boolean {
           turning = null;
           return null;
         }
-        // at a place — the first plot, or the wallet — there already or taken
-        // there with a short drop, and on the same spot beside it every time
-        const goal = which === 'wallet' ? TOUR_WALLET : await firstPlot();
-        const stand = which === 'wallet' ? WALLET_STAND : FIRST_STAND;
+        if (which === 'wallet') {
+          // on the open ground by home, a plate of the tour's own a few steps ahead
+          if (Math.abs(origin.x) > 0.5 || Math.abs(origin.z) > 0.5) arriveAt(0, 0);
+          player.x = OPEN_STAND.x;
+          player.z = OPEN_STAND.z;
+          player.yaw = OPEN_STAND.yaw;
+          player.pitch = -0.18;
+          player.y = ground.surfaceAt(player.x, player.z);
+          descent = 0;
+          turning = null;
+          raise(mockWallet());
+          return null;
+        }
+        // at the first plot — there already or taken there — on the same spot beside it every time
+        const goal = await firstPlot();
+        const stand = FIRST_STAND;
         if (goal) {
           const at = offsetOf(goal);
           if (Math.abs(origin.x - at.x) > 0.5 || Math.abs(origin.z - at.z) > 0.5) {
@@ -1626,14 +1662,12 @@ function takeDemoJump(): boolean {
           player.x = stand.x;
           player.z = stand.z;
           player.yaw = stand.yaw;
-          // at the plate the eyes are kept a little down, on the plate and its
-          // posts rather than on whatever stands on the horizon behind it
-          player.pitch = which === 'wallet' ? -0.22 : -0.05;
+          player.pitch = -0.05;
           player.y = ground.surfaceAt(player.x, player.z);
           descent = 0;
           turning = null;
         }
-        if (which === 'first' || which === 'wallet') return null;
+        if (which === 'first') return null;
         // the tour's plot, as the step needs it: a drawing, or written into —
         // put up at once, the growing and the writing having been shown already
         const address = mockAddressAhead();
@@ -2138,3 +2172,6 @@ if (asked) {
     }
   })();
 }
+
+// a hand on the world's state from the console, for looking into it: nothing reads this
+(window as unknown as { __gs: unknown }).__gs = { live, mockPeer, structures, player, origin, demo };
