@@ -169,12 +169,12 @@ export const STEPS: readonly Step[] = [
     async play(d, wait) {
       // back off from the building, then run the eyes up it to the roof and back down to its foot
       d.walk(-1, 0, false);
-      await wait(1200);
+      await wait(2200);
       d.walk(0, 0, false);
-      d.look(0, 0.22);
-      await wait(2600);
-      d.look(0, -0.22);
-      await wait(2600);
+      d.look(0, 0.2);
+      await wait(2800);
+      d.look(0, -0.2);
+      await wait(2800);
       d.stop();
     },
   },
