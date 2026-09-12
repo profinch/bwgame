@@ -22,7 +22,8 @@ after the start), and what comes after. The hackathon is where this begins, not 
   the place; travel by name.
 - Multiplayer: a live server for presence (other players, their digging) and for pushing new
   claims to everyone within seconds. Nothing stored.
-- Onboarding: a welcome, an arrival descent, a guiding panel, a "what's near" line, how to play.
+- Onboarding: a welcome, an arrival descent, a guiding panel, a "what's near" line, how to play,
+  and a walk round in nine steps — offered the first time, in the menu after.
 - Mobile: a thumb stick, on-screen buttons, a one-column layout, battery-aware defaults.
 - Black or white: the whole page and the world turned over, kept in the browser.
 - Hills: six octaves of the address tree with a peaked profile on the coarse ones; buildings on
@@ -33,7 +34,6 @@ after the start), and what comes after. The hackathon is where this begins, not 
 - **World ID (Selfie Check):** a place resolves faster the more people stand in it, which invites
   fifty tabs; a verified human counts as a whole unit and an unverified one as a fraction. Also
   considered for naming, so a name belongs to a person.
-- An automatic onboarding: a guided first play, step by step, on top of the welcome.
 
 ## After the hackathon
 

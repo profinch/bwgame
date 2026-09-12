@@ -717,6 +717,17 @@ html[data-t="dark"] {
   color: #4a4a48;
 }
 
+.welcome-do {
+  display: flex;
+  gap: 8px;
+  margin: 0;
+}
+
+.welcome-card .welcome-tour {
+  background: transparent;
+  color: var(--fg);
+}
+
 .welcome-card button {
   justify-self: start;
   padding: 7px 14px;
@@ -873,6 +884,64 @@ body.listopen .subarrow {
   transform: translateY(0) rotate(-135deg);
 }
 
+/* the onboarding: a card at the foot of the screen, in the panels' dress,
+   and a dashed line round whatever the step is about */
+.hud.tour {
+  top: auto;
+  left: 50%;
+  right: auto;
+  bottom: 20px;
+  transform: translateX(-50%);
+  width: min(46ch, calc(100vw - 48px));
+  pointer-events: auto;
+  padding: 12px 16px;
+  border-radius: 22px;
+  border: 1px solid color-mix(in srgb, var(--line) 8%, transparent);
+  background: color-mix(in srgb, var(--bg) 78%, transparent);
+  display: grid;
+  gap: 8px;
+  z-index: 2;
+}
+
+.hud.tour p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.hud.tour .tour-count {
+  font-size: 11px;
+  letter-spacing: 0.15em;
+  opacity: 0.55;
+}
+
+.hud.tour .tour-do {
+  display: flex;
+  gap: 8px;
+}
+
+.hud.tour button {
+  padding: 5px 10px;
+  border: 1px solid color-mix(in srgb, var(--line) 30%, transparent);
+  background: transparent;
+  color: var(--fg);
+  font: inherit;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+}
+
+.hud.tour .tour-next {
+  border-color: var(--fg);
+  background: var(--fg);
+  color: var(--bg);
+}
+
+.tour-marked {
+  outline: 1px dashed color-mix(in srgb, var(--fg) 60%, transparent);
+  outline-offset: 6px;
+}
+
 /* a panel put away is not on the page at all */
 body.off-metrics .hud.bottom,
 body.off-jump .hud.jump,
@@ -950,6 +1019,7 @@ html.mapfirst .touchpad-buttons {
 .hud.jump,
 .hud.claim,
 .hud.own,
+.hud.tour,
 .touchpad,
 .touchpad-buttons {
   transition: opacity 0.6s ease;
@@ -959,6 +1029,7 @@ body.onmap .hud.bottom,
 body.onmap .hud.jump,
 body.onmap .hud.claim,
 body.onmap .hud.own,
+body.onmap .hud.tour,
 body.onmap .touchpad,
 body.onmap .touchpad-buttons {
   opacity: 0;

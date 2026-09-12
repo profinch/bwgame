@@ -32,6 +32,7 @@ import { Chips } from './chips';
 import { claimAt, claimedPlots, formerPlots, implementationOf, isPlot, knownPlots, noteOf, ownerOf, plotNameOf, relicOf } from './plot';
 import { ownGround } from './owning';
 import { Panels } from './panels';
+import { Tour } from './tour';
 import { Live } from './live';
 import { bytesOf, placeOf } from './mine';
 import { Stick, coarse } from './stick';
@@ -598,6 +599,7 @@ function turn(seconds: number): void {
 /** And go to whatever an address holds, raising it if it is a thing. */
 async function travelTo(address: string): Promise<Structure | null> {
   taking.stop();
+  tour?.saw('travelled');
   const at = offsetOf(address);
   arriveAt(at.x, at.z);
   void raiseNearby();
@@ -941,6 +943,7 @@ canvas.addEventListener('pointermove', (event) => {
   // looking for yourself ends any turn the world was making for you, and any descent
   turning = null;
   descent = 0;
+  tour?.saw('looked');
   player.yaw -= (event.clientX - looking.x) * 0.004;
   player.pitch = Math.max(-1.2, Math.min(1.2, player.pitch - (event.clientY - looking.y) * 0.003));
   looking = { x: event.clientX, y: event.clientY };
@@ -1050,6 +1053,7 @@ function walk(seconds: number): void {
     (held.has('KeyA') || held.has('ArrowLeft') ? 1 : 0) +
     stick.side;
   if (!forward && !side) return;
+  tour?.saw('walked');
 
   // a thumb half way out walks at half pace; a key is all the way
   const push = Math.min(1, Math.hypot(forward, side));
@@ -1134,6 +1138,10 @@ function strokesFor(structure: Structure, base: number): Stroke[] {
   }
 }
 
+/** The onboarding, started from the welcome or the menu; the menu's corners follow it. */
+let tour: Tour | null = null;
+let startTour: () => void = () => {};
+
 /**
  * The menu, as on bwtoken.io. The corners frame the whole of it until a
  * section is chosen. "map" brings the map up in this page under this header,
@@ -1148,6 +1156,7 @@ function strokesFor(structure: Structure, base: number): Stroke[] {
   const header = document.querySelector<HTMLElement>('.hud.top');
   const menu = document.querySelector<HTMLElement>('.navlinks');
   const frame = document.querySelector<HTMLElement>('.navlinks .frame');
+  const tourLink = document.querySelector<HTMLAnchorElement>('#onboarding');
   const mapLink = document.querySelector<HTMLAnchorElement>('#map');
   const panelsLink = document.querySelector<HTMLAnchorElement>('#panels');
   const chainLink = document.querySelector<HTMLAnchorElement>('#blockchain');
@@ -1159,8 +1168,9 @@ function strokesFor(structure: Structure, base: number): Stroke[] {
   const mapView = document.querySelector<HTMLIFrameElement>('#mapview');
   const panelBar = document.querySelector<HTMLElement>('#panelbar');
   const panelList = document.querySelector<HTMLElement>('#plist');
-  if (header && menu && frame && mapLink && panelsLink && chainLink && clip && bar && sel && cur && list && mapView
-    && panelBar && panelList) {
+  const tourCard = document.querySelector<HTMLElement>('.hud.tour');
+  if (header && menu && frame && tourLink && mapLink && panelsLink && chainLink && clip && bar && sel && cur && list && mapView
+    && panelBar && panelList && tourCard) {
     cur.textContent = chain.name;
     // sepolia first: the world where ground is taken
     const worlds = [CHAINS.sepolia, CHAINS.mainnet].filter((it) => it !== undefined);
@@ -1221,12 +1231,13 @@ function strokesFor(structure: Structure, base: number): Stroke[] {
     panelBar.style.height = `${PAD + panels.count * ROW}px`;
     clip.style.height = `${PAD + Math.max(rows.length, panels.count) * ROW + ROOM}px`;
 
-    let section: 'map' | 'panels' | 'blockchain' | null = null;
+    let section: 'onboarding' | 'map' | 'panels' | 'blockchain' | null = null;
     const show = (next: typeof section) => {
       section = next;
       unfold(false);
       document.body.classList.toggle('subopen', next === 'blockchain');
       document.body.classList.toggle('panelsopen', next === 'panels');
+      tourLink.classList.toggle('active', next === 'onboarding');
       mapLink.classList.toggle('active', next === 'map');
       panelsLink.classList.toggle('active', next === 'panels');
       chainLink.classList.toggle('active', next === 'blockchain');
@@ -1248,9 +1259,27 @@ function strokesFor(structure: Structure, base: number): Stroke[] {
         mapView.classList.remove('on');
       }
       history.replaceState(null, '', next === 'map' ? '#map' : location.pathname + location.search);
-      place(next === 'map' ? mapLink : next === 'panels' ? panelsLink : next === 'blockchain' ? chainLink : 'group');
+      place(framed());
     };
-    const framed = () => (section === 'map' ? mapLink : section === 'panels' ? panelsLink : section === 'blockchain' ? chainLink : 'group');
+    const framed = () =>
+      section === 'onboarding' ? tourLink : section === 'map' ? mapLink : section === 'panels' ? panelsLink : section === 'blockchain' ? chainLink : 'group';
+
+    // the onboarding: the corners on its word while it runs, off when it ends
+    tour = new Tour(tourCard, () => {
+      if (section === 'onboarding') show(null);
+    });
+    tourLink.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      if (tour!.running) return;
+      show('onboarding');
+      tour!.start();
+    });
+    tourCard.addEventListener('click', (event) => event.stopPropagation());
+    startTour = () => {
+      show('onboarding');
+      tour!.start();
+    };
 
     // the corners' first placing is not a move: no transition until they are placed
     frame.style.transition = 'none';
@@ -1344,7 +1373,7 @@ if (welcome) {
     welcome.querySelector<HTMLElement>('.welcome-keys')!.textContent = touch
       ? 'stick to walk · drag to look · type an address or a name to go there'
       : 'wasd to walk · shift to run · drag to look · type an address or a name to go there';
-    welcome.querySelector<HTMLButtonElement>('.welcome-go')!.addEventListener('click', () => {
+    const leave = () => {
       welcome.hidden = true;
       holdDescent = false;
       try {
@@ -1352,6 +1381,14 @@ if (welcome) {
       } catch {
         // then it is shown again next time
       }
+    };
+    welcome.querySelector<HTMLButtonElement>('.welcome-go')!.addEventListener('click', leave);
+    // the first time in, the welcome offers the walk round; later it is the menu's
+    const showMe = welcome.querySelector<HTMLButtonElement>('.welcome-tour')!;
+    showMe.hidden = Tour.walked();
+    showMe.addEventListener('click', () => {
+      leave();
+      startTour();
     });
   }
 }

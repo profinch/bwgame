@@ -18,6 +18,7 @@
       <h1><span class="mark"></span><span class="name">ground state</span></h1>
       <p class="hint">the chain on foot</p>
       <nav class="navlinks" aria-label="menu">
+        <a href="#onboarding" id="onboarding">onboarding</a>
         <a href="#map" id="map">map</a>
         <a href="#panels" id="panels">panels</a>
         <a href="#blockchain" id="blockchain">blockchain</a>
@@ -47,9 +48,20 @@
         <p>a blockchain as a place. the map is the address space itself: contracts stand as buildings, wallets lie as plates with their tokens, and this block's transactions cross the sky from sender to receiver. nothing here is invented.</p>
         <p>empty ground cannot be bought — only computed: dig where you stand, and one transaction makes the place your contract forever. build on it, name it under groundstate.eth, pass it on.</p>
         <p class="welcome-keys"></p>
-        <button type="button" class="welcome-go">stand in it</button>
+        <p class="welcome-do">
+          <button type="button" class="welcome-tour">show me around</button>
+          <button type="button" class="welcome-go">stand in it</button>
+        </p>
       </div>
     </section>
+    <aside class="hud tour" hidden>
+      <p class="tour-count"></p>
+      <p class="tour-says"></p>
+      <p class="tour-do">
+        <button type="button" class="tour-next">next</button>
+        <button type="button" class="tour-skip">leave it</button>
+      </p>
+    </aside>
     <footer class="hud bottom">
       <p class="place"></p>
       <p class="near"></p>
