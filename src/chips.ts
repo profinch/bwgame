@@ -43,6 +43,7 @@ export class Chips {
   private readonly chips: Chip[] = [];
   /** Chips owed and not yet thrown, carried between frames. */
   private due = 0;
+  private dueElsewhere = 0;
   /** One instance a chip, and zeros where there is none. */
   readonly instances = new Float32Array(MOST * INSTANCE_FLOATS);
 
@@ -52,6 +53,16 @@ export class Chips {
    * many chips come up; `gravity` is the world's, so a chip falls the way a
    * walker does.
    */
+  /** Chips thrown by somebody else's digging — a peer's, or the tour's player's — with the same hand. */
+  shed(seconds: number, source: Source, rate: number): void {
+    const perSecond = 8 + 28 * Math.min(1, rate / 4e7);
+    this.dueElsewhere += seconds * perSecond;
+    while (this.dueElsewhere >= 1) {
+      this.dueElsewhere -= 1;
+      if (this.chips.length < MOST) this.chips.push(this.throwFrom(source));
+    }
+  }
+
   step(seconds: number, source: Source | null, rate: number, gravity: number): void {
     // the ones in the air move first, then new ones are thrown: a chip is seen
     // at the rim for a frame before gravity has a say, whatever the frame is

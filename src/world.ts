@@ -1216,7 +1216,7 @@ function standBy(angle: number, off: number, facing: boolean): { x: number; z: n
 }
 const OPEN_STAND = standBy(0.7, 150, false);
 const FIRST_STAND = standBy(2.4, 26, true);
-const WALLET_STAND = standBy(4.1, 16, true);
+const WALLET_STAND = standBy(4.1, 9, true);
 /**
  * The travel the tour has under way, if any. A travel goes on after the step
  * that began it is left — the chain is asked, then the walker is set down —
@@ -1577,7 +1577,7 @@ function takeDemoJump(): boolean {
           player.yaw = stand.yaw;
           // at the plate the eyes are kept a little down, on the plate and its
           // posts rather than on whatever stands on the horizon behind it
-          player.pitch = which === 'wallet' ? -0.18 : -0.05;
+          player.pitch = which === 'wallet' ? -0.3 : -0.05;
           player.y = ground.surfaceAt(player.x, player.z);
           if (travelled) await wait(1600);
         }
@@ -1895,7 +1895,11 @@ loop({
         if (Math.abs(x) > GROUND / 2 || Math.abs(z) > GROUND / 2) continue;
         const y = supportAt(x, z, ground.surfaceAt(x, z) + STEP_UP);
         // their auger turns with ours: the rate is theirs, but the turning is a sign, not a measure
-        if (peer.dig) digging.push(x, y - POINT / 2, z, 1, 1, 1, spin, 0.92, 0.6, 0);
+        if (peer.dig) {
+          digging.push(x, y - POINT / 2, z, 1, 1, 1, spin, 0.92, 0.6, 0);
+          // and the ground comes up round theirs as round ours
+          chips.shed(seconds, { x, y, z }, 1.4e7);
+        }
         else standing.push(x, y, z, 1, 1, 1, peer.drawnYaw, 0.92, 0.6, 0);
       }
       renderer.update(others, new Float32Array(standing));
