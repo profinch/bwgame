@@ -60,12 +60,18 @@ What was decided, and why. What was refused, and why. Dated where the date matte
   *kept* for everybody rests on a person's word at once and on strangers' only when three agree.
   A person is drawn in the walker's grey, a stranger in white; nothing else about them is known
   or shown. The token lives in the browser for the credential's ninety days.
+- **What is written on a building stands out of the wall** (13.09.2026): each stroke a small dark
+  block on the face, the wall itself one whole box. Cut in as grooves — the face laid back in
+  pieces round the strokes over a dark floor — the writing shimmered: pieces meeting edge to
+  edge in one plane fight for the same depth at any distance. Relief has one plane and things in
+  front of it, and nothing to fight about. The posts' runes stay cut in: a post is small and
+  read from close, and its grooves are one block each.
 - **English in code, comments, commits and UI, lowercase in UI.** One contributor in the history.
 
 ## Refused
 
 Boulders as placeholder scenery (as relics: accepted) · a plate with the address in bits · a
-separate colour for signs · convex signs · runes on the plate itself (posts only) · plates of
+separate colour for signs · convex signs on the posts (on the buildings: accepted, see above) · runes on the plate itself (posts only) · plates of
 different sizes per wallet · posts sorted by height · aiming a transaction at a token's post
 (the plate, not the post: a block says which contract was called, not which token moved) ·
 towers and skyscrapers as a metaphor · rock layers and time as depth · a landscape of every

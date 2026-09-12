@@ -1069,6 +1069,7 @@ body.onmap .hud.bottom,
 body.onmap .hud.jump,
 body.onmap .hud.claim,
 body.onmap .hud.own,
+body.onmap .hud.person,
 body.onmap .touchpad,
 body.onmap .touchpad-buttons {
   opacity: 0;

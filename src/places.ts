@@ -815,18 +815,19 @@ function notedBuilding(structure: Structure, base: number, origin: { x: number; 
   const top = base + structure.tall * grown;
   const roof = base + structure.tall;
   const across = POST / WALL;
-  const cutIn = Math.max(across * 1.6, 0.003);
-  /** The floor of the grooves is dark, so the letters read from a way off. */
-  const GROOVE_FLOOR = 0.08;
+  /** How far the strokes stand out of the wall. */
+  const relief = Math.max(across * 1.6, 0.003);
+  /** The strokes are dark, so the letters read from a way off. */
+  const INK = 0.08;
   const halfW = structure.wide / 2;
   const halfD = structure.deep / 2;
 
-  // the wall, pulled in by twice the cut on every side: the face goes back
-  // on flush in pieces, and behind the pieces, where the words are, a dark
-  // floor a cut deep — behind the face and in front of the wall, in a layer
-  // of its own, so nothing lies in one plane with anything else and
-  // nothing bleeds through from behind
-  put(0, bottom, 0, structure.wide - 2 * cutIn, top - bottom, structure.deep - 2 * cutIn);
+  // the wall is one whole box, and the writing stands out of it: each stroke
+  // a small dark block laid on the face. Nothing lies in one plane with
+  // anything else — the face is one plane and the strokes are in front of it
+  // — so nothing shimmers between two surfaces fighting for the same depth,
+  // which is what cutting the strokes in as grooves did
+  put(0, bottom, 0, structure.wide, top - bottom, structure.deep);
 
   /**
    * A wall of the building, with a way of laying a piece on it: `u` runs along
@@ -850,12 +851,12 @@ function notedBuilding(structure: Structure, base: number, origin: { x: number; 
     // left, -x: seen from -x, right is +z
     { width: structure.deep, foot: feet[3], lay: (u0, u1, y0, y1, inset, thick, a) => put(-(halfW - inset - thick / 2), y0, (u0 + u1) / 2, thick, y1 - y0, u1 - u0, a) },
   ];
-  /** A flush slab of a wall's face, as much of it as has grown. Slabs meet edge to edge, on the same numbers. */
-  const slab = (wall: Wall, u0: number, u1: number, y0: number, y1: number) => {
+  /** A stroke standing out of a wall's face, as much of it as the wall has grown to. */
+  const stroke = (wall: Wall, u0: number, u1: number, y0: number, y1: number) => {
     const lo = Math.max(y0, bottom);
     const hi = Math.min(y1, top);
     if (hi - lo < 1e-4 || u1 - u0 < 1e-4) return;
-    wall.lay(u0, u1, lo, hi, 0, cutIn);
+    wall.lay(u0, u1, lo, hi, -relief, relief, INK);
   };
 
   // what was written, latest first, in words
@@ -920,15 +921,6 @@ function notedBuilding(structure: Structure, base: number, origin: { x: number; 
   walls.forEach((w, f) => {
     const rows = rowsOn[f]!.sort((a, b) => a.y0 - b.y0);
     const left = -w.width / 2;
-    const right = w.width / 2;
-    if (rows.length === 0) {
-      slab(w, left, right, bottom, roof);
-      return;
-    }
-    // the face round the words: below the lowest row, above the highest, beside each
-    slab(w, left, right, bottom, rows[0]!.y0);
-    const last = rows[rows.length - 1]!;
-    slab(w, left, right, last.y0 + last.tall, roof);
     // the latest note's rows are read first to last: its words are counted so
     let counted = 0;
     const latestRows = rows.filter((r) => r.latest).reverse();
@@ -939,24 +931,15 @@ function notedBuilding(structure: Structure, base: number, origin: { x: number; 
     }
     for (const r of rows) {
       const u0 = left + POST / 2;
-      const u1 = u0 + POST * r.words.length;
-      slab(w, left, u0, r.y0, r.y0 + r.tall);
-      slab(w, u1, right, r.y0, r.y0 + r.tall);
       const carved = r.latest ? (carvedIn.get(r) ?? r.words.length) : r.words.length;
       r.words.forEach((word, i) => {
+        if (i >= carved) return;
         const lu = u0 + POST * i;
-        if (i >= carved) {
-          slab(w, lu, lu + POST, r.y0, r.y0 + r.tall);
-          return;
-        }
-        // a dark floor behind the stone, seen only through the strokes
-        const lo = Math.max(r.y0, bottom);
-        const hi = Math.min(r.y0 + r.tall, top);
-        if (hi > lo) w.lay(lu, lu + POST, lo, hi, cutIn, cutIn, GROOVE_FLOOR);
-        const { down, patches } = carve([word], r.tall, POST);
+        // raised: the patches are the strokes themselves
+        const { down, patches } = carve([word], r.tall, POST, false, true);
         for (const { col, row, cols, rows: rr } of patches) {
           const y0 = r.y0 + r.tall - (row + rr) * down;
-          slab(w, lu + col * across, lu + (col + cols) * across, y0, y0 + rr * down);
+          stroke(w, lu + col * across, lu + (col + cols) * across, y0, y0 + rr * down);
         }
       });
     }
