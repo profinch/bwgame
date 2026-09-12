@@ -22,6 +22,7 @@ import {
   structureOf,
   widthOf,
   writingOn,
+  isWallet,
 } from '../src/places';
 
 const HELD: Holding[] = [
@@ -319,5 +320,14 @@ describe('what stands where', () => {
       const high = data[i * INSTANCE_FLOATS + 4]!;
       expect(y + high).toBeLessThanOrEqual(stone.tall + tallest + 1e-6);
     }
+  });
+});
+
+describe('a wallet with a 7702 delegation', () => {
+  it('is a wallet still', () => {
+    const delegated = { address: '0x' + 'd8'.repeat(20), codeSize: 23, code: 'ef0100' + 'ab'.repeat(20), balance: 1n, nonce: 3 };
+    expect(isWallet(delegated)).toBe(true);
+    expect(isWallet({ ...delegated, codeSize: 24, code: 'ef0100' + 'ab'.repeat(21) })).toBe(false);
+    expect(isWallet({ ...delegated, codeSize: 0, code: '' })).toBe(true);
   });
 });

@@ -571,7 +571,7 @@ export function layoutOf() {
 
 /** Bytes of the code hash, or of the address for something with no code. */
 function seedOf(account: Account): Uint8Array {
-  const text = account.codeSize > 0 ? account.code : account.address.toLowerCase();
+  const text = isWallet(account) ? account.address.toLowerCase() : account.code;
   return keccak_256(encoder.encode(text));
 }
 
@@ -607,7 +607,7 @@ export function structureOf(
   const byte = (i: number) => seed[i % 32]! / 255;
   const held = Number(account.balance / 10n ** 15n) / 1000; // in ether, roughly
 
-  if (account.codeSize === 0) {
+  if (isWallet(account)) {
     // A plate, and it is not turned: this is writing, and writing has a way up.
     // Its size is its writing's and its posts' — the stone is cut to fit what
     // it says, not the other way round. What it has sent wears the marks deeper.
@@ -1205,6 +1205,17 @@ export function piecesOf(structure: Structure, base: number, origin = { x: 0, z:
 /** Whether an account leaves anything on the ground at all. */
 export function stands(account: Account): boolean {
   return account.codeSize > 0 || account.balance > 0n || account.nonce > 0;
+}
+
+/**
+ * Whether an account is a wallet: no code of its own — or the twenty-three
+ * bytes of an EIP-7702 delegation, which is a wallet pointing at code, and
+ * still somebody's wallet, with what it holds. Everything else is a contract.
+ */
+export function isWallet(account: Account): boolean {
+  // the code is kept without its 0x, as the chain module hands it over
+  const code = account.code.toLowerCase().replace(/^0x/, '');
+  return account.codeSize === 0 || (account.codeSize === 23 && code.startsWith('ef0100'));
 }
 
 

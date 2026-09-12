@@ -25,7 +25,7 @@ import { CHAINS, chain } from './chains';
 import { type Account, accountAt, holdingsOf } from './chain';
 import { normalizeAddress } from './coord';
 import { looksLikeName, resolveName } from './ens';
-import { DRESSED_AT, type Structure, blocksOf, bouldersOf, instancesOf, stands, structureOf } from './places';
+import { DRESSED_AT, type Structure, blocksOf, bouldersOf, instancesOf, isWallet, stands, structureOf } from './places';
 import { POINT, auger } from './auger';
 import { type Stroke, glassOf, inkOf, strokesOf } from './blueprint';
 import { Chips } from './chips';
@@ -155,7 +155,7 @@ function reliefUnder(structure: Structure): { high: number; low: number } {
  * ordinary contract: built, and so never drawn.
  */
 async function standing(account: Account, vouched = false): Promise<Structure> {
-  const holdings = account.codeSize === 0 ? await holdingsOf(account.address) : [];
+  const holdings = isWallet(account) ? await holdingsOf(account.address) : [];
   // a plot of an earlier ground is a relic, whatever else it is
   const relic = relicOf(account.code);
   if (relic) return structureOf(account, holdings, chain.coin, null, relic);
