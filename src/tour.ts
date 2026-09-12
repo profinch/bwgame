@@ -107,6 +107,10 @@ export const STEPS: readonly Step[] = [
     scene: 'start',
     says: 'you walk it: w a s d, shift to run, space to jump. on a phone, the stick. dragging the picture looks round.',
     async play(d, wait) {
+      // turn away from whatever is in front — the tour may begin beside a building — then off
+      d.look(2.6, 0);
+      await wait(1200);
+      d.stop();
       d.walk(1, 0, false);
       await wait(2500);
       d.walk(1, 0, true);
