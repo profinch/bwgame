@@ -1092,8 +1092,11 @@ body.embedded #app {
   right: auto;
   bottom: auto;
   pointer-events: auto;
-  max-width: 34ch;
+  /* one size whatever it says: the panel does not breathe as its words change */
+  width: 320px;
+  min-height: 300px;
   padding: 12px 16px;
+  align-content: start;
   border-radius: 22px;
   border: 1px solid color-mix(in srgb, var(--line) 8%, transparent);
   background: color-mix(in srgb, var(--bg) 78%, transparent);
@@ -1359,6 +1362,11 @@ body.touch .touchpad-buttons {
   body.world {
     display: flex;
     flex-direction: column;
+  }
+
+  .hud.own {
+    width: auto;
+    min-height: 0;
   }
 
   .hud,

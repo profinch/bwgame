@@ -254,8 +254,11 @@ export const STEPS: readonly Step[] = [
   },
   {
     scene: 'written',
-    says: 'point the plot at a contract of yours and that code runs at this address — a shop, a game, a gallery live here. name it under groundstate.eth so people can come by name. seal the code and it can never change: whoever deals with this place knows it stays what it is.',
+    says: 'point the plot at a contract of yours and that code runs at this address — a shop, a game, a gallery live here, and other contracts calling this place find it.',
     async play(d, wait) {
+      d.mark('.hud.own');
+      d.ownSays('written', 'says: hello, world\npoints at no code');
+      await wait(900);
       await d.typeInto('.own-code input', '0xC0DE…5EED', wait);
       await wait(500);
       d.press('.own-code button');
@@ -263,8 +266,19 @@ export const STEPS: readonly Step[] = [
       d.clearField('.own-code input');
       d.ownSays('pointing it at code — sign in the wallet', 'says: hello, world\npoints at no code');
       await wait(1400);
+      d.ownSays('sent. waiting for a block', 'says: hello, world\npoints at no code');
+      await wait(1400);
       d.ownSays('pointed at code', 'says: hello, world\npoints at 0xC0DE…5EED');
-      await wait(1600);
+      await wait(2500);
+    },
+  },
+  {
+    scene: 'written',
+    says: 'name it under groundstate.eth and people come by name: demo.groundstate.eth resolves to this plot, in any wallet that knows ENS. a name belongs to the place and goes with it.',
+    async play(d, wait) {
+      d.mark('.hud.own');
+      d.ownSays('yours: 0x3095c19c…d3a0', 'says: hello, world\npoints at 0xC0DE…5EED');
+      await wait(900);
       await d.typeInto('.own-name input', 'demo', wait);
       await wait(500);
       d.press('.own-name button');
@@ -272,15 +286,27 @@ export const STEPS: readonly Step[] = [
       d.clearField('.own-name input');
       d.ownSays('naming it demo.groundstate.eth — sign in the wallet', 'says: hello, world\npoints at 0xC0DE…5EED');
       await wait(1400);
+      d.ownSays('sent. waiting for a block', 'says: hello, world\npoints at 0xC0DE…5EED');
+      await wait(1400);
       d.ownSays('yours: demo.groundstate.eth', 'says: hello, world\npoints at 0xC0DE…5EED');
-      await wait(1800);
+      await wait(2500);
+    },
+  },
+  {
+    scene: 'written',
+    says: 'seal the code and it can never change — not by you, not by anyone. whoever deals with this place knows it stays what it is. writing and naming stay possible; there is no unsealing.',
+    async play(d, wait) {
+      d.mark('.hud.own');
+      d.ownSays('yours: demo.groundstate.eth', 'says: hello, world\npoints at 0xC0DE…5EED');
+      await wait(1200);
       d.press('.own-do .seal');
       await wait(400);
       d.ownSays('sealing the code for good — sign in the wallet', 'says: hello, world\npoints at 0xC0DE…5EED');
       await wait(1400);
+      d.ownSays('sent. waiting for a block', 'says: hello, world\npoints at 0xC0DE…5EED');
+      await wait(1400);
       d.ownSays('sealed: the code is fixed for good', 'says: hello, world\npoints at 0xC0DE…5EED, sealed');
-      await wait(3000);
-      d.mark(null);
+      await wait(2500);
     },
   },
   {
