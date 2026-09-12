@@ -89,6 +89,8 @@ export function beHuman(panel: HTMLElement, feed: string | null, live: Live | nu
   const note = panel.querySelector<HTMLElement>('.person-note')!;
   const doing = panel.querySelector<HTMLElement>('.person-do')!;
   const prove = panel.querySelector<HTMLButtonElement>('.prove')!;
+  const undo = panel.querySelector<HTMLElement>('.person-undo')!;
+  const forget = panel.querySelector<HTMLButtonElement>('.forget')!;
   const code = panel.querySelector<HTMLElement>('.person-code')!;
   const qr = panel.querySelector<HTMLCanvasElement>('.person-qr')!;
   const how = panel.querySelector<HTMLElement>('.person-how')!;
@@ -112,6 +114,7 @@ export function beHuman(panel: HTMLElement, feed: string | null, live: Live | nu
 
   const state = (of: 'idle' | 'asking' | 'person' | 'none') => {
     doing.hidden = of !== 'idle';
+    undo.hidden = of !== 'person';
     code.hidden = of !== 'asking';
     prove.disabled = of === 'asking';
   };
@@ -209,6 +212,17 @@ export function beHuman(panel: HTMLElement, feed: string | null, live: Live | nu
       if (done.signal.aborted) return;
       fail((error as { message?: string }).message ?? 'the check did not go through');
     }
+  });
+
+  // a stranger again, by choice: the token goes from this browser and from the
+  // server's memory both, so it cannot be shown again by anybody
+  forget.addEventListener('click', () => {
+    const have = kept();
+    keep(null);
+    if (have) live?.forget(have.token);
+    else live?.asPerson(null);
+    saidUntil = 0;
+    look();
   });
 
   cancel.addEventListener('click', () => {

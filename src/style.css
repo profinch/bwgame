@@ -1546,6 +1546,7 @@ body.touch .touchpad-buttons {
 }
 
 .hud.person .person-do,
+.hud.person .person-undo,
 .hud.person .person-links {
   display: flex;
   gap: 8px;

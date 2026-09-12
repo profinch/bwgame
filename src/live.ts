@@ -182,6 +182,14 @@ export class Live {
     else if (!token) this.human = false;
   }
 
+  /** A stranger again: the server forgets the token for good, and this connection with it. */
+  forget(token: string): void {
+    this.token = null;
+    this.human = false;
+    const socket = this.socket;
+    if (socket && socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ t: 'forget', token }));
+  }
+
   /** You went to an address and found something standing: the place is remembered for everybody. */
   saw(address: string): void {
     const socket = this.socket;

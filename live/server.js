@@ -518,6 +518,14 @@ sockets.on('connection', (socket) => {
       tell(socket, { t: 'world', block: graphBlock, plots: [...plots.values()], revealed: keptPlaces() });
       return;
     }
+    // a person choosing to be a stranger again: the token is forgotten for good
+    if (message.t === 'forget') {
+      if (typeof message.token === 'string' && humans.delete(hashOf(message.token))) saveHumans();
+      human = false;
+      if (person) person.human = false;
+      tell(socket, { t: 'you', id, human });
+      return;
+    }
     // a token from a verified selfie check: this one stands here as a person
     if (message.t === 'human') {
       human = personWith(message.token);
