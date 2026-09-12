@@ -1889,7 +1889,8 @@ loop({
     const digging = diggingNow();
     renderer.update(
       walker,
-      new Float32Array([player.x, feet(), player.z, digging ? 0 : 1, digging ? 0 : 1, digging ? 0 : 1, player.yaw, 0.2, 0.6, 0]),
+      // a mid tone: dark enough to stand against the sky, light enough to be modelled by the sun
+      new Float32Array([player.x, feet(), player.z, digging ? 0 : 1, digging ? 0 : 1, digging ? 0 : 1, player.yaw, 0.5, 0.6, 0]),
     );
     // the screw stands half sunk: the work is in the ground, not on it
     renderer.update(

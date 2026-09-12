@@ -321,7 +321,10 @@ export class Traffic {
         // made outgoing traffic look like it began in mid-air.
         const behind = Math.max(0, head - t) / Math.max(0.08, head);
         let alpha = (0.4 + 0.6 * (1 - behind * behind)) * (1 - gone) * 0.8;
-        let width = WIDTH;
+        // a ribbon a kilometre out is a hair; it is kept a few pixels wide at
+        // any distance, so the sky reads as traffic and not as scratches
+        const far = Math.hypot(x - vx, y - vy, z - vz);
+        let width = Math.max(WIDTH, far * 0.0035);
 
         if (!streak.ok) {
           /**
@@ -346,7 +349,7 @@ export class Traffic {
           const swing = Math.min(run * 0.009, sky * 0.03) * envelope;
           y += Math.sin(t * Math.PI * 22) * swing;
 
-          width = WIDTH * 1.3;
+          width = Math.max(WIDTH * 1.3, far * 0.0045);
           // it holds its weight all the way home rather than fading where it
           // stopped: the point is that it goes back, not that it wears out
           alpha = Math.min(0.95, (0.5 + 0.5 * (1 - behind * behind)) * 1.15);
