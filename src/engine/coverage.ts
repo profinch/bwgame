@@ -16,7 +16,7 @@
  * Tiles outlive the tab in browser storage. A server, when there is one, stores
  * exactly the same tiles under exactly the same names.
  */
-import { TILE_METRES, TILE_TEXELS, tileIndex, tileName, tileOrigin } from './land';
+import { TILE_DEPTH, TILE_METRES, TILE_TEXELS, tileIndex, tileName, tileOrigin } from './land';
 
 /** Tiles across the window. Eleven is about 2.8 km, further than the fog shows. */
 const WINDOW_TILES = 11;
@@ -25,6 +25,24 @@ const WINDOW_METRES = WINDOW_TILES * TILE_METRES;
 
 /** Where tiles live between visits, and how often they are written there. */
 const STORE_PREFIX = 'gs:cover:';
+
+/**
+ * Tiles kept by a world of another depth are named by prefixes of another
+ * length, and say nothing about this ground: thrown out, once, so they do not
+ * sit in the store for good. Run when the coverage first comes up.
+ */
+function forgetOtherDepths(): void {
+  try {
+    const gone: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i) ?? '';
+      if (key.startsWith(STORE_PREFIX) && key.length - STORE_PREFIX.length !== TILE_DEPTH) gone.push(key);
+    }
+    for (const key of gone) localStorage.removeItem(key);
+  } catch {
+    // no storage: nothing kept, nothing to forget
+  }
+}
 const SAVE_EVERY = 4;
 
 interface Tile {
@@ -101,6 +119,7 @@ export class Coverage {
   private sinceSave = 0;
 
   constructor(gl: WebGL2RenderingContext, at: { x: number; z: number }) {
+    forgetOtherDepths();
     this.gl = gl;
     const texture = gl.createTexture();
     if (!texture) throw new Error('no room for a coverage map');

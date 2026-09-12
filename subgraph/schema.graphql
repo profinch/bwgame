@@ -4,7 +4,7 @@ A place somebody has taken.
 The id is the plot's address, which is also where it stands: the map is the
 address space. `x` and `y` are that address read as coordinates — each hex
 digit's top two bits step x and bottom two step y — and `cell` and `tile` are
-its first thirteen and nine digits: the metre of ground the plot stands on in
+its first fourteen and ten digits: the metre of ground the plot stands on in
 the walkable world, and the 256-metre tile the world files things by. Anyone
 standing somewhere can ask for every plot in their tile with one query.
 """
@@ -38,9 +38,9 @@ type Plot @entity(immutable: false) {
   "The address as coordinates: eighty bits each."
   x: BigInt!
   y: BigInt!
-  "First thirteen hex digits: the metre of ground it stands on."
+  "First fourteen hex digits: the metre of ground it stands on."
   cell: String!
-  "First nine hex digits: the 256-metre tile it falls in."
+  "First ten hex digits: the 256-metre tile it falls in."
   tile: String!
   inscriptions: [Inscription!]! @derivedFrom(field: "plot")
   transfers: [Transfer!]! @derivedFrom(field: "plot")
