@@ -27,7 +27,7 @@ const front = (pieces: Float32Array) => {
   for (let i = INSTANCE_FLOATS; i < pieces.length; i += INSTANCE_FLOATS) {
     const piece = [...pieces.subarray(i, i + INSTANCE_FLOATS)];
     if (Math.abs(piece[2]! - (2.5 - cutIn / 2)) < 1e-4) slabs.push(piece);
-    else if (Math.abs(piece[2]! - (2.5 - cutIn)) < 1e-4) floors.push(piece);
+    else if (Math.abs(piece[2]! - (2.5 - 1.5 * cutIn)) < 1e-4) floors.push(piece);
   }
   return { slabs, floors };
 };
@@ -37,8 +37,8 @@ describe('a note on a building', () => {
     const pieces = piecesOf(noted('profinch was here'), 10);
     expect(pieces.length / INSTANCE_FLOATS).toBeGreaterThan(20);
     // the body is pulled in by the cut on every side
-    expect(pieces[3]).toBeCloseTo(6 - cutIn, 5);
-    expect(pieces[5]).toBeCloseTo(5 - cutIn, 5);
+    expect(pieces[3]).toBeCloseTo(6 - 2 * cutIn, 5);
+    expect(pieces[5]).toBeCloseTo(5 - 2 * cutIn, 5);
     const { slabs, floors } = front(pieces);
     // three words, three dark floors; and the stone between the strokes in small pieces about head height
     expect(floors.length).toBe(3);
@@ -67,7 +67,7 @@ describe('a note on a building', () => {
     let elsewhere = 0;
     for (let i = INSTANCE_FLOATS; i < pieces.length; i += INSTANCE_FLOATS) {
       if (Math.abs(pieces[i + 7]! - 0.08) > 1e-6) continue;
-      if (Math.abs(pieces[i + 2]! - (2.5 - cutIn)) < 1e-4) onFront++;
+      if (Math.abs(pieces[i + 2]! - (2.5 - 1.5 * cutIn)) < 1e-4) onFront++;
       else elsewhere++;
     }
     expect(onFront).toBeGreaterThan(0);

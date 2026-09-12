@@ -29,7 +29,7 @@ export interface Stroke {
 
 /** The narrowest a line is drawn, in metres; and how much wider with distance, so it stays a line. */
 const PEN = 0.08;
-const PEN_FAR = 0.0028;
+const PEN_FAR = 0.0036;
 /** How dark the ink is: the dashed outline, and each pane of glass. */
 const INK = 0.85;
 const GLASS = 0.16;

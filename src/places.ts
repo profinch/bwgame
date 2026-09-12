@@ -802,13 +802,15 @@ function notedBuilding(structure: Structure, base: number, origin: { x: number; 
   const cutIn = Math.max(across * 1.6, 0.003);
   /** The floor of the grooves is dark, so the letters read from a way off. */
   const GROOVE_FLOOR = 0.08;
-  /** Slabs grow a hair each way so their edges overlap rather than touch: edges that only touch show as a dotted line. */
-  const LAP = 0.004;
   const halfW = structure.wide / 2;
   const halfD = structure.deep / 2;
 
-  // the wall, pulled in by the cut on every side; its faces go back on flush, in pieces
-  put(0, bottom, 0, structure.wide - cutIn, top - bottom, structure.deep - cutIn);
+  // the wall, pulled in by twice the cut on every side: the face goes back
+  // on flush in pieces, and behind the pieces, where the words are, a dark
+  // floor a cut deep — behind the face and in front of the wall, in a layer
+  // of its own, so nothing lies in one plane with anything else and
+  // nothing bleeds through from behind
+  put(0, bottom, 0, structure.wide - 2 * cutIn, top - bottom, structure.deep - 2 * cutIn);
 
   /**
    * A wall of the building, with a way of laying a piece on it: `u` runs along
@@ -832,12 +834,12 @@ function notedBuilding(structure: Structure, base: number, origin: { x: number; 
     // left, -x: seen from -x, right is +z
     { width: structure.deep, foot: feet[3], lay: (u0, u1, y0, y1, inset, thick, a) => put(-(halfW - inset - thick / 2), y0, (u0 + u1) / 2, thick, y1 - y0, u1 - u0, a) },
   ];
-  /** A flush slab of a wall's face, as much of it as has grown. */
+  /** A flush slab of a wall's face, as much of it as has grown. Slabs meet edge to edge, on the same numbers. */
   const slab = (wall: Wall, u0: number, u1: number, y0: number, y1: number) => {
-    const lo = Math.max(y0 - LAP, bottom);
-    const hi = Math.min(y1 + LAP, top);
+    const lo = Math.max(y0, bottom);
+    const hi = Math.min(y1, top);
     if (hi - lo < 1e-4 || u1 - u0 < 1e-4) return;
-    wall.lay(u0 - LAP, u1 + LAP, lo, hi, 0, cutIn);
+    wall.lay(u0, u1, lo, hi, 0, cutIn);
   };
 
   // what was written, latest first, in words
@@ -934,7 +936,7 @@ function notedBuilding(structure: Structure, base: number, origin: { x: number; 
         // a dark floor behind the stone, seen only through the strokes
         const lo = Math.max(r.y0, bottom);
         const hi = Math.min(r.y0 + r.tall, top);
-        if (hi > lo) w.lay(lu, lu + POST, lo, hi, cutIn - 0.001, 0.002, GROOVE_FLOOR);
+        if (hi > lo) w.lay(lu, lu + POST, lo, hi, cutIn, cutIn, GROOVE_FLOOR);
         const { down, patches } = carve([word], r.tall, POST);
         for (const { col, row, cols, rows: rr } of patches) {
           const y0 = r.y0 + r.tall - (row + rr) * down;
