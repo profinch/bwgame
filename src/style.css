@@ -897,7 +897,7 @@ body.listopen .subarrow {
   padding: 12px 16px;
   border-radius: 22px;
   border: 1px solid color-mix(in srgb, var(--line) 8%, transparent);
-  background: color-mix(in srgb, var(--bg) 78%, transparent);
+  background: var(--bg);
   display: grid;
   gap: 8px;
   z-index: 2; /* over the map too: the tour goes on there */
