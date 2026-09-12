@@ -56,10 +56,11 @@ export interface Driver {
   typeInto(selector: string, text: string, wait: (ms: number) => Promise<void>): Promise<void>;
   clearField(selector: string): void;
   /**
-   * Somebody else, walking to a spot this far from you at a walking pace —
-   * or put there at once, to begin — and digging there or not.
+   * Somebody else, walking to a spot this far from you — to your right and
+   * ahead, in the way you face — at a walking pace, or put there at once, to
+   * begin; digging there or not.
    */
-  peer(dx: number, dz: number, dig: boolean, atOnce?: boolean): void;
+  peer(right: number, ahead: number, dig: boolean, atOnce?: boolean): void;
   peerGone(): void;
   /**
    * Back to square one: nothing moving, nothing marked, no bar down, the map
@@ -80,7 +81,7 @@ export interface Driver {
 }
 
 /** What has to be so before a step plays. */
-export type Scene = 'any' | 'start' | 'first' | 'claimed' | 'written';
+export type Scene = 'any' | 'start' | 'first' | 'wallet' | 'claimed' | 'written';
 
 type Wait = (ms: number) => Promise<void>;
 
@@ -148,7 +149,7 @@ export const STEPS: readonly Step[] = [
   },
   {
     scene: 'first',
-    says: 'a contract stands as a building, its size from its code, the words written into it cut into its wall. a wallet lies as a plate with a post for each token. a dashed outline is a plot not yet written into; boulders and gates are plots of the earlier grounds.',
+    says: 'a contract stands as a building, its size from its code, its shape from the code\'s hash, the words written into it cut into its wall. a dashed outline is a plot not yet written into; boulders and gates are plots of the earlier grounds.',
     async play(d, wait) {
       // back off from the building, then run the eyes up it to the roof and back down to its foot
       d.walk(-1, 0, false);
@@ -162,16 +163,20 @@ export const STEPS: readonly Step[] = [
     },
   },
   {
-    scene: 'first',
-    says: 'other people are here too, and you see them: standing, walking, digging. a claim anyone makes stands up for everyone within seconds.',
+    scene: 'wallet',
+    says: 'a wallet lies as a plate on levelled ground, a post for each token it holds — the post as tall as the share of the token\'s whole supply, its name and the amount cut into it. and other people are here too: standing, walking, digging. a claim anyone makes stands up for everyone within seconds.',
     async play(d, wait) {
-      d.peer(7, -9, false, true);
+      d.look(0, 0.1);
+      await wait(1500);
+      d.look(0, 0);
+      // somebody comes in from the right, well clear of the plate, and digs beside you
+      d.peer(11, 3, false, true);
       await wait(400);
-      d.peer(-1.4, -2.4, false);
-      await wait(6500);
-      d.peer(-1.4, -2.4, true);
+      d.peer(-2, 1.5, false);
+      await wait(7000);
+      d.peer(-2, 1.5, true);
       await wait(4500);
-      d.peer(-1.4, -2.4, false);
+      d.peer(-2, 1.5, false);
       await wait(800);
       d.peerGone();
     },

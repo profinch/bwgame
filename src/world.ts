@@ -1185,8 +1185,11 @@ let beforeTour: {
   cores: number;
   coresOf: number;
 } | null = null;
-/** The spot beside the first plot the tour stands on, the same for every step there. */
+/** The spot beside the first plot the tour stands on, the same for every step there; and beside the wallet. */
 let firstStand: { x: number; z: number; yaw: number } | null = null;
+let walletStand: { x: number; z: number; yaw: number } | null = null;
+/** The wallet the tour shows: the one that took the first ground here. */
+const TOUR_WALLET = '0x3095c19c92551bba70bcfa9aafa99d145347b5f8';
 
 function takeDemoJump(): boolean {
   const asked = demo.jump;
@@ -1453,8 +1456,13 @@ function takeDemoJump(): boolean {
         const field = document.querySelector<HTMLInputElement>(selector);
         if (field) field.value = '';
       },
-      peer: (dx, dz, dig, atOnce = false) => {
+      peer: (right, ahead, dig, atOnce = false) => {
         if (!live) return;
+        // in the way you face: forward is -z at yaw zero, right is +x
+        const c = Math.cos(player.yaw);
+        const sn = Math.sin(player.yaw);
+        const dx = c * right - sn * ahead;
+        const dz = -sn * right - c * ahead;
         mockPeer.on = true;
         mockPeer.toX = dx;
         mockPeer.toZ = dz;
@@ -1515,24 +1523,27 @@ function takeDemoJump(): boolean {
           player.y = ground.surfaceAt(player.x, player.z);
           return null;
         }
-        // at the first plot: there already, or taken there with a short drop;
-        // and on the same spot beside it every time, facing it
-        const first = await firstPlot();
-        if (first) {
-          const at = offsetOf(first);
+        // at a place — the first plot, or the wallet — there already or taken
+        // there with a short drop, and on the same spot beside it every time
+        const goal = which === 'wallet' ? TOUR_WALLET : await firstPlot();
+        const stands = which === 'wallet' ? walletStand : firstStand;
+        if (goal) {
+          const at = offsetOf(goal);
           if (Math.abs(origin.x - at.x) > 0.5 || Math.abs(origin.z - at.z) > 0.5) {
-            await travelTo(first);
+            await travelTo(goal);
             descent = 60;
             await wait(1600);
           }
-          if (!firstStand) firstStand = { x: player.x, z: player.z, yaw: player.yaw };
-          player.x = firstStand.x;
-          player.z = firstStand.z;
-          player.yaw = firstStand.yaw;
+          const stand = stands ?? { x: player.x, z: player.z, yaw: player.yaw };
+          if (which === 'wallet') walletStand = stand;
+          else firstStand = stand;
+          player.x = stand.x;
+          player.z = stand.z;
+          player.yaw = stand.yaw;
           player.pitch = -0.05;
           player.y = ground.surfaceAt(player.x, player.z);
         }
-        if (which === 'first') return null;
+        if (which === 'first' || which === 'wallet') return null;
         // the tour's plot, as the step needs it: a drawing, or written into —
         // put up at once, the growing and the writing having been shown already
         const address = mockAddressAhead();
@@ -1588,6 +1599,7 @@ function takeDemoJump(): boolean {
         coresOf: Number(slider?.max ?? 1),
       };
       firstStand = null;
+      walletStand = null;
       taking.stop();
       show('onboarding');
       tour!.start();
