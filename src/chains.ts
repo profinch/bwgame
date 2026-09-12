@@ -129,7 +129,7 @@ export const CHAINS: Record<string, Chain> = {
     ],
     // the plot factory: on this chain it is what the world is about, and it
     // stands well inside the world — the ENS registry, which was home before,
-    // stands twelve metres from the world's edge, with half the world walled off
+    // stands fifty-one metres from the world's edge, with half the world walled off
     home: '0xcEa322619d375B381bff95e53a02Ef92Ea81B5Df',
     explorer: 'https://sepolia.etherscan.io/address/',
     indexer: 'https://eth-sepolia.blockscout.com',

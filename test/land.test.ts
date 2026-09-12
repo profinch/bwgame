@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { HOME_METRES, WORLD, addressUnder, heightAt, levelOff, levelled, rawHeightAt, unlevel, withinWorld } from '../src/engine/land';
+import { DEPTH, HOME_METRES, WORLD, addressUnder, heightAt, levelOff, levelled, rawHeightAt, unlevel, withinWorld } from '../src/engine/land';
 
 afterEach(() => unlevel());
 
@@ -53,6 +53,6 @@ describe('the edge of the world', () => {
 
   it('names the ground under feet that are past the edge, instead of throwing', () => {
     expect(() => addressUnder(-1e9, -1e9)).not.toThrow();
-    expect(addressUnder(-1e9, -1e9)).toBe('0'.repeat(13));
+    expect(addressUnder(-1e9, -1e9)).toBe('0'.repeat(DEPTH));
   });
 });

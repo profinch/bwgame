@@ -5,8 +5,8 @@ import { Owner, Plot } from '../generated/schema';
 import { Plot as PlotTemplate } from '../generated/templates';
 
 /** Digits of the walkable world's cell, and of a tile. Match src/engine/land.ts. */
-const CELL_DIGITS = 13;
-const TILE_DIGITS = 9;
+const CELL_DIGITS = 14;
+const TILE_DIGITS = 10;
 
 /** The factories, oldest first: the generation of a plot is which of them made it. */
 const FACTORIES = [

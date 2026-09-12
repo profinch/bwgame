@@ -7,9 +7,12 @@ What was decided, and why. What was refused, and why. Dated where the date matte
 - **The map is the address space.** Each hex digit's top two bits step x and bottom two step y;
   forty digits, forty steps. Reversible; all of 2<sup>160</sup> covered. Neighbourhood is a shared
   prefix.
-- **Depth 13.** One metre of ground is one cell at the thirteenth digit; the world is 67 109 km
-  across. Deeper is unminable, shallower is cheaper to mine into; thirteen makes an hour of digging
-  worth a few hundred metres.
+- **Depth 14.** One metre of ground is one cell at the fourteenth digit; the world is 268 435 km
+  across. Deeper is unminable, shallower is cheaper to mine into; fourteen makes an hour of digging
+  on eight threads worth about three hundred metres, a night about a hundred. It was 13 until
+  12.09.2026 (four times smaller, an hour worth seventy-five metres): the owner had it deepened, so
+  that a good place costs real work. Plots claimed at 13 keep their addresses and so their places;
+  only the distances between them read four times longer.
 - **Nothing invented.** The world shows what the chain answered. No scenery, no mocks, no demo
   modes (removed 08.09.2026 at the owner's insistence). A mock, if ever, only behind a flag and
   labelled on screen.

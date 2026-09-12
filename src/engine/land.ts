@@ -47,17 +47,19 @@ export const HOME = chosenHome();
  * fixes this many digits of an address and leaves the rest open. It is the one
  * number that decides what kind of place this is:
  *
- *   depth 13 — the world is 67 000 km across, a metre holds 2·10^16 addresses,
- *              and mining a spot within a kilometre of a chosen one costs about
- *              ten minutes on eight threads.
- *   depth 12 — four times smaller, sixteen times cheaper to mine into.
+ *   depth 14 — the world is 268 000 km across, a metre holds 4.5·10^15
+ *              addresses, and mining a spot within a kilometre of a chosen one
+ *              costs about five minutes on eight threads.
+ *   depth 13 — four times smaller, sixteen times cheaper to mine into: where
+ *              the world stood until 12.09.2026.
+ *   depth 12 — sixteen times smaller again.
  *   depth 40 — one metre is one address. Nothing can be mined at that scale
  *              (it would take longer than the universe has run) but the fine
  *              structure is visible: the precompiles stand a metre apart.
  *
  * Change it here. Everything below is written in terms of it.
  */
-export const DEPTH = 13;
+export const DEPTH = 14;
 
 /** Leaf cells to a metre at this depth. A metre is a whole cell of its own. */
 const PER_METRE = 4n ** BigInt(40 - DEPTH);
@@ -246,7 +248,7 @@ export const HOME_METRES = { x: Number(home.x / PER_METRE), z: Number(home.y / P
  * stands there. Given metres from home, the same point pulled back inside the
  * world by a hand's breadth where it had left it. On mainnet home is in the
  * middle of the world and this never bites; on Sepolia home is the ENS registry
- * at `0x00000000000C2E…`, twelve metres from the west edge and two from the
+ * at `0x00000000000C2E…`, fifty-one metres from the west edge and ten from the
  * north, and the edge is right there.
  */
 export function withinWorld(x: number, z: number): { x: number; z: number } {

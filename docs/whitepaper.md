@@ -44,8 +44,8 @@ address by reading the two base-4 expansions in step. A prefix of *k* digits is 
 side 4^(40−k) in this unit. Addresses sharing a prefix are neighbours; addresses beginning with
 zeros — the precompiles, the burn addresses, the zero address — collect in one corner.
 
-For walking, a depth is fixed. At depth 13 one metre of ground is one cell of the thirteenth digit;
-the world is 4¹³ ≈ 6.7·10⁷ metres across, and under each metre lie 16²⁷ addresses. The depth is a
+For walking, a depth is fixed. At depth 14 one metre of ground is one cell of the fourteenth digit;
+the world is 4¹⁴ ≈ 2.7·10⁸ metres across, and under each metre lie 16²⁶ addresses. The depth is a
 single constant: shallower worlds are cheaper to mine into and coarser; deeper ones finer and
 unminable.
 
@@ -103,8 +103,8 @@ With the factory and the code fixed, only the salt moves the address. Searching 
 therefore searching the map. A claimant aims at the point where they stand and hashes salts; the
 salt whose address falls nearest is the best so far, and whatever is best when they stop is what
 they may claim. There is no threshold. The expected distance to the nearest of *n* attempts falls
-as 1/√*n*: ten times closer costs a hundred times the work. An hour on a laptop buys a plot within
-sight; a night buys one within a minute's walk. Nobody sells the good places. They are computed.
+as 1/√*n*: ten times closer costs a hundred times the work. An hour on a laptop buys a plot a few
+minutes' walk away; a night buys one within sight. Nobody sells the good places. They are computed.
 
 The salt must begin with the claimant's address, which the factory checks. A salt seen in the
 mempool is thereby worthless to anyone else, and the check costs the search nothing: one hash per
@@ -163,7 +163,7 @@ says the former and not the latter.
 *Front-running.* Binding the salt to the claimant's address removes the incentive to watch the
 mempool for salts.
 
-*Collision.* Two addresses sharing thirteen digits stand in one metre. Random addresses never do;
+*Collision.* Two addresses sharing fourteen digits stand in one metre. Random addresses never do;
 mined ones could, if someone dug into a taken cell. The factory does not forbid this and the world
 does not yet decide it.
 

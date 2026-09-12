@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { randomStart } from '../src/claim';
+import { WORLD } from '../src/engine/land';
 import { keccak_256 } from '@noble/hashes/sha3';
 import { describe, expect, it } from 'vitest';
 import {
@@ -100,7 +101,7 @@ describe('the search', () => {
     const at = placeOf(bytesOf(found.address));
     const aimed = placeOf(bytesOf(elsewhere));
     expect(found.away).toBe(Math.hypot(at.x - (aimed.x + 100), at.z - (aimed.z - 250)));
-    expect(found.away).toBeLessThan(4 ** 13 / 100);
+    expect(found.away).toBeLessThan(WORLD / 100);
   });
 
   it('says when it is near enough, and not before', async () => {

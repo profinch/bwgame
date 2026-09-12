@@ -194,8 +194,8 @@ The subgraph has its own `package.json` in `subgraph/`; see the README there.
   you can stand a stone to. Wallets hold them, the indexer already returns them, and they get
   nothing on the plate for now — they need a shape of their own, decided rather than borrowed.
 
-- **Two plots in one metre.** The walkable world is thirteen hex digits deep: a metre of ground is
-  one cell, and two addresses that share thirteen digits stand in the same place. Random addresses
+- **Two plots in one metre.** The walkable world is fourteen hex digits deep: a metre of ground is
+  one cell, and two addresses that share fourteen digits stand in the same place. Random addresses
   never do; mined ones could, if somebody dug all the way into a taken cell. The factory does not
   forbid it and the world does not yet say what happens. Refusing at the factory, offsetting within
   the cell by the digits that remain, or leaving it to the map — which is continuous to the fortieth

@@ -480,7 +480,7 @@ let alightAngle = 0;
 /**
  * A side of a point, `off` metres from it, that is inside the world: random,
  * tried a few times, and failing that the side that faces the middle of the
- * world. Home on Sepolia stands twelve metres from the world's edge.
+ * world. Home on Sepolia stands fifty-one metres from the world's edge.
  */
 function sideInside(atX: number, atZ: number, off: number): number {
   for (let tries = 0; tries < 24; tries++) {
@@ -792,9 +792,11 @@ const cameBack = (() => {
   if (new URLSearchParams(location.search).has('at')) return false;
   try {
     const kept = JSON.parse(localStorage.getItem(LAST_STAND) ?? 'null') as
-      | { ox: number; oz: number; x: number; z: number; yaw: number; at?: string | null }
+      | { depth?: number; ox: number; oz: number; x: number; z: number; yaw: number; at?: string | null }
       | null;
     if (!kept || ![kept.ox, kept.oz, kept.x, kept.z, kept.yaw].every(Number.isFinite)) return false;
+    // metres from a world of another depth are not this world's metres
+    if (kept.depth !== DEPTH) return false;
     const inside = withinWorld(kept.ox + kept.x, kept.oz + kept.z);
     if (Math.abs(inside.x - kept.ox - kept.x) > 1e-3 || Math.abs(inside.z - kept.oz - kept.z) > 1e-3) return false;
     origin.x = kept.ox;
@@ -1099,7 +1101,7 @@ window.addEventListener('pagehide', () => {
   try {
     localStorage.setItem(
       LAST_STAND,
-      JSON.stringify({ ox: origin.x, oz: origin.z, x: player.x, z: player.z, yaw: player.yaw, at: tour?.running ? null : travelledTo }),
+      JSON.stringify({ depth: DEPTH, ox: origin.x, oz: origin.z, x: player.x, z: player.z, yaw: player.yaw, at: tour?.running ? null : travelledTo }),
     );
   } catch {
     // then next time starts at home
