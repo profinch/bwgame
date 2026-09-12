@@ -246,6 +246,7 @@ async function readTheChain() {
           implementation: null,
           salt: `0x${String(log.data).replace(/^0x/, '').slice(0, 64)}`,
           name: null,
+          inscriptions: [],
         });
         top = Math.max(top, log.block_number);
       }
@@ -253,7 +254,10 @@ async function readTheChain() {
     for (const row of rows.values()) {
       for (const log of await logsOf(row.id)) {
         const topic = log.topics?.[0];
-        if (topic === TOPIC.inscribed) row.note = stringIn(log.data);
+        if (topic === TOPIC.inscribed) {
+          row.note = stringIn(log.data);
+          row.inscriptions.push({ note: row.note });
+        }
         else if (topic === TOPIC.transferred) row.owner = { id: addressIn(log.topics[2]) };
         else if (topic === TOPIC.codeSet) {
           const code = addressIn(log.topics[1]);
@@ -293,7 +297,7 @@ async function askTheGraph() {
         query:
           `{ _meta { block { number } } ` +
           `plots(first: 1000, orderBy: updatedIn, where: { updatedIn_gt: ${graphSeen} }) ` +
-          `{ id owner { id } note updatedIn implementation salt name } }`,
+          `{ id owner { id } note updatedIn implementation salt name inscriptions(orderBy: at, orderDirection: asc) { note } } }`,
       }),
     });
     if (!response.ok) {

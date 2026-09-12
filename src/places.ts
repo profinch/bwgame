@@ -58,16 +58,22 @@ export interface Structure {
   inked?: number;
   /** Put up by the onboarding to show what a thing looks like; taken down when it ends. Never from the chain. */
   mock?: boolean;
-  /**
-   * The ground at the foot of the front wall, where a note is cut: on a slope
-   * the base is the highest ground under the building, and a note set by it
-   * would hang metres over the low side. Whoever knows the terrain writes it.
-   */
+  /** @deprecated the ground at the foot of the front wall: `footAt[0]` says it now. */
   frontFoot?: number;
   /** For a relic: which earlier ground it is a plot of. */
   relic?: 1 | 2;
   /** For a plot of this ground: whose it is, what is written into it, what it points at, what it is called. */
-  plot?: { owner: string | null; note: string; implementation: string | null; salt: string | null; name: string };
+  plot?: {
+    owner: string | null;
+    note: string;
+    /** Everything ever written into it, oldest first; the note is the last of them. */
+    notes?: string[];
+    implementation: string | null;
+    salt: string | null;
+    name: string;
+  };
+  /** The ground at the foot of each wall — front, right, back, left — for what is written on them. */
+  footAt?: [number, number, number, number];
 }
 
 
@@ -585,7 +591,14 @@ export function structureOf(
    * If this is a plot: what has been written into it, which may be nothing, and
    * the code it has been pointed at, if any — which is then what stands here.
    */
-  plot: { note: string; code?: Account | null; owner?: string | null; salt?: string | null; name?: string } | null = null,
+  plot: {
+    note: string;
+    notes?: string[];
+    code?: Account | null;
+    owner?: string | null;
+    salt?: string | null;
+    name?: string;
+  } | null = null,
   /** If this is a plot of an earlier ground: which. */
   relic: 1 | 2 | null = null,
 ): Structure {
@@ -635,6 +648,7 @@ export function structureOf(
           plot: {
             owner: plot.owner ?? null,
             note: plot.note,
+            notes: plot.notes,
             implementation: plot.code?.address ?? null,
             salt: plot.salt ?? null,
             name: plot.name ?? '',
@@ -747,26 +761,28 @@ function carvedBlock(
   }
 }
 
-/**
- * How much of a note is cut into a wall: as many words as the wall has room
- * for, up to this many, this many signs each; a longer word is cut to it.
- */
-const NOTE_WORDS = 12;
+/** How many signs of a word are cut; a longer word is cut to it. */
 const NOTE_SIGNS = 16;
 /** Where the writing ends: at head height above the ground at the foot of the wall, whatever the words. */
 const NOTE_HEAD = 1.7;
 
 /**
- * A building with a note written into it has the note cut into its front
- * wall, in small runes at head height — the size of the signs on a wallet's
- * posts, a word a column, the columns side by side as posts stand — cut the
- * same way as all writing here: the strokes are grooves, the wall is left
- * standing between them. The wall itself is one box pulled in by the depth of
- * the cut, and its face is laid back over it flush — the stone between the
- * strokes where the words are, plain slabs everywhere else — so nothing reads
- * as a plaque: it is the wall, with letters cut in. A building going up shows
- * as much of the wall as it has grown; a note just written is cut in a word
- * at a time.
+ * A building written into carries everything ever written into it, cut into
+ * its walls in small runes — the size of the signs on a wallet's posts, a word
+ * a column, the columns side by side as posts stand — the same cutting as all
+ * writing here: the strokes are grooves with a dark floor, the wall left
+ * standing between them. The wall is one box pulled in by the depth of the cut
+ * on every side, and its faces are laid back over it flush — the stone between
+ * the strokes where the words are, plain slabs everywhere else — so nothing
+ * reads as a plaque: it is the wall, with letters cut in.
+ *
+ * The latest note is on the front wall ending at head height; each earlier
+ * one goes a row higher, so the history climbs the wall. A note too long for
+ * one row wraps, its first words highest. When the front is full the writing
+ * goes on round the building — right, back, left — and when every wall is
+ * full the oldest notes are left off: the building is not made bigger for
+ * them. A building going up shows as much of its walls as it has grown; a
+ * note just written is cut in a word at a time.
  */
 function notedBuilding(structure: Structure, base: number, origin: { x: number; z: number }): Float32Array {
   const cx = structure.x - origin.x;
@@ -781,76 +797,150 @@ function notedBuilding(structure: Structure, base: number, origin: { x: number; 
   const grown = structure.grown ?? 1;
   const bottom = base - sink;
   const top = base + structure.tall * grown;
+  const roof = base + structure.tall;
   const across = POST / WALL;
   const cutIn = Math.max(across * 1.6, 0.003);
   /** The floor of the grooves is dark, so the letters read from a way off. */
   const GROOVE_FLOOR = 0.08;
-  // the wall, pulled in by the cut; its face goes back on flush, in pieces
-  put(0, bottom, -cutIn / 2, structure.wide, top - bottom, structure.deep - cutIn);
-  const faceZ = structure.deep / 2 - cutIn / 2;
-  /**
-   * A flush slab of the face, from y0 to y1 and lx0 to lx1, as much of it as
-   * has grown — grown a hair each way, so two slabs meeting leave no seam:
-   * edges that only touch show as a dotted line from any distance.
-   */
+  /** Slabs grow a hair each way so their edges overlap rather than touch: edges that only touch show as a dotted line. */
   const LAP = 0.004;
-  const slab = (lx0: number, lx1: number, y0: number, y1: number) => {
+  const halfW = structure.wide / 2;
+  const halfD = structure.deep / 2;
+
+  // the wall, pulled in by the cut on every side; its faces go back on flush, in pieces
+  put(0, bottom, 0, structure.wide - cutIn, top - bottom, structure.deep - cutIn);
+
+  /**
+   * A wall of the building, with a way of laying a piece on it: `u` runs along
+   * the wall from its left edge to its right as somebody facing it sees it,
+   * `inset` is how far behind the wall's face the piece's own face is.
+   */
+  interface Wall {
+    width: number;
+    /** The ground at its foot. */
+    foot: number;
+    lay: (u0: number, u1: number, y0: number, y1: number, inset: number, thick: number, albedo?: number) => void;
+  }
+  const feet = structure.footAt ?? [structure.frontFoot ?? base, base, base, base];
+  const walls: Wall[] = [
+    // front, +z: seen from +z, right is +x
+    { width: structure.wide, foot: feet[0], lay: (u0, u1, y0, y1, inset, thick, a) => put((u0 + u1) / 2, y0, halfD - inset - thick / 2, u1 - u0, y1 - y0, thick, a) },
+    // right, +x: seen from +x, right is -z
+    { width: structure.deep, foot: feet[1], lay: (u0, u1, y0, y1, inset, thick, a) => put(halfW - inset - thick / 2, y0, -(u0 + u1) / 2, thick, y1 - y0, u1 - u0, a) },
+    // back, -z: seen from -z, right is -x
+    { width: structure.wide, foot: feet[2], lay: (u0, u1, y0, y1, inset, thick, a) => put(-(u0 + u1) / 2, y0, -(halfD - inset - thick / 2), u1 - u0, y1 - y0, thick, a) },
+    // left, -x: seen from -x, right is +z
+    { width: structure.deep, foot: feet[3], lay: (u0, u1, y0, y1, inset, thick, a) => put(-(halfW - inset - thick / 2), y0, (u0 + u1) / 2, thick, y1 - y0, u1 - u0, a) },
+  ];
+  /** A flush slab of a wall's face, as much of it as has grown. */
+  const slab = (wall: Wall, u0: number, u1: number, y0: number, y1: number) => {
     const lo = Math.max(y0 - LAP, bottom);
     const hi = Math.min(y1 + LAP, top);
-    if (hi - lo < 1e-4 || lx1 - lx0 < 1e-4) return;
-    put((lx0 + lx1) / 2, lo, faceZ, lx1 - lx0 + 2 * LAP, hi - lo, cutIn);
+    if (hi - lo < 1e-4 || u1 - u0 < 1e-4) return;
+    wall.lay(u0 - LAP, u1 + LAP, lo, hi, 0, cutIn);
   };
 
-  // as many words as the wall has room for, a post's width each
-  const room = Math.max(0, Math.floor((structure.wide - POST) / POST));
-  const words = (structure.plot?.note ?? '')
-    .toLowerCase()
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, Math.min(NOTE_WORDS, room))
-    .map((word) => word.slice(0, NOTE_SIGNS));
-  const left = -structure.wide / 2;
-  const right = structure.wide / 2;
-  if (words.length === 0) {
-    slab(left, right, bottom, top);
-    return new Float32Array(out);
+  // what was written, latest first, in words
+  const history = structure.plot?.notes?.length ? structure.plot.notes : [structure.plot?.note ?? ''];
+  const notes = history
+    .map((note) =>
+      note
+        .toLowerCase()
+        .split(/\s+/)
+        .filter(Boolean)
+        .map((word) => word.slice(0, NOTE_SIGNS)),
+    )
+    .filter((words) => words.length > 0)
+    .reverse();
+
+  /** A row of words on a wall: where it sits, how tall it is, and whether it is of the latest note. */
+  interface Row {
+    words: string[];
+    y0: number;
+    tall: number;
+    latest: boolean;
+  }
+  const rowTall = (words: string[]) => (Math.max(1, ...words.map((w) => [...w].length)) * 11 + 2 * EDGE + 2) * across;
+  const rowsOn: Row[][] = walls.map(() => []);
+  let wall = 0;
+  let cursor = walls[0]!.foot + NOTE_HEAD - (EDGE + 2) * across;
+  for (let n = 0; n < notes.length && wall < walls.length; n++) {
+    const words = notes[n]!;
+    // a note is laid on one wall whole; a wall it does not fit on is left, and the next tried
+    let placed = false;
+    while (!placed && wall < walls.length) {
+      const perRow = Math.floor((walls[wall]!.width - POST) / POST);
+      if (perRow < 1) {
+        wall++;
+        cursor = wall < walls.length ? walls[wall]!.foot + NOTE_HEAD - (EDGE + 2) * across : 0;
+        continue;
+      }
+      const chunks: string[][] = [];
+      for (let i = 0; i < words.length; i += perRow) chunks.push(words.slice(i, i + perRow));
+      const height = chunks.reduce((sum, chunk) => sum + rowTall(chunk), 0);
+      if (cursor + height > roof) {
+        wall++;
+        cursor = wall < walls.length ? walls[wall]!.foot + NOTE_HEAD - (EDGE + 2) * across : 0;
+        continue;
+      }
+      // the last row of the note lowest, the first highest: read down
+      let y = cursor;
+      for (let i = chunks.length - 1; i >= 0; i--) {
+        const tall = rowTall(chunks[i]!);
+        rowsOn[wall]!.push({ words: chunks[i]!, y0: y, tall, latest: n === 0 });
+        y += tall;
+      }
+      cursor = y;
+      placed = true;
+    }
   }
 
-  // the writing ends at head height above the ground at the foot of the wall
-  // it is on — not above the base, which on a slope is the high side — and a
-  // longer word reaches higher up the wall rather than lower down it. The
-  // columns are one height, the longest word's, and hang from the top: the
-  // words start level and end where they end, the longest at the head.
-  const footGround = structure.frontFoot ?? base;
-  const lines = Math.max(1, ...words.map((word) => [...word].length));
-  const foot = footGround + NOTE_HEAD - (EDGE + 2) * across;
-  const tall = Math.min(base + structure.tall - foot, (lines * 11 + 2 * EDGE + 2) * across);
-  const region = { lx0: left + POST / 2, lx1: left + POST / 2 + POST * words.length };
+  // how much of the latest note is cut in yet, in words
+  const latestWords = notes[0]?.length ?? 0;
+  const carvedWords = Math.ceil(latestWords * Math.min(1, structure.inked ?? 1));
 
-  // the face round the words: below them, above them, to either side
-  slab(left, right, bottom, foot);
-  slab(left, right, foot + tall, top);
-  slab(left, region.lx0, foot, foot + tall);
-  slab(region.lx1, right, foot, foot + tall);
-
-  // the words, a column each: cut in so far, or a slab still, if the note is
-  // just being written and has not got to them yet
-  const carved = Math.ceil(words.length * Math.min(1, structure.inked ?? 1));
-  words.forEach((word, i) => {
-    const lx = region.lx0 + POST * i;
-    if (i >= carved) {
-      slab(lx, lx + POST, foot, foot + tall);
+  walls.forEach((w, f) => {
+    const rows = rowsOn[f]!.sort((a, b) => a.y0 - b.y0);
+    const left = -w.width / 2;
+    const right = w.width / 2;
+    if (rows.length === 0) {
+      slab(w, left, right, bottom, roof);
       return;
     }
-    // a dark floor behind the stone, seen only through the strokes
-    const lo = Math.max(foot, bottom);
-    const hi = Math.min(foot + tall, top);
-    if (hi > lo) put(lx + POST / 2, lo, structure.deep / 2 - cutIn + 0.001, POST, hi - lo, 0.002, GROOVE_FLOOR);
-    const { down, patches } = carve([word], tall, POST);
-    for (const { col, row, cols, rows } of patches) {
-      const y0 = foot + tall - (row + rows) * down;
-      const y1 = y0 + rows * down;
-      slab(lx + col * across, lx + (col + cols) * across, y0, y1);
+    // the face round the words: below the lowest row, above the highest, beside each
+    slab(w, left, right, bottom, rows[0]!.y0);
+    const last = rows[rows.length - 1]!;
+    slab(w, left, right, last.y0 + last.tall, roof);
+    // the latest note's rows are read first to last: its words are counted so
+    let counted = 0;
+    const latestRows = rows.filter((r) => r.latest).reverse();
+    const carvedIn = new Map<Row, number>();
+    for (const r of latestRows) {
+      carvedIn.set(r, Math.max(0, Math.min(r.words.length, carvedWords - counted)));
+      counted += r.words.length;
+    }
+    for (const r of rows) {
+      const u0 = left + POST / 2;
+      const u1 = u0 + POST * r.words.length;
+      slab(w, left, u0, r.y0, r.y0 + r.tall);
+      slab(w, u1, right, r.y0, r.y0 + r.tall);
+      const carved = r.latest ? (carvedIn.get(r) ?? r.words.length) : r.words.length;
+      r.words.forEach((word, i) => {
+        const lu = u0 + POST * i;
+        if (i >= carved) {
+          slab(w, lu, lu + POST, r.y0, r.y0 + r.tall);
+          return;
+        }
+        // a dark floor behind the stone, seen only through the strokes
+        const lo = Math.max(r.y0, bottom);
+        const hi = Math.min(r.y0 + r.tall, top);
+        if (hi > lo) w.lay(lu, lu + POST, lo, hi, cutIn - 0.001, 0.002, GROOVE_FLOOR);
+        const { down, patches } = carve([word], r.tall, POST);
+        for (const { col, row, cols, rows: rr } of patches) {
+          const y0 = r.y0 + r.tall - (row + rr) * down;
+          slab(w, lu + col * across, lu + (col + cols) * across, y0, y0 + rr * down);
+        }
+      });
     }
   });
   return new Float32Array(out);
@@ -1047,7 +1137,7 @@ export function piecesOf(structure: Structure, base: number, origin = { x: 0, z:
   // a drawing is not made of stone: see blueprint.ts
   if (structure.kind === 'framed') return new Float32Array(0);
   if (structure.kind === 'relic') return relicPieces(structure, base, origin);
-  if (structure.kind === 'built' && structure.plot?.note) return notedBuilding(structure, base, origin);
+  if (structure.kind === 'built' && (structure.plot?.note || structure.plot?.notes?.some(Boolean))) return notedBuilding(structure, base, origin);
   if (structure.kind !== 'written') return instanceOf(structure, base, origin);
 
   const posts = structure.posts ?? [];

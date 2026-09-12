@@ -114,10 +114,12 @@ function baseOf(structure: Structure): number {
   // keeps its footing
   const hill = reliefUnder(structure);
   structure.sink = Math.max(0, hill.high - hill.low) + 0.1;
-  // the ground at the foot of the front wall, for what is written on it
+  // the ground at the foot of each wall — front, right, back, left — for what is written on them
   const sn = Math.sin(structure.turn);
   const c = Math.cos(structure.turn);
-  structure.frontFoot = ground.surfaceAt(x + (sn * structure.deep) / 2, z + (c * structure.deep) / 2);
+  const at = (lx: number, lz: number) => ground.surfaceAt(x + c * lx + sn * lz, z + c * lz - sn * lx);
+  structure.footAt = [at(0, structure.deep / 2), at(structure.wide / 2, 0), at(0, -structure.deep / 2), at(-structure.wide / 2, 0)];
+  structure.frontFoot = structure.footAt[0];
   return hill.high + 0.02;
 }
 
@@ -167,8 +169,14 @@ async function standing(account: Account, vouched = false): Promise<Structure> {
   const code = pointedAt ? await accountAt(pointedAt) : null;
   const owner = claimed?.owner ?? (await ownerOf(account.address));
   const named = claimed?.name ?? (await plotNameOf(account.address));
+  // everything ever written: the index's list, or what was known of it, with
+  // the note the chain says now at its end if the index has not got it yet
+  const wanted = account.address.toLowerCase();
+  const history = claimed?.notes ?? knownPlots().find((it) => it.plot.toLowerCase() === wanted)?.notes ?? [];
+  const notes = note && history[history.length - 1] !== note ? [...history, note] : history;
   return structureOf(account, holdings, chain.coin, {
     note,
+    notes,
     code: code && code.codeSize > 0 ? code : null,
     owner,
     salt: claimed?.salt ?? null,
@@ -1213,7 +1221,7 @@ function firstPlot(): Promise<string | null> {
 /** A plot of the tour's own, at an address, with a note or without: never from the chain. */
 function mockPlot(address: string, note: string): Structure {
   const account: Account = { address, codeSize: 2271, code: `0x${'a5'.repeat(2271)}`, balance: 0n, nonce: 1 };
-  const structure = structureOf(account, [], chain.coin, { note, code: null, owner: '0x000000000000000000000000000000000000d3a0', salt: null, name: undefined });
+  const structure = structureOf(account, [], chain.coin, { note, notes: note ? [note] : [], code: null, owner: '0x000000000000000000000000000000000000d3a0', salt: null, name: undefined });
   structure.mock = true;
   return structure;
 }

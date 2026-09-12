@@ -117,6 +117,8 @@ export interface Claimed {
   name?: string;
   /** Which factory made it (1, 2, 3), if whoever answered knew. */
   generation?: number;
+  /** Everything ever written into it, oldest first, if whoever answered knew. */
+  notes?: string[];
 }
 
 /** The plots named in a batch of `Claimed` logs. */
@@ -144,6 +146,7 @@ export function plotsInGraph(answer: unknown): { plots: Claimed[]; block: number
     salt?: string;
     name?: string | null;
     generation?: number;
+    inscriptions?: { note?: unknown }[];
   }[]) {
     if (typeof row.id !== 'string' || typeof row.owner?.id !== 'string') continue;
     plots.push({
@@ -155,6 +158,9 @@ export function plotsInGraph(answer: unknown): { plots: Claimed[]; block: number
       salt: typeof row.salt === 'string' ? row.salt : undefined,
       name: row.name === undefined ? undefined : (row.name ?? ''),
       generation: typeof row.generation === 'number' ? row.generation : undefined,
+      notes: Array.isArray(row.inscriptions)
+        ? row.inscriptions.map((it) => it.note).filter((it): it is string => typeof it === 'string')
+        : undefined,
     });
   }
   return { plots, block: data._meta?.block?.number ?? 0 };
