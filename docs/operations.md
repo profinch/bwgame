@@ -68,6 +68,20 @@ hashes and the fixture in the client, and redeploy the subgraph.
 
 ## Naming
 
+Reserving a label without a plot, from the deployer wallet (it holds the registrar and unregister
+roles in our registry's root):
+
+```bash
+cast send 0xbef600d2b4b19918ed7543bfecf61f412d8e210c \
+  "register(string,address,address,address,uint256,uint64)" <label> <deployer> \
+  0x0000000000000000000000000000000000000000 0x2E32A8CE61f46c7276Bc3786e0a7AE32da2E29ED 0 18446744073709551615 \
+  --rpc-url <sepolia rpc> --private-key <key>
+```
+
+Many at once: pass `--async --nonce <n>` and count the nonce up; about 100 000 gas each. Giving a
+reserved label to a plot: `unregister(uint256 labelId)` from the deployer, then the plot's owner
+names the plot as usual.
+
 `groundstate.eth` on the ENSv2 Sepolia beta: `ETHRegistrar.commit` then, sixty seconds later,
 `register` paid in the beta's mock USDC (mintable). The name's owner sets
 `ETHRegistry.setSubregistry(labelId, registry)` and `setResolver(labelId, names)`; the registry's

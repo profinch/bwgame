@@ -11,6 +11,13 @@
 | our ENSv2 registry (`UserRegistry` proxy via VerifiableFactory) | `0xbef600d2b4b19918ed7543bfecf61f412d8e210c` | 10.09.2026 |
 | `Names` (registrar for that registry, wildcard resolver) | `0x2E32A8CE61f46c7276Bc3786e0a7AE32da2E29ED` | block 11675060 |
 
+Labels reserved under `groundstate.eth` (12.09.2026): about three hundred, registered straight into our
+registry by the deployer wallet with `Names` as resolver and no plot behind them — `casino`, `bank`,
+coins, chains, exchanges, brands, places, people, the world's own words (`plot`, `dig`, `relic`…).
+A reserved label resolves to nothing and cannot be taken by `Names.name`; to hand one to a plot the
+deployer unregisters it and the plot's owner names the plot. The full list is what the registry
+holds: `getResolver(label)` is `Names` for a reserved one.
+
 `groundstate.eth` is registered on the ENSv2 Sepolia beta (one year from 10.09.2026); its
 subregistry is our registry and its resolver is `Names`. The same name is also held on mainnet
 ENS v1 by the same wallet, unused for now.
