@@ -900,7 +900,7 @@ body.listopen .subarrow {
   background: color-mix(in srgb, var(--bg) 78%, transparent);
   display: grid;
   gap: 8px;
-  z-index: 2;
+  z-index: 2; /* over the map too: the tour goes on there */
 }
 
 .hud.tour p {
@@ -1040,7 +1040,6 @@ html.mapfirst .touchpad-buttons {
 .hud.jump,
 .hud.claim,
 .hud.own,
-.hud.tour,
 .touchpad,
 .touchpad-buttons {
   transition: opacity 0.6s ease;
@@ -1050,7 +1049,6 @@ body.onmap .hud.bottom,
 body.onmap .hud.jump,
 body.onmap .hud.claim,
 body.onmap .hud.own,
-body.onmap .hud.tour,
 body.onmap .touchpad,
 body.onmap .touchpad-buttons {
   opacity: 0;
