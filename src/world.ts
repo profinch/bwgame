@@ -733,7 +733,10 @@ document.addEventListener('visibilitychange', askAgain);
 const traffic = new Traffic();
 
 if (!location.search.includes('traffic=off')) {
-  pollBlocks(chain.rpcs).start((block) => traffic.arrive(block));
+  // while the tour plays the sky is the tour's own: the chain's blocks wait
+  pollBlocks(chain.rpcs).start((block) => {
+    if (!tour?.running) traffic.arrive(block);
+  });
 }
 
 const sky: Sky = {
@@ -1198,29 +1201,39 @@ let startTour: () => void = () => {};
 const demo = { forward: 0, side: 0, run: false, jump: false, yawRate: 0, pitchRate: 0, dig: false, rate: 0, claimHeld: false };
 /** The one other player the tour brings along, who is nobody. */
 const MOCK_PEER = -1;
+/** The address of the plot the tour claimed for show, if any: told apart from its contract. */
+let mockedPlot = '';
+/** The tour's own blocks, sent up while it plays. */
+let mockSkyTimer: ReturnType<typeof setInterval> | null = null;
 /** Where the tour's player is and is going, in metres from you, and how fast they walk. */
 const mockPeer = { on: false, x: 0, z: 0, toX: 0, toZ: 0, dig: false };
 const MOCK_PEER_PACE = 1.5;
 
-/** An address a few steps ahead of where you stand: the cell there, and any digits after. */
+/**
+ * An address some steps ahead of where you stand and a little to the left —
+ * clear of the contract straight ahead — the cell there, and any digits after.
+ */
 function mockAddressAhead(): string {
-  const ahead = { x: player.x - Math.sin(player.yaw) * 6, z: player.z - Math.cos(player.yaw) * 6 };
-  const cell = addressUnder(ahead.x, ahead.z);
+  const c = Math.cos(player.yaw);
+  const sn = Math.sin(player.yaw);
+  const right = -8;
+  const lz = -16;
+  const at = { x: player.x + c * right + sn * lz, z: player.z + c * lz - sn * right };
+  return mockAddressAt(at.x, at.z);
+}
+
+/** An address whose cell is at this spot, in metres from home, and any digits after. */
+function mockAddressAt(x: number, z: number): string {
+  const cell = addressUnder(x, z);
   let tail = '';
   for (let i = 0; i < 40 - cell.length; i++) tail += '0123456789abcdef'[Math.floor(Math.random() * 16)];
   return `0x${cell}${tail}`;
 }
 
-/** The first plot's address, by its name, asked once. */
-let firstKnown: Promise<string | null> | null = null;
-function firstPlot(): Promise<string | null> {
-  firstKnown ??= resolveName('first.groundstate.eth').catch(() => null);
-  return firstKnown;
-}
-
 /** A plot of the tour's own, at an address, with a note or without: never from the chain. */
 function mockPlot(address: string, note: string): Structure {
-  const account: Account = { address, codeSize: 2271, code: `0x${'a5'.repeat(2271)}`, balance: 0n, nonce: 1 };
+  // a small building, so it is seen whole from where you stand
+  const account: Account = { address, codeSize: 600, code: `0x${'a5'.repeat(600)}`, balance: 0n, nonce: 1 };
   const structure = structureOf(account, [], chain.coin, { note, notes: note ? [note] : [], code: null, owner: '0x000000000000000000000000000000000000d3a0', salt: null, name: undefined });
   structure.mock = true;
   return structure;
@@ -1253,21 +1266,58 @@ function standBy(angle: number, off: number, facing: boolean): { x: number; z: n
 // the open stand is turned so the sun — from +x +z, low — falls on the walker's
 // back at about forty-five degrees as the camera sees it: lit, not flat
 const OPEN_STAND = standBy(5.09, 150, false);
-const FIRST_STAND = standBy(2.4, 26, true);
+/**
+ * The contract the tour goes to stands in for the first plot: one of its own,
+ * on the open ground a way to the right of the open stand — out of the first
+ * steps' view — with the first plot's words cut into it, so the arrival by
+ * name, the building and the writing are shown the same every time and from
+ * nothing on the chain. The stand is beside it, facing it.
+ */
+const CONTRACT_AT = (() => {
+  const c = Math.cos(OPEN_STAND.yaw);
+  const sn = Math.sin(OPEN_STAND.yaw);
+  // eighty metres to the right of the open stand, a little ahead
+  return { x: OPEN_STAND.x + c * 80 - sn * 10, z: OPEN_STAND.z - sn * 80 - c * 10 };
+})();
+const CONTRACT_STAND = (() => {
+  const off = standBy(2.4, 30, true);
+  const x = CONTRACT_AT.x + off.x;
+  const z = CONTRACT_AT.z + off.z;
+  return { x, z, yaw: Math.atan2(x - CONTRACT_AT.x, z - CONTRACT_AT.z) };
+})();
+function mockContract(): Structure {
+  const address = mockAddressAt(CONTRACT_AT.x, CONTRACT_AT.z);
+  const account: Account = { address, codeSize: 2271, code: `0x${'a5'.repeat(2271)}`, balance: 0n, nonce: 1 };
+  const notes = ['profinch was here', 'make the world a little bit better'];
+  const structure = structureOf(account, [], chain.coin, {
+    note: notes[notes.length - 1]!,
+    notes,
+    code: null,
+    owner: '0x000000000000000000000000000000000000d3a0',
+    salt: null,
+    name: 'first',
+  });
+  structure.mock = true;
+  // its front — the wall the words are on — toward the stand
+  structure.turn = CONTRACT_STAND.yaw;
+  return structure;
+}
 /**
  * The wallet the tour shows is one of its own, laid on the open ground a few
  * steps ahead of the open stand and turned to face it, so the step is the
  * same wherever and whenever the tour runs — no real plots on the horizon
  * going up or being drawn, nothing from the chain at all.
  */
-const WALLET_AHEAD = 16;
+const WALLET_AHEAD = 9;
+/**
+ * A plate is laid square to the world, its posts' signs on their +z faces, so
+ * it is seen from +z: the stand for it is the open stand's spot facing -z,
+ * and the plate lies that far ahead.
+ */
+const WALLET_STAND = { x: OPEN_STAND.x, z: OPEN_STAND.z, yaw: 0 };
 function mockWallet(): Structure {
-  const forward = { x: -Math.sin(OPEN_STAND.yaw), z: -Math.cos(OPEN_STAND.yaw) };
-  const at = { x: OPEN_STAND.x + forward.x * WALLET_AHEAD, z: OPEN_STAND.z + forward.z * WALLET_AHEAD };
-  const cell = addressUnder(at.x, at.z);
-  let tail = '';
-  for (let i = 0; i < 40 - cell.length; i++) tail += '0123456789abcdef'[Math.floor(Math.random() * 16)];
-  const address = `0x${cell}${tail}`;
+  const at = { x: WALLET_STAND.x, z: WALLET_STAND.z - WALLET_AHEAD };
+  const address = mockAddressAt(at.x, at.z);
   const account: Account = { address, codeSize: 0, code: '0x', balance: 2_400_000_000_000_000_000n, nonce: 37 };
   const holdings = [
     { symbol: 'usdc', amount: 12_500_000_000n, decimals: 6, supply: 40_000_000_000_000_000n },
@@ -1276,17 +1326,8 @@ function mockWallet(): Structure {
   ];
   const structure = structureOf(account, holdings, chain.coin);
   structure.mock = true;
-  // the posts' signs face +z in the plate's own frame: turned to face the stand
-  structure.turn = OPEN_STAND.yaw;
   return structure;
 }
-/**
- * The travel the tour has under way, if any. A travel goes on after the step
- * that began it is left — the chain is asked, then the walker is set down —
- * so the next scene waits for it, or two travels would set the walker down
- * over each other and the tour would come apart under quick clicking.
- */
-let tourTravel: Promise<unknown> | null = null;
 
 function takeDemoJump(): boolean {
   const asked = demo.jump;
@@ -1447,19 +1488,18 @@ function takeDemoJump(): boolean {
         }
       },
       go: async () => {
-        const typed = where.value.trim();
+        // the arrival, as an arrival is — the full descent onto the spot
+        // beside the building — but to the tour's own contract, with nothing
+        // asked of anybody
         where.value = '';
-        try {
-          const address = looksLikeName(typed) ? await resolveName(typed) : normalizeAddress(typed);
-          if (address) {
-            if (tourTravel) await tourTravel.catch(() => undefined);
-            // the full descent, as an arrival is — onto the tour's own spot
-            tourTravel = travelTo(address, { ...FIRST_STAND, drop: DESCENT_FROM });
-            await tourTravel;
-          }
-        } catch {
-          // the name did not resolve: the tour goes on where it is
-        }
+        if (!structures.some((it) => it.mock && it.address !== mockedPlot)) raise(mockContract());
+        player.x = CONTRACT_STAND.x;
+        player.z = CONTRACT_STAND.z;
+        player.yaw = CONTRACT_STAND.yaw;
+        player.pitch = -0.2;
+        player.y = ground.surfaceAt(player.x, player.z);
+        descent = DESCENT_FROM;
+        turning = null;
       },
       section: (which) => {
         if (which === null) {
@@ -1529,11 +1569,12 @@ function takeDemoJump(): boolean {
         if (said) said.textContent = `${n} of ${of} cores`;
       },
       mockClaim: () => {
-        // shown again — the step gone back to — the plot before comes down first
-        for (let i = structures.length - 1; i >= 0; i--) if (structures[i]!.mock) structures.splice(i, 1);
-        for (let i = rising.length - 1; i >= 0; i--) if (rising[i]!.mock) rising.splice(i, 1);
-        for (let i = inking.length - 1; i >= 0; i--) if (inking[i]!.mock) inking.splice(i, 1);
+        // shown again — the step gone back to — the plot before comes down first; the contract stays
+        for (let i = structures.length - 1; i >= 0; i--) if (structures[i]!.mock && structures[i]!.address === mockedPlot) structures.splice(i, 1);
+        for (let i = rising.length - 1; i >= 0; i--) if (rising[i]!.mock && rising[i]!.address === mockedPlot) rising.splice(i, 1);
+        for (let i = inking.length - 1; i >= 0; i--) if (inking[i]!.mock && inking[i]!.address === mockedPlot) inking.splice(i, 1);
         const address = mockAddressAhead();
+        mockedPlot = address;
         startRising(mockPlot(address, ''));
         return address;
       },
@@ -1619,8 +1660,6 @@ function takeDemoJump(): boolean {
         live?.peers.delete(MOCK_PEER);
       },
       scene: async (which) => {
-        // a travel still under way from before finishes first, whatever the scene
-        if (tourTravel) await tourTravel.catch(() => undefined);
         if (which === 'any') return null;
         // a step opens on its picture: no drop from the sky, no turn of the
         // head — the spot, the way you face, at once, whichever way the step
@@ -1640,37 +1679,31 @@ function takeDemoJump(): boolean {
         if (which === 'wallet') {
           // on the open ground by home, a plate of the tour's own a few steps ahead
           if (Math.abs(origin.x) > 0.5 || Math.abs(origin.z) > 0.5) arriveAt(0, 0);
-          player.x = OPEN_STAND.x;
-          player.z = OPEN_STAND.z;
-          player.yaw = OPEN_STAND.yaw;
-          player.pitch = -0.18;
+          player.x = WALLET_STAND.x;
+          player.z = WALLET_STAND.z;
+          player.yaw = WALLET_STAND.yaw;
+          player.pitch = -0.3;
           player.y = ground.surfaceAt(player.x, player.z);
           descent = 0;
           turning = null;
           raise(mockWallet());
           return null;
         }
-        // at the first plot — there already or taken there — on the same spot beside it every time
-        const goal = await firstPlot();
-        const stand = FIRST_STAND;
-        if (goal) {
-          const at = offsetOf(goal);
-          if (Math.abs(origin.x - at.x) > 0.5 || Math.abs(origin.z - at.z) > 0.5) {
-            tourTravel = travelTo(goal, { ...stand, drop: 0 });
-            await tourTravel;
-          }
-          player.x = stand.x;
-          player.z = stand.z;
-          player.yaw = stand.yaw;
-          player.pitch = -0.05;
-          player.y = ground.surfaceAt(player.x, player.z);
-          descent = 0;
-          turning = null;
-        }
-        if (which === 'first') return null;
+        // beside the tour's contract, on the same spot every time, the contract standing
+        if (Math.abs(origin.x) > 0.5 || Math.abs(origin.z) > 0.5) arriveAt(0, 0);
+        raise(mockContract());
+        player.x = CONTRACT_STAND.x;
+        player.z = CONTRACT_STAND.z;
+        player.yaw = CONTRACT_STAND.yaw;
+        player.pitch = -0.05;
+        player.y = ground.surfaceAt(player.x, player.z);
+        descent = 0;
+        turning = null;
+        if (which === 'contract') return null;
         // the tour's plot, as the step needs it: a drawing, or written into —
         // put up at once, the growing and the writing having been shown already
         const address = mockAddressAhead();
+        mockedPlot = address;
         raise(mockPlot(address, which === 'written' ? 'hello, world' : ''));
         return address;
       },
@@ -1699,6 +1732,8 @@ function takeDemoJump(): boolean {
       driver.clean();
       panels.restore();
       live?.pause(false);
+      if (mockSkyTimer) clearInterval(mockSkyTimer);
+      mockSkyTimer = null;
       if (beforeTour) {
         if (origin.x !== beforeTour.ox || origin.z !== beforeTour.oz) arriveAt(beforeTour.ox, beforeTour.oz);
         player.x = beforeTour.x;
@@ -1729,6 +1764,17 @@ function takeDemoJump(): boolean {
       panels.suspend();
       // out of the room: the game does not see the tour, nor the tour the game
       live?.pause(true);
+      // and a sky of its own: a block of made-up movements every so often, a few of them failed
+      const mockSky = () => {
+        const anyAddress = () => {
+          let hex = '0x';
+          for (let i = 0; i < 40; i++) hex += '0123456789abcdef'[Math.floor(Math.random() * 16)];
+          return hex;
+        };
+        traffic.arrive({ number: 0, passing: Array.from({ length: 70 }, (_, i) => ({ from: anyAddress(), to: anyAddress(), ok: i % 12 !== 0 })) });
+      };
+      mockSky();
+      mockSkyTimer = setInterval(mockSky, 9000);
       taking.stop();
       // begun from the welcome, the first descent is still under way: it is
       // brought down to the same short drop the tour uses everywhere, so the

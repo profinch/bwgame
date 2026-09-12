@@ -22,7 +22,7 @@ export interface Driver {
   stop(): void;
   /** Type into the field that takes you places, a sign at a time. */
   type(text: string, wait: (ms: number) => Promise<void>): Promise<void>;
-  /** Go where the field says. */
+  /** Go where the field says — to the tour's own contract, with the arrival's descent. */
   go(): Promise<void>;
   /** Open a part of the menu, or close it. */
   section(which: 'map' | 'panels' | 'blockchain' | null): void;
@@ -78,8 +78,7 @@ export interface Driver {
   clean(): void;
   /**
    * Set the scene a step needs before it plays — on open ground by home, at
-   * the first plot, at the wallet, with the tour's plot claimed, or written
-   * into — at once, whether the step was reached in order, skipped to, or gone
+   * the tour's contract, at its wallet, with its plot claimed, or written into — at once, whether the step was reached in order, skipped to, or gone
    * back to, and the same wherever the tour was begun, since every spot is a
    * fixed one by a fixed address. A step opens on its picture: no drop from
    * the sky, no turn of the head. The tour's plot's address comes back, if
@@ -89,7 +88,7 @@ export interface Driver {
 }
 
 /** What has to be so before a step plays. */
-export type Scene = 'any' | 'open' | 'first' | 'wallet' | 'claimed' | 'written';
+export type Scene = 'any' | 'open' | 'contract' | 'wallet' | 'claimed' | 'written';
 
 type Wait = (ms: number) => Promise<void>;
 
@@ -154,7 +153,7 @@ export const STEPS: readonly Step[] = [
   },
   {
     scene: 'open',
-    says: 'an address or a name takes you anywhere. this goes to first.groundstate.eth — the first plot of this ground, named under groundstate.eth.',
+    says: 'an address or a name takes you anywhere. this goes to first.groundstate.eth — the first plot of this ground, named under groundstate.eth. here a building of the tour\'s own stands for it.',
     async play(d, wait) {
       d.mark('.hud.jump');
       await d.type('first.groundstate.eth', wait);
@@ -165,7 +164,7 @@ export const STEPS: readonly Step[] = [
     },
   },
   {
-    scene: 'first',
+    scene: 'contract',
     says: 'a contract stands as a building, its size from its code, its shape from the code\'s hash, the words written into it cut into its wall. a dashed outline is a plot not yet written into; boulders and gates are plots of the earlier grounds.',
     async play(d, wait) {
       // back off from the building, then run the eyes up it to the roof and back down to its foot
@@ -199,7 +198,7 @@ export const STEPS: readonly Step[] = [
     },
   },
   {
-    scene: 'first',
+    scene: 'contract',
     says: 'empty ground is not bought but dug for. dig here searches for a salt whose contract would land at your feet — every attempt is a place, the closest is kept, and the longer you dig the closer it gets. this is what it looks like.',
     async play(d, wait) {
       d.mark('.hud.claim');
@@ -232,7 +231,7 @@ export const STEPS: readonly Step[] = [
     },
   },
   {
-    scene: 'first',
+    scene: 'contract',
     says: 'one transaction makes the closest place found your contract, for good — a plot: yours to write into, build on, name, hand on. it stands up out of the ground as a drawing of the building it will be.',
     async play(d, wait) {
       d.mark('.hud.claim');
@@ -249,16 +248,20 @@ export const STEPS: readonly Step[] = [
       d.claimSays('claimed: yours, 74 m from here. walk over — it is going up', '');
       mocked = d.mockClaim();
       d.mark(null);
-      d.look(0, -0.05);
-      await wait(600);
+      // the head turns to where it is going up, ahead and to the left
+      d.look(0.3, 0);
+      await wait(1500);
       d.look(0, 0);
-      await wait(9000);
+      await wait(8000);
     },
   },
   {
     scene: 'claimed',
     says: 'on your own plot the owner\'s panel is yours to act with. write into it — one transaction — and the words are cut into the wall as the drawing becomes a building.',
     async play(d, wait) {
+      d.look(0.3, 0);
+      await wait(1500);
+      d.look(0, 0);
       d.mark('.hud.own');
       d.ownSays('yours: 0x3095c19c…d3a0', 'nothing written into it yet\npoints at no code: a drawing until something is written into it');
       await wait(1200);
@@ -281,6 +284,9 @@ export const STEPS: readonly Step[] = [
     scene: 'written',
     says: 'point the plot at a contract of yours and that code runs at this address — a shop, a game, a gallery live here, and other contracts calling this place find it.',
     async play(d, wait) {
+      d.look(0.3, 0);
+      await wait(1500);
+      d.look(0, 0);
       d.mark('.hud.own');
       d.ownSays('written', 'says: hello, world\npoints at no code');
       await wait(900);
@@ -301,6 +307,9 @@ export const STEPS: readonly Step[] = [
     scene: 'written',
     says: 'name it under groundstate.eth and people come by name: demo.groundstate.eth resolves to this plot, in any wallet that knows ENS. a name belongs to the place and goes with it.',
     async play(d, wait) {
+      d.look(0.3, 0);
+      await wait(1500);
+      d.look(0, 0);
       d.mark('.hud.own');
       d.ownSays('yours: 0x3095c19c…d3a0', 'says: hello, world\npoints at 0xC0DE…5EED');
       await wait(900);
@@ -321,6 +330,9 @@ export const STEPS: readonly Step[] = [
     scene: 'written',
     says: 'seal the code and it can never change — not by you, not by anyone. whoever deals with this place knows it stays what it is. writing and naming stay possible; there is no unsealing.',
     async play(d, wait) {
+      d.look(0.3, 0);
+      await wait(1500);
+      d.look(0, 0);
       d.mark('.hud.own');
       d.ownSays('yours: demo.groundstate.eth', 'says: hello, world\npoints at 0xC0DE…5EED');
       await wait(1200);
