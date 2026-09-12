@@ -179,15 +179,36 @@ async function standing(account: Account, vouched = false): Promise<Structure> {
 async function refresh(address: string): Promise<void> {
   const wanted = address.toLowerCase();
   const at = structures.findIndex((standing) => standing.address.toLowerCase() === wanted);
-  const wasDrawn = at >= 0 && structures[at]!.kind === 'framed';
+  const before = at >= 0 ? structures[at]! : null;
   if (at >= 0) structures.splice(at, 1);
-  const account = await accountAt(address);
-  if (!account || !stands(account)) return settle();
-  const now = await standing(account, true);
+  // the receipt is in hand, but the gateway asked may be a block behind it:
+  // asked again a few times until it says something new, then taken as it is
+  let now: Structure | null = null;
+  for (let tries = 0; tries < 6; tries++) {
+    const account = await accountAt(address);
+    if (!account || !stands(account)) return settle();
+    now = await standing(account, true);
+    if (!before || !sameWords(before, now)) break;
+    await new Promise((r) => setTimeout(r, 1500));
+  }
+  if (!now) return settle();
   // a drawing that has become a building goes up out of the ground; a
-  // building that has changed is simply itself again
-  if (wasDrawn && now.kind !== 'framed') startRising(now);
+  // building written into anew shows the writing coming up; anything else is
+  // simply itself again
+  if (before?.kind === 'framed' && now.kind !== 'framed') startRising(now);
+  else if (before && before.plot?.note !== now.plot?.note) startInking(now);
   else raise(now);
+}
+
+/** Whether two standings of one plot say the same: owner, note, code, name. */
+function sameWords(a: Structure, b: Structure): boolean {
+  return (
+    a.kind === b.kind &&
+    a.plot?.owner?.toLowerCase() === b.plot?.owner?.toLowerCase() &&
+    a.plot?.note === b.plot?.note &&
+    (a.plot?.implementation ?? null) === (b.plot?.implementation ?? null) &&
+    (a.plot?.name ?? null) === (b.plot?.name ?? null)
+  );
 }
 
 /** Put a thing up where it stands. False if it was standing there already. */
@@ -228,7 +249,7 @@ async function raiseNearby(growing = false): Promise<void> {
     // this factory's plots, and behind them the contracts the factories before
     // it made — which stand as the contracts they are, and nothing more
     const plots = [...(await claimedPlots()), ...(await formerPlots())];
-    for (const { plot, note, implementation } of plots) {
+    for (const { plot, note, implementation, name, owner } of plots) {
       if (origin.x !== here.x || origin.z !== here.z) return;
       const at = offsetOf(plot);
       if (Math.abs(at.x - here.x) > GROUND / 2 || Math.abs(at.z - here.z) > GROUND / 2) continue;
@@ -236,18 +257,26 @@ async function raiseNearby(growing = false): Promise<void> {
       // down and put up again as the building it now is; anything else standing
       // is left alone
       const already = structures.find((standing) => standing.address.toLowerCase() === plot.toLowerCase());
-      let wasDrawn = false;
       if (already) {
-        if (already.kind !== 'framed' || !(note || implementation)) continue;
+        // standing already, and the index says the same: left alone. Said
+        // differently — written into, pointed at code, named, handed on — it
+        // is taken down and put up again as what it now is
+        const changed =
+          (already.plot?.note ?? '') !== (note ?? already.plot?.note ?? '') ||
+          (implementation !== undefined && (already.plot?.implementation ?? null) !== (implementation ?? null)) ||
+          (name !== undefined && (already.plot?.name ?? null) !== (name || null)) ||
+          (owner !== undefined && already.plot?.owner?.toLowerCase() !== owner.toLowerCase());
+        if (!changed) continue;
         structures.splice(structures.indexOf(already), 1);
-        wasDrawn = true;
       }
       const account = await accountAt(plot);
       if (!account || !stands(account)) continue;
       if (origin.x !== here.x || origin.z !== here.z) return;
       const structure = await standing(account);
-      // new to this world, or a drawing become a building: it goes up while you watch
-      if (growing || (wasDrawn && structure.kind !== 'framed')) startRising(structure);
+      // new to this world, or a drawing become a building: it goes up while
+      // you watch; written into anew: the writing comes up
+      if (growing || (already?.kind === 'framed' && structure.kind !== 'framed')) startRising(structure);
+      else if (already && (already.plot?.note ?? '') !== (structure.plot?.note ?? '')) startInking(structure);
       else raise(structure);
     }
   } finally {
@@ -475,6 +504,16 @@ ownGround(owning, ownPlotHere, (plot) => void refresh(plot), (plot) => void trav
 const BUILDS_IN = 10;
 /** Plots on their way up. */
 const rising: Structure[] = [];
+/** How long a note just written takes to come up on the wall, in seconds, and the walls it is coming up on. */
+const INKS_IN = 4;
+const inking: Structure[] = [];
+
+/** Put a building up with its writing still to come, sign by sign. */
+function startInking(structure: Structure): void {
+  if (!raise(structure)) return;
+  structure.inked = 0;
+  inking.push(structure);
+}
 
 /**
  * Put a plot up and let it be seen going up.
@@ -1340,11 +1379,16 @@ loop({
     // whatever is going up, goes up a little more — by the loop's own clock
     // and not the wall's, because a tab out of sight takes no steps: a plot
     // waits where it is rather than being finished while nobody is watching
-    if (rising.length) {
+    if (rising.length || inking.length) {
       for (let i = rising.length - 1; i >= 0; i--) {
         const structure = rising[i]!;
         structure.grown = Math.min(1, (structure.grown ?? 0) + seconds / BUILDS_IN);
         if (structure.grown >= 1) rising.splice(i, 1);
+      }
+      for (let i = inking.length - 1; i >= 0; i--) {
+        const structure = inking[i]!;
+        structure.inked = Math.min(1, (structure.inked ?? 0) + seconds / INKS_IN);
+        if (structure.inked >= 1) inking.splice(i, 1);
       }
       placeStones();
     }

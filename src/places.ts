@@ -54,6 +54,8 @@ export interface Structure {
   sink?: number;
   /** How much of it stands yet, from the ground up: 0 to 1, and 1 if unset. */
   grown?: number;
+  /** How much of a note just written is on the wall yet, 0 to 1: the signs come up in reading order. */
+  inked?: number;
   /** For a relic: which earlier ground it is a plot of. */
   relic?: 1 | 2;
   /** For a plot of this ground: whose it is, what is written into it, what it points at, what it is called. */
@@ -781,14 +783,19 @@ function notedBuilding(structure: Structure, base: number, origin: { x: number; 
   // hangs from the top of it: the words start level and end where they end
   const lines = Math.max(1, ...words.map((word) => [...word].length));
   const tall = Math.min(structure.tall - NOTE_FOOT, (lines * 11 + 2 * EDGE + 2) * across);
+  // every stroke of every word, in reading order — word by word, down each —
+  // so a note just written comes up before your eyes the way it is read
+  const strokes: { at: number; col: number; row: number; cols: number; rows: number; down: number }[] = [];
   words.forEach((word, i) => {
     const { down, patches } = carve([word], tall, POST, false, true);
     const at = -structure.wide / 2 + POST * (i + 1);
-    for (const { col, row, cols, rows } of patches) {
-      const top = NOTE_FOOT + tall - row * down;
-      if (top > reached + 1e-6) continue;
-      put(at + (col + cols / 2 - WALL / 2) * across, foot + tall - (row + rows) * down, structure.deep / 2 + cutIn / 2, cols * across, rows * down, cutIn);
-    }
+    for (const patch of patches) strokes.push({ at, down, ...patch });
+  });
+  const shown = Math.ceil(strokes.length * Math.min(1, structure.inked ?? 1));
+  strokes.slice(0, shown).forEach(({ at, down, col, row, cols, rows }) => {
+    const top = NOTE_FOOT + tall - row * down;
+    if (top > reached + 1e-6) return;
+    put(at + (col + cols / 2 - WALL / 2) * across, foot + tall - (row + rows) * down, structure.deep / 2 + cutIn / 2, cols * across, rows * down, cutIn);
   });
   return new Float32Array(out);
 }
