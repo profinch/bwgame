@@ -1520,11 +1520,10 @@ function takeDemoJump(): boolean {
         if (which === 'start') {
           // back where the tour began, and looking the way you looked
           if (!beforeTour) return null;
-          if (Math.abs(origin.x - beforeTour.ox) > 0.5 || Math.abs(origin.z - beforeTour.oz) > 0.5) {
-            arriveAt(beforeTour.ox, beforeTour.oz);
-            descent = 60;
-            await wait(1600);
-          }
+          const travelled = Math.abs(origin.x - beforeTour.ox) > 0.5 || Math.abs(origin.z - beforeTour.oz) > 0.5;
+          if (travelled) arriveAt(beforeTour.ox, beforeTour.oz);
+          // the spot first, then the drop onto it: arriving puts you beside
+          // the address for a moment, which here is a building
           player.x = beforeTour.x;
           player.z = beforeTour.z;
           // facing away from what was looked at — a building, most often — so
@@ -1532,6 +1531,10 @@ function takeDemoJump(): boolean {
           player.yaw = beforeTour.yaw + Math.PI;
           player.pitch = -0.03;
           player.y = ground.surfaceAt(player.x, player.z);
+          if (travelled) {
+            descent = 60;
+            await wait(1600);
+          }
           return null;
         }
         // at a place — the first plot, or the wallet — there already or taken
@@ -1540,11 +1543,10 @@ function takeDemoJump(): boolean {
         const stands = which === 'wallet' ? walletStand : firstStand;
         if (goal) {
           const at = offsetOf(goal);
-          if (Math.abs(origin.x - at.x) > 0.5 || Math.abs(origin.z - at.z) > 0.5) {
+          const travelled = Math.abs(origin.x - at.x) > 0.5 || Math.abs(origin.z - at.z) > 0.5;
+          if (travelled) {
             tourTravel = travelTo(goal);
             await tourTravel;
-            descent = 60;
-            await wait(1600);
           }
           const stand = stands ?? { x: player.x, z: player.z, yaw: player.yaw };
           if (which === 'wallet') walletStand = stand;
@@ -1556,6 +1558,11 @@ function takeDemoJump(): boolean {
           // posts rather than on whatever stands on the horizon behind it
           player.pitch = which === 'wallet' ? -0.18 : -0.05;
           player.y = ground.surfaceAt(player.x, player.z);
+          // the spot first, then the drop onto it
+          if (travelled) {
+            descent = 60;
+            await wait(1600);
+          }
         }
         if (which === 'first' || which === 'wallet') return null;
         // the tour's plot, as the step needs it: a drawing, or written into —
