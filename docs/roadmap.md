@@ -45,17 +45,20 @@ In roughly the order it matters:
 2. **Ground that loads as you walk.** Today the walkable patch is 1.7 km and has an edge you can
    reach; terrain should stream.
 3. **Arrive at your own plot** when a wallet is connected; the factory otherwise.
-4. **Reverse names for plots** (ENSv2): a plot's address answering `first.groundstate.eth`.
-5. **Buildings shaped by their owners:** the `IGroundStateBuilding` interface and a template
+4. **From the map into the world at a point.** The map already turns a place into a link; a
+   click on the map inside the world should take the walker to that ground without leaving the
+   page or losing what the world holds — the panels, the live room, the tour. Recorded 12.09.2026.
+5. **Reverse names for plots** (ENSv2): a plot's address answering `first.groundstate.eth`.
+6. **Buildings shaped by their owners:** the `IGroundStateBuilding` interface and a template
    implementation.
-6. **Kinds of contracts by interface:** tokens, NFT collections, pools, multisigs, proxies, each
+7. **Kinds of contracts by interface:** tokens, NFT collections, pools, multisigs, proxies, each
    with a form; verified names from Sourcify.
-7. **Mountains:** a larger amplitude on the largest cells, so some of the ground rises by
+8. **Mountains:** a larger amplitude on the largest cells, so some of the ground rises by
    hundreds of metres within view; hills are there already.
-8. **GPU digging** (WebGPU): a hundred times the attempts, a tenth of the distance.
-9. **Plots on an L2 and on mainnet;** other chains as other worlds; bridges as passages.
-10. **Economy around plots:** selling, renting, lending a place — as contracts, not as our rules.
-11. **A new figure** for the walker.
+9. **GPU digging** (WebGPU): a hundred times the attempts, a tenth of the distance.
+10. **Plots on an L2 and on mainnet;** other chains as other worlds; bridges as passages.
+11. **Economy around plots:** selling, renting, lending a place — as contracts, not as our rules.
+12. **A new figure** for the walker.
 12. Beacons, a first-discoverer record, a feed of active addresses to go and see.
 
 ## Never
