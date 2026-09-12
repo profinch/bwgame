@@ -2210,6 +2210,9 @@ loop({
  */
 const where = going.querySelector<HTMLInputElement>('input')!;
 
+// whatever was complained of is forgotten as soon as something else is typed
+where.addEventListener('input', () => where.setCustomValidity(''));
+
 going.addEventListener('submit', async (event) => {
   event.preventDefault();
   const typed = where.value.trim();
@@ -2220,26 +2223,29 @@ going.addEventListener('submit', async (event) => {
     where.reportValidity();
   };
 
-  let address: string;
+  // the field is held while the name is looked up, and let go before anything
+  // is said about it: a disabled field shows no complaint, and one that was
+  // left invalid keeps repeating the last complaint at whatever is typed next
+  let address: string | null = null;
+  let why = '';
   where.disabled = true;
   try {
     if (looksLikeName(typed)) {
-      const resolved = await resolveName(typed);
-      if (!resolved) {
-        complain(`${typed} does not point at an address`);
-        return;
-      }
-      address = resolved;
+      address = await resolveName(typed);
+      if (!address) why = `${typed} does not point at an address`;
     } else {
       try {
         address = normalizeAddress(typed);
       } catch {
-        complain('that is neither an address nor a name');
-        return;
+        why = 'that is neither an address nor a name';
       }
     }
   } finally {
     where.disabled = false;
+  }
+  if (!address) {
+    complain(why);
+    return;
   }
 
   where.value = '';
