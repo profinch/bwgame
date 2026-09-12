@@ -165,6 +165,9 @@ sockets.on('connection', (socket) => {
       person = { id, x: 0, z: 0, yaw: 0, dig: false, seen: Date.now(), socket };
       room(inRoom).set(id, person);
       tell(socket, { t: 'you', id });
+      // and the world as it stands: every plot the index has said, every
+      // place anybody has revealed — so nothing need be asked over HTTP
+      tell(socket, { t: 'world', block: graphBlock, plots: [...plots.values()], revealed: [...revealed.keys()] });
       return;
     }
     // somebody went to an address and found something standing there: the
@@ -336,8 +339,15 @@ async function readTheChain() {
       row.updatedIn = String(Math.max(Number(row.updatedIn), log.block_number));
       top = Math.max(top, log.block_number);
     }
-    for (const [id, row] of rows) if (!plots.has(id) || Number(plots.get(id).updatedIn) <= Number(row.updatedIn)) plots.set(id, row);
+    const fresh = [];
+    for (const [id, row] of rows) {
+      const had = plots.get(id);
+      if (had && Number(had.updatedIn) >= Number(row.updatedIn) && JSON.stringify(had) === JSON.stringify(row)) continue;
+      plots.set(id, row);
+      fresh.push(row);
+    }
     graphBlock = Math.max(graphBlock, top);
+    if (fresh.length) for (const person of room(ROOM).values()) tell(person.socket, { t: 'changed', block: graphBlock, plots: fresh });
     chainReadAt = Date.now();
     console.log(`${new Date().toISOString()} read the chain instead: ${rows.size} plot(s) as of block ${top}`);
   } catch (error) {
@@ -380,9 +390,9 @@ async function askTheGraph() {
     graphBlock = Math.max(graphBlock, block);
     // the first answer is the whole world as it stands; nobody needs telling
     if (first || rows.length === 0) return;
-    const changed = rows.map((p) => ({ plot: p.id, owner: p.owner?.id, note: p.note, updatedIn: Number(p.updatedIn) }));
-    for (const person of room(ROOM).values()) tell(person.socket, { t: 'changed', plots: changed });
-    console.log(`${new Date().toISOString()} told ${room(ROOM).size} about ${changed.length} changed plot(s)`);
+    // the rows themselves, as the index shapes them: the pages fold them in and ask nothing more
+    for (const person of room(ROOM).values()) tell(person.socket, { t: 'changed', block: graphBlock, plots: rows });
+    console.log(`${new Date().toISOString()} told ${room(ROOM).size} about ${rows.length} changed plot(s)`);
   } catch (error) {
     console.error('the subgraph did not answer:', error?.message ?? error);
   } finally {

@@ -45,8 +45,20 @@ const SAYS_AT_LEAST_EVERY = 5000;
 /** How much of the way to where a peer was said to be is covered each second. */
 const EASES_AT = 12;
 
+/** The world as the server has said it, kept up by what it says next. */
+export interface World {
+  /** Counts up with every word from the server, so a reader knows whether anything is new. */
+  version: number;
+  block: number;
+  /** Rows as the index shapes them, by address. */
+  plots: Map<string, unknown>;
+  revealed: Set<string>;
+}
+
 export class Live {
   readonly peers = new Map<number, Peer>();
+  /** Null until the server has said the world once this connection. */
+  world: World | null = null;
   /** Who I am in the room, once the server has said. */
   me = 0;
   private socket: WebSocket | null = null;
@@ -107,14 +119,32 @@ export class Live {
         for (const id of [...this.peers.keys()]) if (!seen.has(id)) this.peers.delete(id);
         return;
       }
-      const said = message as { t?: string; id?: number };
+      const said = message as { t?: string; id?: number; block?: number; plots?: unknown; revealed?: unknown; addresses?: unknown };
       if (said?.t === 'you' && typeof said.id === 'number') this.me = said.id;
-      if (said?.t === 'changed' || said?.t === 'revealed') this.onChanged();
+      if (said?.t === 'world') {
+        const world: World = { version: (this.world?.version ?? 0) + 1, block: Number(said.block ?? 0) || 0, plots: new Map(), revealed: new Set() };
+        if (Array.isArray(said.plots)) for (const row of said.plots as { id?: unknown }[]) if (typeof row?.id === 'string') world.plots.set(row.id.toLowerCase(), row);
+        if (Array.isArray(said.revealed)) for (const it of said.revealed) if (typeof it === 'string') world.revealed.add(it.toLowerCase());
+        this.world = world;
+        this.onChanged();
+      }
+      if (said?.t === 'changed' && this.world && Array.isArray(said.plots)) {
+        for (const row of said.plots as { id?: unknown }[]) if (typeof row?.id === 'string') this.world.plots.set(row.id.toLowerCase(), row);
+        this.world.block = Math.max(this.world.block, Number(said.block ?? 0) || 0);
+        this.world.version++;
+        this.onChanged();
+      }
+      if (said?.t === 'revealed' && this.world && Array.isArray(said.addresses)) {
+        for (const it of said.addresses) if (typeof it === 'string') this.world.revealed.add(it.toLowerCase());
+        this.world.version++;
+        this.onChanged();
+      }
     });
     const drop = () => {
       if (this.socket !== socket) return;
       this.socket = null;
       this.peers.clear();
+      this.world = null;
       this.later();
     };
     socket.addEventListener('close', drop);
@@ -174,6 +204,7 @@ export class Live {
       this.socket = null;
       socket?.close();
       this.peers.clear();
+      this.world = null;
     } else {
       this.retryIn = 1000;
       this.connect();

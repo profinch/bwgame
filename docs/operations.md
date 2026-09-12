@@ -37,9 +37,11 @@ places are forgotten.
 
 Studio throttles a subgraph as a whole: on 12.09.2026 every version answered 429 to everyone. So
 only the live server asks Studio (every 30 s, backing off to 10 min when refused), keeps every row
-it has ever been given, and serves them at `https://gs.bwtoken.io/live/plots?since=<block>`; pages
-read that feed first, Studio only if the feed is down, and the factory's logs last — and never
-replace what they already know with less.
+it has ever been given, and pushes them to every page over the WebSocket — the whole world on
+joining, rows as they change, revealed places as they are revealed — so a connected page asks
+nothing over HTTP. The feed at `https://gs.bwtoken.io/live/plots?since=<block>` (and
+`/live/revealed`) is for a page without a socket; Studio only if the feed is down; the factory's
+logs last — and nothing known is ever replaced with less.
 
 ```bash
 cd subgraph && npm install

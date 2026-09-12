@@ -29,7 +29,7 @@ import { DRESSED_AT, type Structure, blocksOf, bouldersOf, instancesOf, stands, 
 import { POINT, auger } from './auger';
 import { type Stroke, glassOf, inkOf, strokesOf } from './blueprint';
 import { Chips } from './chips';
-import { claimAt, claimedPlots, formerPlots, implementationOf, isPlot, knownPlots, noteOf, ownerOf, plotNameOf, relicOf, revealedPlaces } from './plot';
+import { claimAt, claimedPlots, formerPlots, implementationOf, isPlot, knownPlots, noteOf, ownerOf, plotNameOf, relicOf, revealedPlaces, worldFrom } from './plot';
 import { ownGround } from './owning';
 import { Panels } from './panels';
 import { type Driver, Tour } from './tour';
@@ -322,7 +322,7 @@ async function raiseNearby(growing = false): Promise<void> {
 }
 
 /** How often the world asks again what has been claimed near here. */
-const ASKS_AGAIN_IN = 20_000;
+const ASKS_AGAIN_IN = 60_000;
 /** Whether an ask is already out: two at once would ask the same question twice. */
 let asking = false;
 
@@ -685,7 +685,22 @@ const homeCell = placeOf(bytesOf(HOME));
  * claim the moment the indexer has it — which goes up while you watch, the
  * way your own does. The world works the same with nobody on the other end.
  */
-const live = chain.live ? new Live(chain.live, chain.key, () => askAgain()) : null;
+/**
+ * The first word of the world from the socket puts everything up as it
+ * stands, at once; every word after is a change, and what is new goes up
+ * while you watch.
+ */
+let heardWorld = false;
+const live = chain.live
+  ? new Live(chain.live, chain.key, () => {
+      if (heardWorld) return askAgain();
+      heardWorld = true;
+      void raiseNearby();
+    })
+  : null;
+// what the socket says of the world is the first word on plots and revealed
+// places; the HTTP feed is for when there is no socket
+worldFrom(() => live?.world ?? null);
 /** What the walker turns into while digging. Only one of the two is ever drawn. */
 const drill = renderer.add(auger(), new Float32Array(INSTANCE_FLOATS), true);
 /** How far the auger has turned. */
@@ -759,7 +774,15 @@ if (cameBack) coverage.recentreOn(origin.x, origin.z);
 void accountAt(HOME).then(async (account) => {
   if (account && stands(account)) raise(await standing(account));
 });
-void raiseNearby();
+// the socket brings the world within a moment of opening; only if it has not
+// in a few seconds is the feed asked over HTTP
+if (live) {
+  setTimeout(() => {
+    if (!heardWorld) void raiseNearby();
+  }, 3000);
+} else {
+  void raiseNearby();
+}
 setInterval(askAgain, ASKS_AGAIN_IN);
 document.addEventListener('visibilitychange', askAgain);
 

@@ -182,11 +182,41 @@ let graphSeen = 0;
  * written into each plot, which the logs cannot say without a call per plot.
  */
 /**
+ * The world as the live server has pushed it over the socket, if it is
+ * connected: rows by address and a version that counts up with every word.
+ * Given by whoever holds the socket; null when there is none.
+ */
+let pushed: (() => { version: number; block: number; plots: Map<string, unknown>; revealed: Set<string> } | null) | null = null;
+let pushedSeen = 0;
+
+export function worldFrom(source: () => { version: number; block: number; plots: Map<string, unknown>; revealed: Set<string> } | null): void {
+  pushed = source;
+}
+
+/**
+ * What has changed, from the live server's word over the socket — the whole
+ * world on joining, rows as they change — with nothing asked over HTTP. The
+ * empty list when nothing is new; null when there is no socket to hear.
+ */
+function fromSocket(): Claimed[] | null {
+  const world = pushed?.();
+  if (!world) return null;
+  if (world.version === pushedSeen) return [];
+  pushedSeen = world.version;
+  const page = plotsInGraph({ data: { _meta: { block: { number: world.block } }, plots: [...world.plots.values()] } });
+  if (!page) return [];
+  graphSeen = Math.max(graphSeen, page.block);
+  return page.plots;
+}
+
+/**
  * What has changed, from the live server's copy of the subgraph's answer —
  * the same rows, read once by one server for everybody, since Studio
  * throttles the subgraph as a whole. Null if the server did not answer.
  */
 async function fromFeed(): Promise<Claimed[] | null> {
+  const heard = fromSocket();
+  if (heard) return heard;
   if (!chain.plotsFeed) return null;
   try {
     const response = await fetch(`${chain.plotsFeed}?since=${graphSeen}`);
@@ -338,6 +368,8 @@ export async function claimAt(address: string): Promise<Claimed | null> {
  * did not answer.
  */
 export async function revealedPlaces(): Promise<string[]> {
+  const world = pushed?.();
+  if (world) return [...world.revealed];
   if (!chain.revealedFeed) return [];
   try {
     const response = await fetch(chain.revealedFeed);
