@@ -96,10 +96,13 @@ export const STEPS: readonly Step[] = [
     scene: 'start',
     says: 'this is a blockchain as a place. every address is a spot on this ground, and what stands here is what the chain says stands here — nothing is invented.',
     async play(d, wait) {
-      d.look(0.55, 0);
-      await wait(6500);
-      d.look(0, 0.15);
-      await wait(1500);
+      // a look to one side and the other, over open ground: the start faces away from what stands near
+      d.look(0.35, 0);
+      await wait(2800);
+      d.look(-0.35, 0);
+      await wait(4200);
+      d.look(0.35, 0.12);
+      await wait(1400);
       d.stop();
     },
   },
@@ -107,10 +110,6 @@ export const STEPS: readonly Step[] = [
     scene: 'start',
     says: 'you walk it: w a s d, shift to run, space to jump. on a phone, the stick. dragging the picture looks round.',
     async play(d, wait) {
-      // turn away from whatever is in front — the tour may begin beside a building — then off
-      d.look(2.6, 0);
-      await wait(1200);
-      d.stop();
       d.walk(1, 0, false);
       await wait(2500);
       d.walk(1, 0, true);
@@ -127,10 +126,6 @@ export const STEPS: readonly Step[] = [
     scene: 'start',
     says: 'here is where you stand: the chain, the depth, the address under your feet, what is near — and the block passing overhead. its transactions are the ribbons in the sky, each from its sender toward its receiver.',
     async play(d, wait) {
-      // away from whatever stands in front, so the sky and the ground are the picture
-      d.look(2.6, 0);
-      await wait(1200);
-      d.stop();
       d.mark('.hud.bottom');
       d.look(0, 0.25);
       await wait(2500);

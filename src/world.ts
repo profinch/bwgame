@@ -1508,8 +1508,10 @@ function takeDemoJump(): boolean {
           }
           player.x = beforeTour.x;
           player.z = beforeTour.z;
-          player.yaw = beforeTour.yaw;
-          player.pitch = beforeTour.pitch;
+          // facing away from what was looked at — a building, most often — so
+          // the first steps are played over open ground
+          player.yaw = beforeTour.yaw + Math.PI;
+          player.pitch = -0.03;
           player.y = ground.surfaceAt(player.x, player.z);
           return null;
         }
