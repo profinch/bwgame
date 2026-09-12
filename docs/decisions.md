@@ -66,6 +66,13 @@ the zero address or a person's address as the entry point.
 
 ## Left to settle
 
+**The index behind the world** (12.09.2026): Subgraph Studio throttles the whole subgraph — 429 to
+every address and version once a small quota is spent, which one live server polling every four
+seconds plus a few pages did. Now: the live server alone asks Studio, keeps and serves every row at
+`/live/plots`, and reads the chain off Blockscout while Studio is silent. To settle after the
+hackathon: publish the subgraph to The Graph's network (paid queries in GRT, no ceiling), or make the
+live server's own reading of the chain the index and keep Studio as a convenience. ·
+
 **The mesh of bwtoken.io on the walls of buildings, and walls that bend** — built 12.09.2026,
 switched off the same day (`MESHED_WALLS` in places.ts), fate undecided · where a wallet's own
 address is written · which token a transaction moved (needs logs) · a shape for NFTs · two plots in one metre ·
