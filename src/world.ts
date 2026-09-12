@@ -1214,7 +1214,9 @@ function standBy(angle: number, off: number, facing: boolean): { x: number; z: n
   const z = Math.cos(angle) * off;
   return { x, z, yaw: Math.atan2(x, z) + (facing ? 0 : Math.PI) };
 }
-const OPEN_STAND = standBy(0.7, 150, false);
+// the open stand is turned so the sun — from +x +z, low — falls on the walker's
+// back at about forty-five degrees as the camera sees it: lit, not flat
+const OPEN_STAND = standBy(5.09, 150, false);
 const FIRST_STAND = standBy(2.4, 26, true);
 const WALLET_STAND = standBy(4.1, 9, true);
 /**
