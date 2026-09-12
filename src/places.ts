@@ -786,12 +786,17 @@ function notedBuilding(structure: Structure, base: number, origin: { x: number; 
   // the wall, pulled in by the cut; its face goes back on flush, in pieces
   put(0, bottom, -cutIn / 2, structure.wide, top - bottom, structure.deep - cutIn);
   const faceZ = structure.deep / 2 - cutIn / 2;
-  /** A flush slab of the face, from y0 to y1 and lx0 to lx1, as much of it as has grown. */
+  /**
+   * A flush slab of the face, from y0 to y1 and lx0 to lx1, as much of it as
+   * has grown — grown a hair each way, so two slabs meeting leave no seam:
+   * edges that only touch show as a dotted line from any distance.
+   */
+  const LAP = 0.004;
   const slab = (lx0: number, lx1: number, y0: number, y1: number) => {
-    const lo = Math.max(y0, bottom);
-    const hi = Math.min(y1, top);
+    const lo = Math.max(y0 - LAP, bottom);
+    const hi = Math.min(y1 + LAP, top);
     if (hi - lo < 1e-4 || lx1 - lx0 < 1e-4) return;
-    put((lx0 + lx1) / 2, lo, faceZ, lx1 - lx0, hi - lo, cutIn);
+    put((lx0 + lx1) / 2, lo, faceZ, lx1 - lx0 + 2 * LAP, hi - lo, cutIn);
   };
 
   // as many words as the wall has room for, a post's width each
