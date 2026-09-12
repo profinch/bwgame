@@ -56,6 +56,8 @@ export interface Structure {
   grown?: number;
   /** How much of a note just written is on the wall yet, 0 to 1: the signs come up in reading order. */
   inked?: number;
+  /** Put up by the onboarding to show what a thing looks like; taken down when it ends. Never from the chain. */
+  mock?: boolean;
   /** For a relic: which earlier ground it is a plot of. */
   relic?: 1 | 2;
   /** For a plot of this ground: whose it is, what is written into it, what it points at, what it is called. */

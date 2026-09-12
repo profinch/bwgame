@@ -3,8 +3,10 @@
  * page plays itself — looks round, walks, runs and jumps, types a name and
  * goes there, opens every panel and every part of the menu, turns the page
  * over, comes back — with a card at the foot of the screen saying what is
- * happening, and the controls locked. The one thing left to the person is to
- * leave, and to start it again from the menu whenever they like.
+ * happening, and the controls locked. Each step plays itself out and waits;
+ * the person says when to go on, or leaves, and can start it again from the
+ * menu whenever they like. Digging, claiming, writing, pointing, naming and
+ * sealing are shown on plots of the tour's own: nothing touches the chain.
  *
  * The world lends the tour a driver: what the keys and the pointer would do,
  * as calls. The tour holds no state of the world's; when it ends, the driver
@@ -32,6 +34,26 @@ export interface Driver {
   flipTheme(): void;
   /** Ring a thing on the screen, or nothing. */
   mark(selector: string | null): void;
+
+  // --- shown, not done: none of this touches the chain -----------------------
+  /** The auger in the ground and the earth coming up, at this rate of attempts a second — for show. */
+  dig(on: boolean, rate: number): void;
+  /** Speak through the claim panel. */
+  claimSays(said: string, count: string, earlier?: string): void;
+  /** A plot of the tour's own goes up a few steps ahead, a drawing; its address comes back. */
+  mockClaim(): string;
+  /** The tour's plot is written into: the drawing becomes a building and the words come up. */
+  mockWrite(address: string, note: string): void;
+  /** Speak through the owner's panel, with its forms showing. */
+  ownSays(said: string, note: string): void;
+  /** Type into a field, a sign at a time. */
+  typeInto(selector: string, text: string, wait: (ms: number) => Promise<void>): Promise<void>;
+  clearField(selector: string): void;
+  /** Somebody else, this far from you, walking or digging. */
+  peer(dx: number, dz: number, dig: boolean): void;
+  peerGone(): void;
+  /** Everything the tour put up comes down. */
+  clean(): void;
 }
 
 type Wait = (ms: number) => Promise<void>;
@@ -74,9 +96,8 @@ export const STEPS: readonly Step[] = [
       d.look(0, 0.25);
       await wait(2500);
       d.look(0, 0);
-      await wait(5000);
+      await wait(4000);
       d.stop();
-      d.mark(null);
     },
   },
   {
@@ -104,18 +125,96 @@ export const STEPS: readonly Step[] = [
     },
   },
   {
-    says: 'empty ground is not bought but dug for. dig here searches for a salt whose contract would land at your feet — the longer you dig, the closer it gets — and one transaction makes that place your contract, for good.',
+    says: 'other people are here too, and you see them: standing, walking, digging. a claim anyone makes stands up for everyone within seconds.',
     async play(d, wait) {
-      d.mark('.hud.claim');
-      await wait(8500);
-      d.mark(null);
+      d.peer(6, -8, false);
+      await wait(400);
+      for (let i = 1; i <= 12; i++) {
+        d.peer(6 - i * 0.6, -8 + i * 0.5, false);
+        await wait(350);
+      }
+      d.peer(-1.2, -2, true);
+      await wait(4500);
+      d.peer(-1.2, -2, false);
+      await wait(800);
+      d.peerGone();
     },
   },
   {
-    says: 'on your own plot you write into it, point it at code of yours, name it under groundstate.eth, and seal the code so it can never change. off your plots, this panel is the way to them.',
+    says: 'empty ground is not bought but dug for. dig here searches for a salt whose contract would land at your feet — every attempt is a place, the closest is kept, and the longer you dig the closer it gets. this is what it looks like.',
+    async play(d, wait) {
+      d.mark('.hud.claim');
+      d.claimSays('digging for a place beside you. every attempt is a place; the closest is kept. stop whenever you like', '');
+      d.dig(true, 1.4e7);
+      const path = [412, 388, 301, 296, 212, 187, 187, 154, 131, 119, 96, 96, 88, 74];
+      for (let i = 0; i < path.length; i++) {
+        d.claimSays(
+          'digging for a place beside you. every attempt is a place; the closest is kept. stop whenever you like',
+          `best so far: ${path[i]} m from here · ${(0.7 * (i + 1)).toFixed(1)} M attempts · 14.2 M/s on 8 cores`,
+        );
+        await wait(650);
+      }
+      d.dig(false, 0);
+      d.claimSays('stopped. the closest place found is 74 m from here', 'best so far: 74 m from here · 9.8 M attempts');
+      await wait(2000);
+    },
+  },
+  {
+    says: 'one transaction makes the closest place found your contract, for good — a plot: yours to write into, build on, name, hand on. it stands up out of the ground as a drawing of the building it will be.',
+    async play(d, wait) {
+      d.claimSays('claiming 74 m from here — sign in the wallet', '');
+      await wait(1800);
+      d.claimSays('sent. waiting for a block', '');
+      await wait(1800);
+      d.claimSays('claimed: yours, 74 m from here. walk over — it is going up', '');
+      mocked = d.mockClaim();
+      d.mark(null);
+      d.look(0, -0.05);
+      await wait(600);
+      d.look(0, 0);
+      await wait(9000);
+    },
+  },
+  {
+    says: 'on your own plot the owner\'s panel is yours to act with. write into it — one transaction — and the words are cut into the wall as the drawing becomes a building.',
     async play(d, wait) {
       d.mark('.hud.own');
-      await wait(8500);
+      d.ownSays('yours: 0x3095c19c…d3a0', 'nothing written into it yet\npoints at no code: a drawing until something is written into it');
+      await wait(1200);
+      await d.typeInto('.own-write input', 'hello, world', wait);
+      await wait(600);
+      d.clearField('.own-write input');
+      d.ownSays('writing into it — sign in the wallet', 'nothing written into it yet\npoints at no code: a drawing until something is written into it');
+      await wait(1500);
+      d.ownSays('sent. waiting for a block', 'nothing written into it yet\npoints at no code: a drawing until something is written into it');
+      await wait(1500);
+      d.ownSays('written', 'says: hello, world\npoints at no code');
+      // the tour's plot is the newest mock standing: written into now
+      d.mockWrite(lastMock(), 'hello, world');
+      await wait(9000);
+    },
+  },
+  {
+    says: 'point the plot at a contract of yours and that code runs at this address — a shop, a game, a gallery live here. name it under groundstate.eth so people can come by name. seal the code and it can never change: whoever deals with this place knows it stays what it is.',
+    async play(d, wait) {
+      await d.typeInto('.own-code input', '0xC0DE…5EED', wait);
+      await wait(500);
+      d.clearField('.own-code input');
+      d.ownSays('pointing it at code — sign in the wallet', 'says: hello, world\npoints at no code');
+      await wait(1400);
+      d.ownSays('pointed at code', 'says: hello, world\npoints at 0xC0DE…5EED');
+      await wait(1600);
+      await d.typeInto('.own-name input', 'demo', wait);
+      await wait(500);
+      d.clearField('.own-name input');
+      d.ownSays('naming it demo.groundstate.eth — sign in the wallet', 'says: hello, world\npoints at 0xC0DE…5EED');
+      await wait(1400);
+      d.ownSays('yours: demo.groundstate.eth', 'says: hello, world\npoints at 0xC0DE…5EED');
+      await wait(1800);
+      d.ownSays('sealing the code for good — sign in the wallet', 'says: hello, world\npoints at 0xC0DE…5EED');
+      await wait(1400);
+      d.ownSays('sealed: the code is fixed for good', 'says: hello, world\npoints at 0xC0DE…5EED, sealed');
+      await wait(3000);
       d.mark(null);
     },
   },
@@ -164,7 +263,7 @@ export const STEPS: readonly Step[] = [
     },
   },
   {
-    says: 'that is all of it. h brings you back to where you first came down. go and stand in it.',
+    says: 'that is all of it. everything shown here was for show — nothing was sent, nothing is yours yet. h brings you back to where you first came down. go and stand in it.',
     async play(d, wait) {
       d.look(0.3, 0);
       await wait(5000);
@@ -172,6 +271,12 @@ export const STEPS: readonly Step[] = [
     },
   },
 ];
+
+/** The address of the plot the tour claimed for show, remembered between its steps. */
+let mocked = '';
+function lastMock(): string {
+  return mocked;
+}
 
 const WALKED_AS = 'gs-tour-walked';
 
@@ -185,6 +290,14 @@ export class Tour {
     private readonly onEnd: () => void,
   ) {
     card.querySelector<HTMLButtonElement>('.tour-skip')!.addEventListener('click', () => this.end());
+    card.querySelector<HTMLButtonElement>('.tour-next')!.addEventListener('click', () => this.next());
+  }
+
+  /** On to the next step, whatever this one was in the middle of. */
+  private next(): void {
+    if (!this.running) return;
+    this.driver.stop();
+    void this.play(this.at + 1, ++this.run);
   }
 
   /** Whether it has been watched through to the end once, in this browser. */
@@ -202,6 +315,7 @@ export class Tour {
 
   start(): void {
     if (this.running) return;
+    mocked = '';
     document.body.classList.add('touring');
     void this.play(0, ++this.run);
   }
@@ -213,6 +327,7 @@ export class Tour {
     this.card.hidden = false;
     this.card.querySelector<HTMLElement>('.tour-count')!.textContent = `${index + 1} / ${STEPS.length}`;
     this.card.querySelector<HTMLElement>('.tour-says')!.textContent = step.says;
+    this.card.querySelector<HTMLButtonElement>('.tour-next')!.textContent = index === STEPS.length - 1 ? 'done' : 'next';
     // a wait that never comes back once the tour has been left or moved on
     const wait: Wait = (ms) =>
       new Promise((resolve) => {
@@ -220,8 +335,8 @@ export class Tour {
           if (this.run === run) resolve();
         }, ms);
       });
+    // the step plays itself out and then waits: the person says when to go on
     await step.play(this.driver, wait);
-    if (this.run === run) void this.play(index + 1, run);
   }
 
   private end(watched = false): void {

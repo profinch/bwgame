@@ -30,6 +30,8 @@ export interface Taking {
   readonly digging: boolean;
   /** Attempts a second while digging, for anything that wants to show effort. */
   readonly rate: number;
+  /** Hold the panel still — the onboarding speaks through it — or let it speak again. */
+  pause(on: boolean): void;
 }
 
 function count(n: number): string {
@@ -90,7 +92,7 @@ export function takeGround(
       to.searchParams.set('chain', somewhere.key);
       location.href = to.toString();
     });
-    return { stop: () => {}, digging: false, rate: 0 };
+    return { stop: () => {}, digging: false, rate: 0, pause: () => {} };
   }
   const factory = chain.plots;
   const home = placeOf(bytesOf(HOME));
@@ -117,8 +119,10 @@ export function takeGround(
    * is depends on where you stand, and the line keeps up as you walk. Digging
    * takes the panel over and this stays quiet until it stops.
    */
+  /** Held: somebody else — the onboarding — is speaking through this panel. */
+  let held = false;
   const showEarlier = () => {
-    if (digging) return;
+    if (digging || held) return;
     const key = shelfKey();
     const finds = key ? recall(localStorage, key) : [];
     const near = nearest(finds, home, where());
@@ -309,6 +313,14 @@ export function takeGround(
     },
     get rate() {
       return rate;
+    },
+    /** Hold the panel still, or let it speak again. */
+    pause(on: boolean) {
+      held = on;
+      if (!on) {
+        said.textContent = 'nobody has claimed this ground. dig here to take it: the longer you dig, the closer the plot';
+        showEarlier();
+      }
     },
   };
 }

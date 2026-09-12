@@ -931,7 +931,13 @@ body.listopen .subarrow {
   cursor: pointer;
 }
 
-/* while the tour plays, the page is not to be touched: only the card's button answers */
+.hud.tour .tour-next {
+  border-color: var(--fg);
+  background: var(--fg);
+  color: var(--bg);
+}
+
+/* while the tour plays, the page is not to be touched: only the card's buttons answer */
 body.touring .hud:not(.tour),
 body.touring .navlinks,
 body.touring .tg,

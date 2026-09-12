@@ -43,6 +43,8 @@ export function encodeAddress(address: string): string {
 
 export interface Owning {
   stop(): void;
+  /** Hold the panel still — the onboarding speaks through it — or let it look again. */
+  pause(on: boolean): void;
 }
 
 /** How often the indexer is asked which ground is yours, while you are not standing on any. */
@@ -99,8 +101,9 @@ export function ownGround(
    * to connect one; a wallet, every plot of yours listed, each a button that
    * takes you there; none, the word that digging is where ground comes from.
    */
+  let held = false;
   const look = async () => {
-    if (busy) return;
+    if (busy || held) return;
     owner = (await connected().catch(() => null))?.toLowerCase() ?? null;
     plot = owner ? plotOf(owner) : null;
     if (!owner) {
@@ -252,6 +255,10 @@ export function ownGround(
   return {
     stop() {
       clearInterval(looking);
+    },
+    pause(on: boolean) {
+      held = on;
+      if (!on) void look();
     },
   };
 }

@@ -499,7 +499,7 @@ function ownPlotHere(owner: string): Structure | null {
   return nearest;
 }
 
-ownGround(owning, ownPlotHere, (plot) => void refresh(plot), (plot) => void travelTo(plot));
+const ownPanel = ownGround(owning, ownPlotHere, (plot) => void refresh(plot), (plot) => void travelTo(plot));
 
 /** How long a plot just claimed takes to be drawn, in seconds. */
 const BUILDS_IN = 10;
@@ -822,7 +822,7 @@ function fall(seconds: number): void {
   const floor = supportAt(player.x, player.z, player.y + (standing ? STEP_UP : 0));
 
   const asked = tour?.running ? takeDemoJump() : held.has('Space') || stick.takeJump();
-  if (asked && standing && player.y <= floor + 0.01 && !taking.digging) {
+  if (asked && standing && player.y <= floor + 0.01 && !diggingNow()) {
     player.rise = JUMP;
   }
 
@@ -1043,7 +1043,7 @@ const stick = new Stick(
 
 function walk(seconds: number): void {
   // digging is aimed at where you stand, so while it runs you stand there
-  if (taking.digging) return;
+  if (diggingNow()) return;
   const driven = tour?.running ?? false;
   const forward = driven
     ? demo.forward
@@ -1141,7 +1141,19 @@ function strokesFor(structure: Structure, base: number): Stroke[] {
 let tour: Tour | null = null;
 let startTour: () => void = () => {};
 /** What the tour is doing with the keys and the pointer while it drives. */
-const demo = { forward: 0, side: 0, run: false, jump: false, yawRate: 0, pitchRate: 0 };
+const demo = { forward: 0, side: 0, run: false, jump: false, yawRate: 0, pitchRate: 0, dig: false, rate: 0, claimHeld: false };
+/** The one other player the tour brings along, who is nobody. */
+const MOCK_PEER = -1;
+
+/** A plot of the tour's own, at an address, with a note or without: never from the chain. */
+function mockPlot(address: string, note: string): Structure {
+  const account: Account = { address, codeSize: 2271, code: `0x${'a5'.repeat(2271)}`, balance: 0n, nonce: 1 };
+  const structure = structureOf(account, [], chain.coin, { note, code: null, owner: '0x000000000000000000000000000000000000d3a0', salt: null, name: undefined });
+  structure.mock = true;
+  return structure;
+}
+/** Whether the auger is in the ground: for real, or for show. */
+const diggingNow = () => taking.digging || demo.dig;
 /** Where the person stood when the tour began, to be put back there after. */
 let beforeTour: { ox: number; oz: number; x: number; z: number; yaw: number; pitch: number } | null = null;
 
@@ -1330,10 +1342,94 @@ function takeDemoJump(): boolean {
         for (const el of document.querySelectorAll('.tour-marked')) el.classList.remove('tour-marked');
         if (selector) document.querySelector(selector)?.classList.add('tour-marked');
       },
+      // --- the shown, not done: nothing below touches the chain ------------
+      dig: (on, rate) => {
+        demo.dig = on;
+        demo.rate = rate;
+        taking.pause(on || demo.claimHeld);
+      },
+      claimSays: (said, count, earlier) => {
+        demo.claimHeld = true;
+        taking.pause(true);
+        claiming.querySelector<HTMLElement>('.claim-said')!.textContent = said;
+        claiming.querySelector<HTMLElement>('.claim-count')!.textContent = count;
+        const more = claiming.querySelector<HTMLElement>('.claim-earlier')!;
+        more.hidden = !earlier;
+        more.textContent = earlier ?? '';
+      },
+      mockClaim: () => {
+        // a plot of the tour's own, a few steps ahead: the address whose cell that is
+        const ahead = { x: player.x - Math.sin(player.yaw) * 6, z: player.z - Math.cos(player.yaw) * 6 };
+        const cell = addressUnder(ahead.x, ahead.z);
+        let tail = '';
+        for (let i = 0; i < 40 - cell.length; i++) tail += '0123456789abcdef'[Math.floor(Math.random() * 16)];
+        const address = `0x${cell}${tail}`;
+        const structure = mockPlot(address, '');
+        startRising(structure);
+        return address;
+      },
+      mockWrite: (address, note) => {
+        const at = structures.findIndex((it) => it.address === address);
+        if (at >= 0) structures.splice(at, 1);
+        startInking(mockPlot(address, note));
+      },
+      ownSays: (said, note) => {
+        ownPanel.pause(true);
+        owning.hidden = false;
+        owning.querySelector<HTMLElement>('.own-said')!.textContent = said;
+        owning.querySelector<HTMLElement>('.own-note')!.textContent = note;
+        owning.querySelector<HTMLElement>('.own-connect')!.hidden = true;
+        owning.querySelector<HTMLElement>('.own-list')!.hidden = true;
+        for (const form of owning.querySelectorAll<HTMLElement>('form, .own-do')) form.hidden = false;
+      },
+      typeInto: async (selector, text, wait) => {
+        const field = document.querySelector<HTMLInputElement>(selector);
+        if (!field) return;
+        field.value = '';
+        for (const sign of text) {
+          field.value += sign;
+          await wait(70);
+        }
+      },
+      clearField: (selector) => {
+        const field = document.querySelector<HTMLInputElement>(selector);
+        if (field) field.value = '';
+      },
+      peer: (dx, dz, dig) => {
+        if (!live) return;
+        const x = homeCell.x + origin.x + player.x + dx;
+        const z = homeCell.z + origin.z + player.z + dz;
+        const had = live.peers.get(MOCK_PEER);
+        const yaw = Math.atan2(-(dx - (had ? had.x - homeCell.x - origin.x - player.x : dx)), -(dz - (had ? had.z - homeCell.z - origin.z - player.z : dz)));
+        if (had) {
+          had.x = x;
+          had.z = z;
+          had.dig = dig;
+          had.yaw = yaw;
+        } else {
+          live.peers.set(MOCK_PEER, { id: MOCK_PEER, x, z, yaw, dig, drawnX: x, drawnZ: z, drawnYaw: yaw });
+        }
+      },
+      peerGone: () => {
+        live?.peers.delete(MOCK_PEER);
+      },
+      clean: () => {
+        // everything the tour put up comes down, and the panels speak for themselves again
+        demo.dig = false;
+        demo.claimHeld = false;
+        for (let i = structures.length - 1; i >= 0; i--) if (structures[i]!.mock) structures.splice(i, 1);
+        for (let i = rising.length - 1; i >= 0; i--) if (rising[i]!.mock) rising.splice(i, 1);
+        for (let i = inking.length - 1; i >= 0; i--) if (inking[i]!.mock) inking.splice(i, 1);
+        settle();
+        live?.peers.delete(MOCK_PEER);
+        taking.pause(false);
+        ownPanel.pause(false);
+      },
     };
     // the onboarding: the corners on its word while it runs; when it ends,
     // whoever watched it is put back where they stood before it began
     tour = new Tour(tourCard, driver, () => {
+      driver.clean();
       if (beforeTour) {
         if (origin.x !== beforeTour.ox || origin.z !== beforeTour.oz) arriveAt(beforeTour.ox, beforeTour.oz);
         player.x = beforeTour.x;
@@ -1516,12 +1612,13 @@ loop({
     }
     // the auger turns with the work: a little on its own, more as the rate
     // climbs — and the ground comes up round it in proportion
-    if (taking.digging) spin += seconds * 2 * Math.PI * (0.4 + Math.min(1, taking.rate / 4e7));
+    const rateNow = demo.dig ? demo.rate : taking.rate;
+    if (diggingNow()) spin += seconds * 2 * Math.PI * (0.4 + Math.min(1, rateNow / 4e7));
     else if (live && [...live.peers.values()].some((peer) => peer.dig)) spin += seconds * 2 * Math.PI * 0.6;
     chips.step(
       seconds,
-      taking.digging ? { x: player.x, y: feet(), z: player.z } : null,
-      taking.rate,
+      diggingNow() ? { x: player.x, y: feet(), z: player.z } : null,
+      rateNow,
       GRAVITY,
     );
     traffic.step(seconds);
@@ -1560,7 +1657,7 @@ loop({
     // the walker stands where you are, facing where you look — unless they are
     // digging, in which case the auger stands there and turns, and the walker
     // is scaled away to nothing
-    const digging = taking.digging;
+    const digging = diggingNow();
     renderer.update(
       walker,
       new Float32Array([player.x, feet(), player.z, digging ? 0 : 1, digging ? 0 : 1, digging ? 0 : 1, player.yaw, 0.2, 0.6, 0]),
