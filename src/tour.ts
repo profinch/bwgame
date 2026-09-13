@@ -126,13 +126,15 @@ export const STEPS: readonly Step[] = [
       d.look(0, -0.3);
       await wait(2500);
       d.look(0, 0);
-      // and a few steps, level, to say how: a walk, a run, a jump
+      // and a few steps, level, to say how: a walk, a run, then standing still a jump, so the ground it throws up is seen
       d.walk(1, 0, false);
       await wait(1800);
       d.walk(1, 0, true);
-      await wait(900);
+      await wait(1200);
+      d.walk(0, 0, false);
+      await wait(500);
       d.jump();
-      await wait(1600);
+      await wait(2000);
       d.stop();
     },
   },
