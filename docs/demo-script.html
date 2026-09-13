@@ -1,0 +1,805 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ground State Demo Script</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root{
+    --bg:#f1efe9; --fg:#0a0a0a; --mut:#8a877d; --panel:#fbfaf7;
+    --line:rgba(10,10,10,.14); --line2:rgba(10,10,10,.06);
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#070707; --fg:#e9e7e1; --mut:#86867f; --panel:#101010;
+      --line:rgba(233,231,225,.16); --line2:rgba(233,231,225,.07);
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#070707; --fg:#e9e7e1; --mut:#86867f; --panel:#101010;
+    --line:rgba(233,231,225,.16); --line2:rgba(233,231,225,.07);
+    color-scheme: dark;
+  }
+  *{box-sizing:border-box;margin:0}
+  body{
+    background:var(--bg); color:var(--fg);
+    font-family:'Helvetica Neue',Helvetica,Arial,sans-serif; font-size:15px; line-height:1.55;
+    -webkit-font-smoothing:antialiased;
+    padding-inline:clamp(16px,4vw,48px); padding-block:36px 96px;
+  }
+  .mono{font-family:'IBM Plex Mono',ui-monospace,SFMono-Regular,Menlo,monospace}
+  .wrap{max-width:1120px;margin:0 auto}
+  h1,h2,h3{font-weight:700;text-transform:lowercase;text-wrap:balance}
+  h1{font-size:14px;letter-spacing:.24em}
+  h1 .mark{display:inline-block;width:14px;height:14px;background:var(--fg);vertical-align:-2px;margin-right:12px}
+  .lede{margin-top:14px;font-size:22px;line-height:1.3;max-width:34em;font-weight:400;letter-spacing:-.005em}
+  .meta{margin-top:18px;display:flex;flex-wrap:wrap;gap:8px 28px;color:var(--mut);font-size:12px;letter-spacing:.06em}
+  .meta b{color:var(--fg);font-weight:500}
+  section{margin-top:64px;padding-top:22px;border-top:1px solid var(--fg)}
+  .panel>section:first-child{margin-top:36px}
+  h2{font-size:12px;letter-spacing:.2em}
+  h2 span{color:var(--mut);font-weight:400;letter-spacing:.06em;margin-left:14px}
+  .intro{margin-top:14px;max-width:64ch}
+  .intro p+p{margin-top:8px}
+  code{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:.88em;background:var(--line2);padding:1px 4px}
+  a{color:inherit}
+  a:focus-visible,button:focus-visible{outline:2px solid var(--fg);outline-offset:2px}
+
+  /* tabs */
+  .tabs{margin-top:34px;display:flex;border:1px solid var(--fg);width:max-content;max-width:100%;overflow-x:auto}
+  .tabs button{appearance:none;background:none;border:0;border-right:1px solid var(--fg);color:var(--fg);font:inherit;font-size:12px;letter-spacing:.18em;text-transform:lowercase;padding:10px 20px;cursor:pointer;white-space:nowrap}
+  .tabs button:last-child{border-right:0}
+  .tabs button[aria-selected="true"]{background:var(--fg);color:var(--bg)}
+  .tabs button small{display:block;font-size:9px;letter-spacing:.08em;opacity:.65;margin-top:2px}
+  .panel[hidden]{display:none}
+
+  .thesis{margin-top:22px;display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:1px;background:var(--line);border:1px solid var(--line)}
+  .thesis div{background:var(--panel);padding:16px 18px}
+  .thesis h3{font-size:11px;letter-spacing:.18em;color:var(--mut);font-weight:500;margin-bottom:8px}
+  .thesis p{font-size:14px}
+
+  .judge{margin-top:22px;border:1px solid var(--fg);padding:16px 18px;display:grid;grid-template-columns:1fr 1fr;gap:16px 32px}
+  .judge h3{font-size:11px;letter-spacing:.18em;color:var(--mut);font-weight:500;margin-bottom:8px}
+  .judge ul{list-style:none;padding:0}
+  .judge li{position:relative;padding-left:22px;font-size:13.5px;margin-bottom:6px}
+  .judge li::before{content:'';position:absolute;left:0;top:6px;width:10px;height:10px;background:var(--fg)}
+  .judge li.open::before{background:none;border:1px solid var(--fg)}
+  .judge p{font-size:13.5px}
+
+  .inv{margin-top:22px;display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:1px;background:var(--line);border:1px solid var(--line)}
+  .inv article{background:var(--panel);padding:16px 18px 18px;display:flex;flex-direction:column;gap:8px}
+  .inv h3{font-size:13px;letter-spacing:.08em;text-transform:none;font-weight:700;display:flex;justify-content:space-between;gap:10px;align-items:baseline}
+  .inv p{font-size:13.5px}
+  .inv .how{font-size:12px;color:var(--mut)}
+  .tag{font-size:10px;letter-spacing:.12em;text-transform:uppercase;padding:2px 6px;border:1px solid var(--fg);white-space:nowrap;font-weight:500}
+  .tag.solid{background:var(--fg);color:var(--bg)}
+
+  .bar{margin-top:22px;display:flex;height:34px;border:1px solid var(--fg);overflow:hidden}
+  .bar div{position:relative;border-right:1px solid var(--fg);font-size:10px;letter-spacing:.06em;padding:4px 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .bar div:last-child{border-right:0}
+  .bar div.real{background:var(--fg);color:var(--bg)}
+  .bar small{display:block;font-size:9px;opacity:.7}
+  .legend{margin-top:8px;font-size:11px;color:var(--mut);display:flex;gap:18px;flex-wrap:wrap;letter-spacing:.04em}
+  .legend i{display:inline-block;width:10px;height:10px;border:1px solid var(--fg);vertical-align:-1px;margin-right:6px}
+  .legend i.f{background:var(--fg)}
+
+  .shots{margin-top:24px;border-top:1px solid var(--line)}
+  .shot{display:grid;grid-template-columns:96px 1.05fr 1fr;gap:0 28px;padding:22px 0 26px;border-bottom:1px solid var(--line)}
+  .shot.same{padding:12px 0;align-items:baseline}
+  .shot.same .screen p{color:var(--mut)}
+  .tc{font-size:12px;line-height:1.4}
+  .tc b{display:block;font-weight:500;font-size:15px;letter-spacing:.02em}
+  .tc small{display:block;color:var(--mut);margin-top:6px;letter-spacing:.06em;text-transform:uppercase;font-size:10px}
+  .shot h3{font-size:15px;text-transform:none;letter-spacing:0;font-weight:700;margin-bottom:8px}
+  .screen p, .vo p{font-size:14px}
+  .screen p+p{margin-top:6px}
+  .screen .url{display:block;margin-top:8px;font-size:11.5px;color:var(--mut);word-break:break-all}
+  .screen .cap{margin-top:10px;font-size:11px;letter-spacing:.06em;color:var(--mut)}
+  .screen .cap kbd{display:inline-block;border:1px solid var(--fg);padding:1px 6px;font-size:10.5px;color:var(--fg);letter-spacing:.06em;text-transform:lowercase;margin-right:4px}
+  .vo .lbl{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--mut);margin-bottom:6px}
+  .vo .en{font-size:15.5px;line-height:1.5;padding-left:14px;border-left:2px solid var(--fg)}
+  .vo .ru{margin-top:10px;font-size:12.5px;color:var(--mut);padding-left:16px}
+  .vo .words{margin-top:10px;font-size:10.5px;color:var(--mut);letter-spacing:.06em}
+
+  .form{margin-top:18px;border-left:2px solid var(--fg);padding:4px 0 4px 16px;max-width:70ch}
+  .form p{font-size:14.5px;line-height:1.55}
+  .form p+p{margin-top:8px}
+
+  .check{margin-top:20px;display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:28px 40px}
+  .check h3{font-size:11px;letter-spacing:.18em;color:var(--mut);margin-bottom:10px;font-weight:500}
+  .check ul{list-style:none;padding:0}
+  .check li{position:relative;padding-left:22px;font-size:13.5px;margin-bottom:8px}
+  .check li::before{content:'';position:absolute;left:0;top:5px;width:10px;height:10px;border:1px solid var(--fg)}
+
+  .clips{margin-top:18px;border-top:1px solid var(--line);font-size:13.5px}
+  .clips div{display:grid;grid-template-columns:170px 1fr 110px;gap:20px;padding:10px 0;border-bottom:1px solid var(--line)}
+  .clips div b{font-weight:500}
+  .clips div span:last-child{color:var(--mut);text-align:right}
+
+  .risk{margin-top:18px;border-top:1px solid var(--line)}
+  .risk div{display:grid;grid-template-columns:1fr 1.4fr;gap:24px;padding:14px 0;border-bottom:1px solid var(--line);font-size:13.5px}
+  .risk div b{font-weight:700}
+  .no{margin-top:16px;display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px 32px;font-size:13.5px}
+  .no p b{font-weight:700}
+  .no p span{color:var(--mut)}
+
+  footer{margin-top:72px;padding-top:16px;border-top:1px solid var(--fg);font-size:11px;letter-spacing:.06em;color:var(--mut);display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px}
+
+  @media (max-width:760px){
+    .shot{grid-template-columns:1fr;gap:12px}
+    .tc{display:flex;gap:14px;align-items:baseline}
+    .tc small{margin-top:0}
+    .risk div,.clips div,.judge{grid-template-columns:1fr}
+    .clips div span:last-child{text-align:left}
+    .bar div{padding:4px 3px}
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <h1><span class="mark"></span>ground state · demo · final</h1>
+    <p class="lede">Сценарий четырёхминутного ролика для ETHOnline 2026. База для общего судейства и три версии для партнёрских треков: одни и те же кадры, другой центр тяжести.</p>
+    <div class="meta mono">
+      <span>длительность <b>3:55–4:00</b></span>
+      <span>правила <b>2–4 мин · ≥720p · голос есть · музыки нет</b></span>
+      <span>дедлайн <b>вс 13.09 · 17:00 london</b></span>
+      <span>озвучка <b>english · 517 слов · 129 wpm</b></span>
+    </div>
+  </header>
+
+  <section id="what">
+    <h2>что у нас есть <span>двенадцать вещей, все живые, ни одного мока · основа всех версий</span></h2>
+    <div class="inv">
+      <article><h3>Карта = адресное пространство</h3><p>Сорок hex-цифр, каждая клетка сетки 4×4. У любого адреса ровно одно место, соседи делят префикс. Бесшовный зум по всему 2¹⁶⁰.</p><p class="how">/map.html, зум от мира до клетки.</p></article>
+      <article><h3>Мир из ничего</h3><p>Собственный WebGL2-движок без ассетов. Здания из кода, холмы из хэшей префиксов, свет одним солнцем, тонмаппинг, дизеринг. Надписи стоят из стены блоками.</p><p class="how">mainnet, спуск на USDC.</p></article>
+      <article><h3>Блок в небе</h3><p>Каждая транзакция текущего блока лента от отправителя к получателю. Ревертнутые дрожат и отходят назад.</p><p class="how">mainnet, взгляд вверх 5 с.</p></article>
+      <article><h3>Столбы токенов из Token API <span class="tag">the graph</span></h3><p>Что держит кошелёк на мейннете, отвечает Token API через live-сервер потоком: столбы встают из плиты по мере ответов. Высота доля от supply.</p><p class="how">Переход по ENS-имени, камера на плите.</p></article>
+      <article><h3>Копать <span class="tag solid">центр</span></h3><p>CREATE2, WASM на всех ядрах, ~7 M попыток/с на поток, порога нет. Бур вместо игрока, крошка из земли, «best so far» падает. Глубина 13: метр земли это клетка тринадцатой цифры.</p><p class="how">По-настоящему на Sepolia.</p></article>
+      <article><h3>Одна транзакция, участок <span class="tag solid">центр</span></h3><p>claim(salt) деплоит Plot через CREATE2, соль привязана к адресу claimer'а. Участок вырастает чертежом.</p><p class="how">Окно кошелька в кадре 1,5 с.</p></article>
+      <article><h3>Строить: inscribe · setCode · seal</h3><p>Plot прокси EIP-1967. Написать: слова из стены. Указать на контракт: код исполняется по этому адресу. Запечатать: навечно. Верифицирован на Sourcify.</p><p class="how">Панель владельца, реальные транзакции.</p></article>
+      <article><h3>Имена под groundstate.eth <span class="tag">ens</span></h3><p>ENSv2 на Sepolia: свой registry как subregistry, Names единственный registrar и ENSIP-10 wildcard-резолвер, нулевой role bitmap, имя принадлежит месту.</p><p class="how">«name it», потом имя в поле.</p></article>
+      <article><h3>Сабграф в сети <span class="tag">the graph</span></h3><p>Три поколения фабрики, каждый Plot динамический data source, адрес декодирован в x/y, cell, tile. Читается через gateway, мир приходит по сокету.</p><p class="how">Оверлей: запрос и ответ.</p></article>
+      <article><h3>Вместе, память общая</h3><p>Другие люди белыми фигурами, клеймы встают у всех за секунды. Место, увиденное одним, видят все.</p><p class="how">Второй экран: телефон.</p></article>
+      <article><h3>Человек здесь <span class="tag">world</span></h3><p>Selfie Check через IDKit, верификация на live-сервере. Человек в сером, незнакомец в белом. Слово человека 1, незнакомца ⅕. Вес, не барьер.</p><p class="how">Панель person: QR, World App.</p></article>
+      <article><h3>Онбординг, телефон, тема</h3><p>Тур в 11 шагов. Стик на телефоне. Чёрное и белое одним переключателем. Реликвии двух ранних фабрик.</p><p class="how">Монтаж по 2 с.</p></article>
+    </div>
+  </section>
+
+  <section id="versions">
+    <h2>версии сценария <span>одни кадры, четыре центра тяжести · выберите вкладку</span></h2>
+    <div class="tabs" style="margin-top:18px" role="tablist" aria-label="версии сценария">
+      <button type="button" role="tab" data-tab="base" aria-selected="true">база<small>finalists · всем</small></button>
+      <button type="button" role="tab" data-tab="graph" aria-selected="false">the graph<small>composable products</small></button>
+      <button type="button" role="tab" data-tab="ens" aria-selected="false">ens<small>best use of ensv2</small></button>
+      <button type="button" role="tab" data-tab="world" aria-selected="false">world<small>selfie check</small></button>
+    </div>
+  </section>
+
+  <!-- ================================================================ БАЗА -->
+  <div class="panel" id="tab-base" role="tabpanel">
+
+  <section id="why">
+    <h2>почему запомнят <span>четыре вещи, которые надо донести любой ценой</span></h2>
+    <div class="thesis">
+      <div>
+        <h3>один тезис</h3>
+        <p>Блокчейн уже является миром, его только надо прочитать. Ни одного придуманного объекта: карта это адреса, здания это код, столбы это токены, небо это блок. Фраза «what the chain says is what stands, and what happens» звучит в середине: здания стоят, блок происходит.</p>
+      </div>
+      <div>
+        <h3>один механизм, которого нет ни у кого</h3>
+        <p>Землю не покупают, а копают. CREATE2 превращает майнинг соли в майнинг места, «работа и есть расстояние». Жюри должны увидеть, как падают метры в счётчике и как из земли поднимается чертёж. 40 секунд, центр ролика. И это на глубине 13: с каждым уровнем глубже земля рядом с чем-то дорожает в шестнадцать раз, что и есть наш главный пункт после хакатона.</p>
+      </div>
+      <div>
+        <h3>одна позиция</h3>
+        <p>Мы не пришли подгонять проект под чей-то продукт. Идеи игры совпали с технологиями партнёров настолько точно, что мы начали с той части игры, которую можно показать этим же партнёрам. И мы первыми говорим, что это ранняя версия: мир стоит, игра вокруг него ещё не написана, и это первая работа после хакатона. Сказанное самим, это позиция; сказанное жюри, это претензия.</p>
+      </div>
+      <div>
+        <h3>одно ощущение</h3>
+        <p>Чёрно-белый мир, низкое солнце, ровный голос, ни одной ноты музыки. Среди сорока роликов с саундтреком из библиотеки этот будет единственным, который выглядит как фильм. Стиль и есть месседж.</p>
+      </div>
+    </div>
+    <div class="intro">
+      <p>Порядок повествования: обещание → правило карты → что стоит → что держит кошелёк → как взять землю → что с ней делать → кто здесь ещё → кто здесь человек → где мы и куда это идёт (ранняя версия, глубина) → кто мы и зачем пришли → финал. Каждая сцена отвечает на вопрос, который поднимает предыдущая. Позиция про партнёров звучит один раз, в предпоследней сцене, после того как всё уже показано: проект не подгонялся под спонсоров, начали с того, что совпало; игра продолжается, есть роадмап; идут переговоры с партнёрами вне хакатона, есть первые одобрения, «но это уже другая история». На карточке в этот момент стек, а не слова.</p>
+    </div>
+  </section>
+
+  <section id="timeline">
+    <h2>хронометраж <span>240 секунд, одиннадцать сцен</span></h2>
+    <div class="bar mono" aria-label="хронометраж базы">
+      <div style="flex:13">hook<small>13 s</small></div>
+      <div style="flex:22">map<small>22 s</small></div>
+      <div style="flex:20">mainnet<small>20 s</small></div>
+      <div style="flex:17">wallet · token api<small>17 s</small></div>
+      <div style="flex:36" class="real">dig · claim<small>36 s · tx</small></div>
+      <div style="flex:32" class="real">build · name · seal<small>32 s · tx</small></div>
+      <div style="flex:15">together · graph<small>15 s</small></div>
+      <div style="flex:17">person · world id<small>17 s</small></div>
+      <div style="flex:36">early · depth · next<small>36 s</small></div>
+      <div style="flex:22">nine days · who we are<small>22 s</small></div>
+      <div style="flex:10">close<small>10 s</small></div>
+    </div>
+    <p class="legend"><span><i class="f"></i>реальные транзакции в кадре</span><span><i></i>показ без подписи</span><span>Треки по порядку появления: The Graph 0:55 и 2:20 · ENS 1:48 · World 2:35. Голос 517 слов, 129 слов в минуту, ни одна сцена не быстрее 134.</span></p>
+  </section>
+
+  <section id="script">
+    <h2>сценарий <span>экран слева, закадр справа</span></h2>
+    <div class="intro">
+      <p>Закадр по-английски, около 125 слов в минуту, ровно, без восклицаний и без «amazing»: тон README. Серым под ним смысл по-русски, не для озвучки. Голос пишется отдельно, видео режется под голос. Музыки нет по правилам ETHGlobal, и это нам на руку.</p>
+    </div>
+    <div class="shots">
+
+      <div class="shot">
+        <div class="tc mono"><b>0:00</b>→ 0:13<small>hook</small></div>
+        <div class="screen">
+          <h3>Одна строка, потом небо</h3>
+          <p>Чёрный кадр. Через секунду строчными, по центру, без марки: <em>every ethereum address is a place.</em> Держим 2,5 с, гасим. Голос начинается на чёрном. Спуск с 380 м на USDC на мейннете: тёмная земля, освещённая поляна, самое высокое здание чейна, ленты блока над ним. Приземление совпадает со словом «stand».</p>
+          <p class="cap"><kbd>card</kbd> every ethereum address is a place.</p>
+          <span class="url mono">https://gs.bwtoken.io/?chain=mainnet — открыть за 30 с до записи, дать зданиям догрузиться, потом повторить ?at= для спуска</span>
+        </div>
+        <div class="vo">
+          <p class="lbl">voiceover</p>
+          <p class="en">You have held tokens for years and never seen them stand anywhere. A contract with a million users has no skyline. Ground State gives Ethereum ground to stand on.</p>
+          <p class="ru">Вы годами держали токены и никогда не видели, чтобы они где-то стояли. У контракта с миллионом пользователей нет силуэта на горизонте. Ground State даёт Ethereum землю, на которой можно стоять.</p>
+          <p class="words mono">29 words · 13 s</p>
+        </div>
+      </div>
+
+      <div class="shot">
+        <div class="tc mono"><b>0:13</b>→ 0:35<small>the map</small></div>
+        <div class="screen">
+          <h3>Карта: от мира до клетки</h3>
+          <p>Склейка на /map.html: весь мир одной плоскостью. Плавный зум колесом в один угол, сетка делится 4×4 на каждом шаге, адрес в строке удлиняется на цифру за уровень. Остановиться на клетке с меткой фабрики. Титр-формула одной строкой.</p>
+          <p class="cap"><kbd>caption</kbd> 40 hex digits → 40 steps of a 4×4 grid → one place · <kbd>caption</kbd> an address is a route down a tree</p>
+          <span class="url mono">https://gs.bwtoken.io/map.html</span>
+        </div>
+        <div class="vo">
+          <p class="lbl">voiceover</p>
+          <p class="en">The map is the address space itself. Forty hex digits, each one cell of a four-by-four grid, forty times over: an address is a route down a tree. Every address has one place, neighbours share a prefix, and none of this was designed: it is how Ethereum names things.</p>
+          <p class="ru">Карта само адресное пространство. Сорок цифр, каждая клетка 4×4, сорок раз: адрес это маршрут вниз по дереву. У адреса одно место, соседи делят префикс, ничего не спроектировано: так Ethereum именует вещи.</p>
+          <p class="words mono">49 words · 22 s · дерево здесь не случайно: к нему вернётся сцена про глубину</p>
+        </div>
+      </div>
+
+      <div class="shot">
+        <div class="tc mono"><b>0:35</b>→ 0:55<small>mainnet</small></div>
+        <div class="screen">
+          <h3>Здания и блок в небе</h3>
+          <p>Снова мейннет у USDC. Медленный обход, потом взгляд вверх на 5 с: сотни лент текущего блока, одна-две дрожат и уходят. Если рядом второй контракт из landmarks, пройти к нему, чтобы форма отличалась. Строка статуса с номером блока уже в кадре.</p>
+          <p class="cap"><kbd>caption</kbd> size = code length · shape = code hash · darkness = balance</p>
+        </div>
+        <div class="vo">
+          <p class="lbl">voiceover</p>
+          <p class="en">Contracts stand as buildings: size from the code, shape from its hash, darkness from the balance. Overhead, the block crosses the sky, every transaction a ribbon from sender to receiver. Nothing is invented. What the chain says is what stands, and what happens.</p>
+          <p class="ru">Контракты стоят зданиями: размер от кода, форма от хэша, тьма от баланса. Над головой блок: каждая транзакция лента от отправителя к получателю. Ничего не выдумано. Что говорит чейн, то и стоит, и то и происходит.</p>
+          <p class="words mono">43 words · 20 s · ревертнутые ленты дрожат в кадре без слов</p>
+        </div>
+      </div>
+
+      <div class="shot">
+        <div class="tc mono"><b>0:55</b>→ 1:12<small>wallet · token api</small></div>
+        <div class="screen">
+          <h3>Плита, столбы встают один за другим</h3>
+          <p>Клик в поле внизу, набрать ENS-имя кошелька с 10–30 токенами. Спуск на плиту. <b>Главный момент:</b> камера уже смотрит на плиту, когда столбы начинают вставать из неё по одному, это ответы Token API потоком. Дать встать хотя бы восьми. Потом подойти, чтобы руны читались.</p>
+          <p class="cap"><kbd>caption</kbd> the graph · token api → one post per token, as it answers</p>
+          <span class="url mono">https://gs.bwtoken.io/?chain=mainnet&at=&lt;name&gt;.eth</span>
+        </div>
+        <div class="vo">
+          <p class="lbl">voiceover</p>
+          <p class="en">Type an ENS name and you are there. A wallet is a plate; its posts rise one by one as The Graph's Token API answers, a post per token, as tall as its share of the supply.</p>
+          <p class="ru">Набрал имя, и ты там. Кошелёк плита, столбы встают один за другим по мере ответов Token API: столб на токен, высотой в долю от supply.</p>
+          <p class="words mono">37 words · 17 s</p>
+        </div>
+      </div>
+
+      <div class="shot">
+        <div class="tc mono"><b>1:12</b>→ 1:48<small>dig · claim</small></div>
+        <div class="screen">
+          <h3>Копаем и клеймим, по-настоящему</h3>
+          <p>Sepolia, открытое место в сотне метров от фабрики. Панель claim. Слайдер ядер вправо. <b>dig here</b>: игрок становится буром, летит крошка, «best so far» падает 400 → 200 → 90 м. 12–15 с в кадре, остальное вырезать.</p>
+          <p><b>stop</b>, <b>claim it</b>, окно кошелька 1,5 с, «sent. waiting for a block», «yours: 0x…, N m from here», поворот головы, чертёж рисуется пунктиром и стеклом в размер будущего здания. Дать чертежу дорисоваться до конца.</p>
+          <p class="cap"><kbd>caption</kbd> address = keccak(0xff ‖ factory ‖ salt ‖ codehash) · <kbd>caption</kbd> depth 13 · a metre is one cell of the 13th digit · <kbd>caption</kbd> sepolia · one transaction</p>
+        </div>
+        <div class="vo">
+          <p class="lbl">voiceover</p>
+          <p class="en">Empty ground cannot be bought. It is dug for. A plot is a contract deployed with CREATE2, so its address is fixed by a salt. Digging grinds salts on every core, in WebAssembly, seven million a second per thread. Every attempt is a place; the closest is kept; there is no threshold. Stop whenever you like: one transaction, and the closest place found is your contract, forever. It rises as a drawing of the building it will be.</p>
+          <p class="ru">Землю не купить. Её копают. Участок контракт через CREATE2, его адрес, его место, фиксирует соль. WASM на всех ядрах, семь миллионов в секунду на поток. Каждая попытка место, ближайшее хранится, порога нет. Остановись когда хочешь: одна транзакция, и ближайшее место твой контракт навечно. Он встаёт чертежом будущего здания.</p>
+          <p class="words mono">78 words · 36 s · копание в кадре 12 с вместо 15</p>
+        </div>
+      </div>
+
+      <div class="shot">
+        <div class="tc mono"><b>1:48</b>→ 2:20<small>build · name · seal</small></div>
+        <div class="screen">
+          <h3>Написать, назвать, указать на код, запечатать</h3>
+          <p>Подойти к чертежу, панель владельца. <b>inscribe</b> «hello, world»: подпись, блок, стены встают, тело здания поднимается внутри линий чертежа, линии гаснут, слова встают из стены блоками. Одно ожидание блока оставить целиком, это доказательство. <b>name it</b> «&lt;label&gt;»: после блока набрать <code>&lt;label&gt;.groundstate.eth</code> в поле и Enter, спуск на этот же участок. <b>point at code</b>: адрес заранее задеплоенного контракта, здание меняет форму. <b>seal</b>: подпись, «sealed».</p>
+          <p class="cap"><kbd>caption</kbd> ensv2 · groundstate.eth → our registry · Names = registrar + wildcard resolver · <kbd>caption</kbd> Plot = eip-1967 proxy · verified on sourcify</p>
+        </div>
+        <div class="vo">
+          <p class="lbl">voiceover</p>
+          <p class="en">On your own plot the panel is yours. Write into it, and the words stand out of the wall as the drawing becomes a building. Name it under groundstate.eth: ENS version two on Sepolia, our own registry and resolver, and the name belongs to the place. Point the plot at a contract you deployed, and that code now runs at this address. Seal it, and it can never change.</p>
+          <p class="ru">На своём участке панель твоя. Напиши, и слова встанут из стены, чертёж станет зданием. Назови под groundstate.eth: ENSv2 на Sepolia, свой registry и резолвер, имя принадлежит месту. Укажи на свой контракт, и этот код исполняется по этому адресу. Запечатай, и он не изменится никогда.</p>
+          <p class="words mono">69 words · 32 s · про registrar и wildcard говорит титр</p>
+        </div>
+      </div>
+
+      <div class="shot">
+        <div class="tc mono"><b>2:20</b>→ 2:35<small>together · the graph</small></div>
+        <div class="screen">
+          <h3>Другие люди, общая память, индекс</h3>
+          <p>Сплит: ноутбук и телефон на той же точке. Белая фигура идёт мимо и копает. Новый участок с ноутбука появляется на телефоне через секунды. Потом 4 с оверлея: запрос к сабграфу через gateway и ответ.</p>
+          <p class="cap"><kbd>caption</kbd> subgraph published on the graph network · every plot a dynamic data source · <kbd>caption</kbd> a place seen by one is seen by all</p>
+        </div>
+        <div class="vo">
+          <p class="lbl">voiceover</p>
+          <p class="en">Other people are here. What anyone claims stands on every screen within seconds, and a place seen by one is seen by all. The index is our subgraph on The Graph Network.</p>
+          <p class="ru">Здесь другие люди. Что клеймит любой, встаёт у всех за секунды, и место, увиденное одним, видят все. Индекс наш сабграф в сети The Graph.</p>
+          <p class="words mono">32 words · 15 s</p>
+        </div>
+      </div>
+
+      <div class="shot">
+        <div class="tc mono"><b>2:35</b>→ 2:52<small>person · world id</small></div>
+        <div class="screen">
+          <h3>Человек здесь</h3>
+          <p>Панель person: «become a person». Клик, QR на экране. Рука с телефоном сканирует QR (экран World App с селфи не показывать, лица в ролике нет). Панель меняется на «real person · checked with World ID until …». Кадр с телефона: ваша фигура на другом экране стала серой, рядом белый незнакомец.</p>
+          <p class="cap"><kbd>caption</kbd> world id · selfie check · a person's word = five strangers' · it weighs, it does not gate</p>
+          <span class="url mono">Токен живёт 90 дней в браузере; перед записью нажать «forget me», чтобы пройти проверку в кадре.</span>
+        </div>
+        <div class="vo">
+          <p class="lbl">voiceover</p>
+          <p class="en">Fifty tabs are not fifty people. World ID's Selfie Check makes you a person here, and your word about a place is kept at once, where a stranger's takes five. It weighs; it does not gate.</p>
+          <p class="ru">Пятьдесят вкладок не пятьдесят человек. Selfie Check делает тебя человеком здесь, и твоё слово о месте хранится сразу, а слово незнакомца когда сойдутся пятеро. Это вес, а не барьер.</p>
+          <p class="words mono">35 words · 17 s · серый и белый видны в кадре, титр называет</p>
+        </div>
+      </div>
+
+      <div class="shot">
+        <div class="tc mono"><b>2:52</b>→ 3:28<small>early · depth · next</small></div>
+        <div class="screen">
+          <h3>Ранняя версия, глубина, куда это идёт</h3>
+          <p><b>1.</b> Свой чертёж крупно: пунктирные рёбра, дымчатое стекло, здание, которого ещё нет. Это и есть образ ранней версии, картинка говорит то же, что голос. 8 с. <b>2.</b> Взгляд вниз, строка статуса с адресом под ногами, тринадцать первых цифр подсвечены титром. 6 с. <b>3.</b> Склейка на карту: зум из клетки-«района», где несколько контрактов стоят кучно, вниз на два уровня, и они разъезжаются по «улицам». 10 с. <b>4.</b> Обратно в мир: чертёж рядом со зданием, камера медленно отходит. Титр с арифметикой. 12 с.</p>
+          <p class="cap"><kbd>caption</kbd> an early version: the world stands, the game is not written yet · <kbd>caption</kbd> depth 13 today: a metre is the 13th digit · <kbd>caption</kbd> next: a depth switch — the same chain at any level · <kbd>caption</kbd> one level down = ×4 the world, ×16 the work to stand this close</p>
+          <span class="url mono">Роадмап: преамбула «First, the game» и пункт 3, переключатель глубины. Чертёж берётся из клипа 06-claim.</span>
+        </div>
+        <div class="vo">
+          <p class="lbl">voiceover</p>
+          <p class="en">This is an early version: the world stands, the game around it is not written yet, and that is the first work after the hackathon. The world is thirteen digits deep: a metre is one cell of the thirteenth digit. A depth switch comes next, the same chain at any level. Every level down makes the world four times larger and standing this close sixteen times the work. Ground dug beside something today is worth more with every level.</p>
+          <p class="ru">Это ранняя версия: мир стоит, игра вокруг него ещё не написана, и это первая работа после хакатона. Мир глубиной тринадцать цифр: метр это клетка тринадцатой цифры. Дальше переключатель глубины, тот же чейн на любом уровне. Каждый уровень вниз делает мир в четыре раза больше, а стоять так же близко в шестнадцать раз дороже по работе. Земля, выкопанная рядом с чем-то сегодня, дорожает с каждым уровнем.</p>
+          <p class="words mono">79 words · 36 s · арифметика верна: расстояния ×4 на цифру, ближайшая из n попыток падает как 1/√n, значит работа ×16 · «район и улицы» ушли в титр и на карту</p>
+        </div>
+      </div>
+
+      <div class="shot">
+        <div class="tc mono"><b>3:28</b>→ 3:50<small>nine days · who we are</small></div>
+        <div class="screen">
+          <h3>Карточка и позиция</h3>
+          <p>Кадры по 1,5 с: welcome → шаг тура с небом → переворот в белое → валун-реликвия → телефон со стиком. С 3:36 карточка на чёрном, моноширинный столбик, стоит до конца сцены. Слова на карточке не повторяют голос: на экране стек, в голосе позиция.</p>
+          <p class="cap"><kbd>card</kbd> 4–13 september 2026 · 242 commits · one pair of hands<br>webgl2 engine, no assets · wasm miner · Plot: create2 proxy, verified<br>subgraph + token api (the graph) · ensv2 registrar + resolver · world id selfie check · live server · 128 tests · MIT</p>
+        </div>
+        <div class="vo">
+          <p class="lbl">voiceover</p>
+          <p class="en">Nine days, one pair of hands. We did not come to bend a project to a sponsor's product: the ideas fit the partners' tools so closely that we began with what we could show them. Partners beyond this hackathon, first approvals in hand: that is another story.</p>
+          <p class="ru">Девять дней, одна пара рук. Мы пришли не подгонять проект под чей-то продукт: идеи совпали с инструментами партнёров настолько точно, что мы начали с того, что можем им показать. Партнёры вне этого хакатона, первые одобрения уже есть: это уже другая история.</p>
+          <p class="words mono">47 words · 22 s · «игра продолжается» уже сказано сценой раньше словами «первая работа после хакатона»</p>
+        </div>
+      </div>
+
+      <div class="shot">
+        <div class="tc mono"><b>3:50</b>→ 4:00<small>close</small></div>
+        <div class="screen">
+          <h3>Финал</h3>
+          <p>Возврат в мир, вид от третьего лица: фигура идёт к низкому солнцу, справа чертёж и здание с надписью. За 4 с до конца чёрный кадр с маркой и двумя строками. Последняя секунда тишина.</p>
+          <p class="cap"><kbd>card</kbd> ground state · the chain on foot<br>gs.bwtoken.io · github.com/profinch/bwgame</p>
+        </div>
+        <div class="vo">
+          <p class="lbl">voiceover</p>
+          <p class="en">The chain already is a world. We only read it out. Ground State. Go and stand in it.</p>
+          <p class="ru">Чейн уже мир. Мы только прочитали его вслух. Ground State. Иди и стой в нём.</p>
+          <p class="words mono">18 words · 10 s · итого 517 слов на 240 секунд: 129 wpm, самая быстрая сцена 134. Если голос всё же длиннее, резать сцену 2 (карта), потом фразу про район и улицы в сцене 9. Копание, арифметику глубины, позицию и финал не трогать: за это голосуют.</p>
+        </div>
+      </div>
+
+    </div>
+  </section>
+  </div>
+
+  <!-- ================================================================ THE GRAPH -->
+  <div class="panel" id="tab-graph" role="tabpanel" hidden>
+
+  <section>
+    <h2>the graph <span>best use of composable or standardized graph products · $15 000</span></h2>
+    <div class="judge">
+      <div>
+        <h3>что проверяет жюри</h3>
+        <ul>
+          <li>Живые данные от провайдера The Graph: Studio или gateway, не моки и не статика. У нас сабграф опубликован в сеть, читается через gateway, Token API через Pinax.</li>
+          <li>Два и более продукта скомпонованы. Subgraph + Token API, оба несущие: без сабграфа не стоит ни один участок, без Token API плиты голые.</li>
+          <li>Осмысленная работа с данными, не печать запроса. Данные становятся геометрией: строка ответа становится столбом, строка индекса зданием.</li>
+          <li>Публичный репозиторий, ролик 2–4 минуты.</li>
+        </ul>
+      </div>
+      <div>
+        <h3>что меняется против базы</h3>
+        <p>Сцена кошелька растёт до 40 с и показывает поток из Token API рядом с миром: терминал с ndjson слева, столбы встают справа, строка за строкой. Сцена индекса растёт до 42 с: страница сабграфа в сети, playground, кадры сокета в devtools, и фраза «уберите сабграф, и не стоит ни один участок». World ID сжат до 12 с, мейннет до 18, «девять дней» до 19. Копание и постройка чуть короче, но остаются: жюри The Graph тоже люди, и центр ролика их держит.</p>
+      </div>
+    </div>
+    <div class="bar mono" aria-label="хронометраж версии для the graph">
+      <div style="flex:12">hook<small>12</small></div>
+      <div style="flex:20">map<small>20</small></div>
+      <div style="flex:18">mainnet<small>18</small></div>
+      <div style="flex:40" class="real">wallet · token api<small>40 · live</small></div>
+      <div style="flex:34" class="real">dig · claim<small>34 · tx</small></div>
+      <div style="flex:28" class="real">build · name<small>28 · tx</small></div>
+      <div style="flex:42" class="real">subgraph · socket<small>42 · live</small></div>
+      <div style="flex:12">person<small>12</small></div>
+      <div style="flex:19">nine days<small>19</small></div>
+      <div style="flex:15">close<small>15</small></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>сценарий <span>сцены без изменений свёрнуты в одну строку</span></h2>
+    <div class="shots">
+      <div class="shot same"><div class="tc mono"><b>0:00</b>→ 0:12</div><div class="screen"><p>hook как в базе, спуск на USDC короче на 3 с</p></div><div class="vo"><p class="en">You have held tokens for years and never seen them stand anywhere. Ground State gives Ethereum a ground to stand on.</p></div></div>
+      <div class="shot same"><div class="tc mono"><b>0:12</b>→ 0:32</div><div class="screen"><p>карта как в базе, зум быстрее</p></div><div class="vo"><p class="en">The map is the address space itself: forty hex digits, each one cell of a four-by-four grid, forty times over. Every address has one place, and neighbours share a prefix.</p></div></div>
+      <div class="shot same"><div class="tc mono"><b>0:32</b>→ 0:50</div><div class="screen"><p>мейннет как в базе, без второго контракта</p></div><div class="vo"><p class="en">Contracts stand as buildings: size from the code, shape from its hash, darkness from the balance. Overhead the block crosses the sky. Nothing is invented; what the chain says is what stands, and what happens.</p></div></div>
+
+      <div class="shot">
+        <div class="tc mono"><b>0:50</b>→ 1:30<small>wallet · token api</small></div>
+        <div class="screen">
+          <h3>Поток из Token API становится столбами</h3>
+          <p>Сплит-экран. Слева терминал: <code>curl 'https://gs.bwtoken.io/live/holdings?network=mainnet&address=0x…&stream=1'</code>, первая строка <code>{"count": 23}</code>, потом по строке на токен с symbol, amount, decimals, supply, по мере ответов. Справа мир: спуск на плиту того же кошелька, столбы встают из плиты один за другим в такт строкам слева. Дать встать 8–10. Потом полный экран мира, подойти к столбу, руны крупно.</p>
+          <p class="cap"><kbd>caption</kbd> token api (pinax) → live server, one asker for everybody → one line a token → one post a token · <kbd>caption</kbd> post height = holding ÷ total supply, log over 12 orders</p>
+          <span class="url mono">Ключ Token API живёт на сервере и не доходит до браузера; это стоит сказать в тексте сабмишена, не в ролике.</span>
+        </div>
+        <div class="vo">
+          <p class="lbl">voiceover</p>
+          <p class="en">A wallet is a plate, and what it holds comes from The Graph's Token API: every fungible token, with its supply. Our live server asks once for everybody and streams the answer, a line per token as each supply arrives, and the page stands a post up out of the plate for every line: as tall as that holding's share of the supply, the name and the amount cut into it. The data is not displayed. It is built.</p>
+          <p class="ru">Кошелёк плита, а что он держит, говорит Token API: каждый токен с его supply. Live-сервер спрашивает один раз за всех и отдаёт ответ потоком, строка на токен по мере прихода supply, и страница ставит столб из плиты на каждую строку: высотой в долю от supply, с именем и суммой. Данные не показываются. Они строятся.</p>
+          <p class="words mono">80 words</p>
+        </div>
+      </div>
+
+      <div class="shot same"><div class="tc mono"><b>1:30</b>→ 2:04</div><div class="screen"><p>копание и клейм как в базе, копание 10 с в кадре вместо 15</p></div><div class="vo"><p class="en">Empty ground is dug for: a plot is a contract deployed with CREATE2, so a salt fixes its address, its place. Every core grinds salts in WebAssembly, the closest is kept, and one transaction makes it your contract forever. It rises as a drawing of the building it will be.</p></div></div>
+      <div class="shot same"><div class="tc mono"><b>2:04</b>→ 2:32</div><div class="screen"><p>inscribe и name it как в базе; point at code и seal вырезаны, остаются в титре</p></div><div class="vo"><p class="en">Write into it and the words stand out of the wall as the drawing becomes a building. Name it under groundstate.eth, ENS version two, and the name belongs to the place. Point it at code, seal it: every one of these is an event, and every event is indexed.</p></div></div>
+
+      <div class="shot">
+        <div class="tc mono"><b>2:32</b>→ 3:14<small>subgraph · socket</small></div>
+        <div class="screen">
+          <h3>Индекс: сабграф в сети, весь мир по сокету</h3>
+          <p>Страница сабграфа в Graph Explorer с пометкой published, 3 с. Playground: запрос <code>plots(where:{tile:"…"}){ id owner{id} note name implementation sealed x y cell }</code> и ответ с только что заклеймленным участком, «hello, world» в note, имя в name, 8 с. Затем devtools → WS → кадр <code>{"t":"world", plots:[…], revealed:[…]}</code> в момент открытия страницы, и сразу мир, где все эти участки стоят, 8 с. Финальный кадр сцены: сплит ноутбук и телефон, новый клейм встаёт на втором экране.</p>
+          <p class="cap"><kbd>caption</kbd> subgraph published on the graph network · read through the gateway · <kbd>caption</kbd> factory = data source, every plot = dynamic data source · <kbd>caption</kbd> x, y = the address as 80-bit coordinates; tile = 256 m</p>
+        </div>
+        <div class="vo">
+          <p class="lbl">voiceover</p>
+          <p class="en">The index is a subgraph, published on The Graph Network. The factory is one data source, and every plot it makes becomes another, so a note, a name, a new owner, a seal are indexed as they happen. The mapping decodes the address into coordinates and tiles, so "everything near here" is one query. The live server reads it through the gateway, once for everybody, and pushes the whole world to every page over a socket. Take the subgraph away and no plot stands. Take the Token API away and the plates are bare.</p>
+          <p class="ru">Индекс сабграф, опубликованный в сети The Graph. Фабрика один источник, каждый участок ещё один, так что надпись, имя, новый владелец, печать индексируются по мере событий. Маппинг раскладывает адрес в координаты и тайлы, «всё рядом» один запрос. Live-сервер читает через gateway один раз за всех и отдаёт весь мир каждой странице по сокету. Уберите сабграф, и не стоит ни один участок. Уберите Token API, и плиты голые.</p>
+          <p class="words mono">93 words</p>
+        </div>
+      </div>
+
+      <div class="shot same"><div class="tc mono"><b>3:14</b>→ 3:26</div><div class="screen"><p>World ID одной фразой, кадр серой фигуры рядом с белой</p></div><div class="vo"><p class="en">And World ID's Selfie Check says who here is a person, so that fifty tabs do not count as fifty people.</p></div></div>
+      <div class="shot same"><div class="tc mono"><b>3:26</b>→ 3:45</div><div class="screen"><p>карточка «девять дней», без монтажа</p></div><div class="vo"><p class="en">Nine days, one pair of hands, an early version: the game around this world is still to be written, and that comes first. We did not bend the project to a product: the ideas fit the tools, so we began with what we could show. Then a depth switch, and an index that holds at any depth.</p></div></div>
+      <div class="shot same"><div class="tc mono"><b>3:45</b>→ 4:00</div><div class="screen"><p>финал как в базе</p></div><div class="vo"><p class="en">The chain already is a world. We only read it out. Ground State. Go and stand in it.</p></div></div>
+    </div>
+    <p class="intro" style="margin-top:14px"><span class="mono" style="font-size:11px;color:var(--mut)">итого ≈ 500 слов · 4:00 при 125 wpm</span></p>
+  </section>
+
+  <section>
+    <h2>для формы <span>текст в поле трека, по-английски</span></h2>
+    <div class="form">
+      <p>Ground State composes two Graph products as load-bearing parts of one world. A subgraph published on The Graph Network indexes three generations of the plot factory, with every plot a dynamic data source: owner, every inscription, implementation, seal, name, salt, and the address decoded in the mapping into 80-bit coordinates, the metre cell and the 256-metre tile, so that "everything near here" is one query. The Token API (Pinax) supplies what a mainnet wallet holds, every fungible token with its supply, which is what the posts on a wallet's plate stand for. Both are read by one small live server through the gateway, with the keys never reaching the browser, and pushed to every page over a WebSocket: the whole world on joining, then only what changed. Nothing is printed; every row becomes geometry. Blockscout and the factory's own logs are the fallbacks. Next for the index: drop the depth-bound <code>cell</code> and <code>tile</code> fields and query by <code>x</code>/<code>y</code> ranges, so the same subgraph serves the world at any depth once the depth switch lands. Source: <code>subgraph/</code>, <code>live/server.js</code>, <code>src/chain.ts</code>, <code>src/plot.ts</code>.</p>
+    </div>
+    <div class="clips mono">
+      <div><b>доп. клипы</b><span>04b-holdings-stream.mov: терминал с curl …&stream=1 одновременно с миром, 45 с · 09a-explorer.png: страница сабграфа published · 09b-playground.mov: запрос и ответ, 20 с · 09c-ws.mov: devtools, кадр world, 15 с</span><span>4 файла</span></div>
+    </div>
+  </section>
+  </div>
+
+  <!-- ================================================================ ENS -->
+  <div class="panel" id="tab-ens" role="tabpanel" hidden>
+
+  <section>
+    <h2>ens <span>best use of ensv2 · $4 500</span></h2>
+    <div class="judge">
+      <div>
+        <h3>что проверяет жюри</h3>
+        <ul>
+          <li>Построено на ENSv2 на Sepolia. У нас groundstate.eth на ENSv2-бете, subregistry указывает на наш PermissionedRegistry через VerifiableFactory.</li>
+          <li>ENSv2 центральна, не косметика. Адрес нельзя никому назвать вслух; имя единственный способ поделиться местом, и оно привязано к месту контрактом.</li>
+          <li>Подсвеченные фичи: иерархический registry, wildcard-резолюция сабнеймов, Enhanced Access Control. Все три у нас в деле.</li>
+          <li>Функциональное демо без захардкоженных значений, ролик, открытый код.</li>
+          <li class="open">Бонус за AI-агентов. Нет, и не притягиваем.</li>
+        </ul>
+      </div>
+      <div>
+        <h3>что меняется против базы</h3>
+        <p>Имя выделено в отдельную сцену на 60 с: назвать, приехать по имени, показать резолв вне игры с text-записями, попробовать зарезервированное «casino» и получить отказ, показать, что имя не передаётся отдельно от места. Постройка без имени сжата до 24 с, мейннет до 15, World ID до 10. Главная мысль сцены: дерево реестров это дерево карты, имя под именем, место под местом.</p>
+      </div>
+    </div>
+    <div class="bar mono" aria-label="хронометраж версии для ens">
+      <div style="flex:12">hook<small>12</small></div>
+      <div style="flex:22">map<small>22</small></div>
+      <div style="flex:15">mainnet<small>15</small></div>
+      <div style="flex:15">wallet by name<small>15</small></div>
+      <div style="flex:32" class="real">dig · claim<small>32 · tx</small></div>
+      <div style="flex:24" class="real">build · seal<small>24 · tx</small></div>
+      <div style="flex:60" class="real">name<small>60 · tx</small></div>
+      <div style="flex:15">together<small>15</small></div>
+      <div style="flex:10">person<small>10</small></div>
+      <div style="flex:20">nine days<small>20</small></div>
+      <div style="flex:15">close<small>15</small></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>сценарий <span>сцены без изменений свёрнуты в одну строку</span></h2>
+    <div class="shots">
+      <div class="shot same"><div class="tc mono"><b>0:00</b>→ 0:12</div><div class="screen"><p>hook как в базе</p></div><div class="vo"><p class="en">You have held tokens for years and never seen them stand anywhere. Ground State gives Ethereum a ground to stand on.</p></div></div>
+      <div class="shot">
+        <div class="tc mono"><b>0:12</b>→ 0:34<small>the map</small></div>
+        <div class="screen">
+          <h3>Карта, и первая мысль о дереве</h3>
+          <p>Как в базе, но титр другой: карта это дерево, и это пригодится через две минуты.</p>
+          <p class="cap"><kbd>caption</kbd> an address is a route down a tree: a quarter, of a quarter, of a quarter…</p>
+        </div>
+        <div class="vo">
+          <p class="lbl">voiceover</p>
+          <p class="en">The map is the address space itself. Forty hex digits, each one cell of a four-by-four grid, forty times over: an address is a route down a tree, a place under a place. Every address has one location, and neighbours share a prefix. Keep the tree in mind.</p>
+          <p class="ru">Карта само адресное пространство. Сорок цифр, каждая клетка 4×4: адрес это маршрут вниз по дереву, место под местом. Запомните дерево.</p>
+          <p class="words mono">48 words</p>
+        </div>
+      </div>
+      <div class="shot same"><div class="tc mono"><b>0:34</b>→ 0:49</div><div class="screen"><p>мейннет, только взгляд в небо</p></div><div class="vo"><p class="en">Contracts stand as buildings from their code; the block crosses the sky. Nothing is invented; what the chain says is what stands, and what happens.</p></div></div>
+      <div class="shot same"><div class="tc mono"><b>0:49</b>→ 1:04</div><div class="screen"><p>кошелёк: ввод ENS-имени в поле, спуск на плиту, столбы встают</p></div><div class="vo"><p class="en">An address is nowhere you can tell anyone to go, so the field takes names: type one, and you are there. A wallet is a plate, a post per token.</p></div></div>
+      <div class="shot same"><div class="tc mono"><b>1:04</b>→ 1:36</div><div class="screen"><p>копание и клейм как в базе, короче</p></div><div class="vo"><p class="en">Empty ground is dug for: a plot is a contract deployed with CREATE2, so a salt fixes its place. Every core grinds salts, the closest is kept, and one transaction makes it your contract, forever. It rises as a drawing.</p></div></div>
+      <div class="shot same"><div class="tc mono"><b>1:36</b>→ 2:00</div><div class="screen"><p>inscribe и seal как в базе, point at code в титре</p></div><div class="vo"><p class="en">Write into it and the words stand out of the wall as the drawing becomes a building. Point it at your own contract; seal it, and it can never change. And now it needs a name.</p></div></div>
+
+      <div class="shot">
+        <div class="tc mono"><b>2:00</b>→ 3:00<small>name</small></div>
+        <div class="screen">
+          <h3>Имя принадлежит месту</h3>
+          <p><b>1.</b> Панель владельца, поле «a name under groundstate.eth». Сначала набрать <code>casino</code>, нажать: отказ, «reserved». 5 с. <b>2.</b> Набрать <code>&lt;label&gt;</code>, подпись, «sent. waiting for a block», «yours: &lt;label&gt;.groundstate.eth». 12 с. <b>3.</b> Уйти на сотню метров, набрать имя в нижнем поле, Enter: спуск на свой участок. 10 с. <b>4.</b> Оверлей вне игры: резолв через UniversalResolverV2 (ENS app на Sepolia или <code>cast</code>): <code>addr</code> это участок, <code>text(description)</code> это «hello, world», <code>text(url)</code> это ссылка в мир. 12 с. <b>5.</b> Схема-титр: groundstate.eth → subregistry (наш) → label; рядом карта: мир → четверть → клетка. Одна форма. 8 с. <b>6.</b> Titр про role bitmap ноль: токен имени нельзя передать отдельно; transfer участка, и новый владелец называет заново. 8 с.</p>
+          <p class="cap"><kbd>caption</kbd> groundstate.eth (ensv2 sepolia) → subregistry: our PermissionedRegistry via VerifiableFactory · <kbd>caption</kbd> Names = the only ROLE_REGISTRAR · wildcard resolver, ensip-10 · <kbd>caption</kbd> role bitmap 0: the name cannot leave the place · <kbd>caption</kbd> ~300 labels reserved</p>
+          <span class="url mono">Registry 0xbef6…210c · Names 0x2E32…29ED · first.groundstate.eth → 0x3095…3aad</span>
+        </div>
+        <div class="vo">
+          <p class="lbl">voiceover</p>
+          <p class="en">This is ENS version two on Sepolia, used on its own terms. groundstate.eth points its subregistry at a registry of ours, and one contract, Names, is that registry's only registrar and the wildcard resolver for the whole subtree: any label resolves here, and the records are the plot itself. Address is the plot; description is what its owner wrote; url opens the world at this spot. Any wallet that knows ENS finds it. A name is registered with a role bitmap of zero, so its token cannot be transferred on its own: the name belongs to the place, and when the place changes hands the new owner names it. Three hundred labels are reserved. And the tree of registries is the tree of the map: a name under a name, a place under a place.</p>
+          <p class="ru">Это ENSv2 на Sepolia на её собственных условиях. groundstate.eth указывает subregistry на наш реестр, а один контракт, Names, единственный registrar и wildcard-резолвер всего поддерева: любая метка резолвится здесь, а записи это сам участок. addr участок, description что написал владелец, url открывает мир в этой точке. Любой кошелёк, знающий ENS, найдёт. Имя регистрируется с нулевым role bitmap, токен не передать отдельно: имя принадлежит месту, новый владелец называет заново. Триста меток зарезервированы. Дерево реестров это дерево карты: имя под именем, место под местом.</p>
+          <p class="words mono">136 words · 60 с при 136 wpm, быстровато: если не влезает, убрать фразу про триста меток</p>
+        </div>
+      </div>
+
+      <div class="shot same"><div class="tc mono"><b>3:00</b>→ 3:15</div><div class="screen"><p>другие люди, сплит с телефоном</p></div><div class="vo"><p class="en">Other people are here. What anyone claims, and names, stands up on every screen within seconds.</p></div></div>
+      <div class="shot same"><div class="tc mono"><b>3:15</b>→ 3:25</div><div class="screen"><p>World ID одной фразой</p></div><div class="vo"><p class="en">World ID's Selfie Check says who here is a person; next, a name will belong to a person the same way.</p></div></div>
+      <div class="shot same"><div class="tc mono"><b>3:25</b>→ 3:45</div><div class="screen"><p>карточка «девять дней»</p></div><div class="vo"><p class="en">Nine days, one pair of hands, an early version: the game around this world is still to be written, and that comes first. We did not bend the project to a product: the ideas fit the tools, so we began with what we could show. Reverse names for plots follow.</p></div></div>
+      <div class="shot same"><div class="tc mono"><b>3:45</b>→ 4:00</div><div class="screen"><p>финал как в базе</p></div><div class="vo"><p class="en">The chain already is a world. We only read it out. Ground State. Go and stand in it.</p></div></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>для формы <span>текст в поле трека, по-английски</span></h2>
+    <div class="form">
+      <p>Ground State uses ENSv2 on Sepolia as the way a place is shared: an address is nowhere anyone can be told to go, so a plot's owner names it under groundstate.eth. The name is registered on the ENSv2 beta and points its subregistry at a PermissionedRegistry of ours, deployed through the VerifiableFactory. One contract, <code>Names</code>, holds the only ROLE_REGISTRAR and ROLE_UNREGISTER on that registry and is also the ENSIP-10 wildcard resolver for the whole subtree: <code>addr</code> resolves to the plot, <code>text(description)</code> to what the owner inscribed, <code>text(url)</code> to the world at that spot. Labels are registered with a role bitmap of zero, so a name's token cannot be transferred on its own: the name belongs to the place, and a new owner of the place renames it. About three hundred labels are reserved. The world resolves through UniversalResolverV2 and travels by name. The hierarchy of registries has the shape of the map: a name under a name, a place under a place. Next: reverse names for plots; naming weighed by World ID so a name belongs to a person; and a top-level name of the world's own beside groundstate.eth, a label in the ENSv2 root with its subregistry pointed at our registry, which also lets anyone bring a name they already hold and put their plots under it. Source: <code>contracts/src/Names.sol</code>, <code>src/ens.ts</code>, <code>src/owning.ts</code>.</p>
+    </div>
+    <div class="clips mono">
+      <div><b>доп. клипы</b><span>07b-name-reserved.mov: попытка назвать casino, отказ · 07c-resolve.mov: ENS app на Sepolia или cast с addr, description, url для &lt;label&gt;.groundstate.eth, 20 с · 07d-tree.png: титр-схема registry ↔ карта, рисую я</span><span>3 файла</span></div>
+    </div>
+  </section>
+  </div>
+
+  <!-- ================================================================ WORLD -->
+  <div class="panel" id="tab-world" role="tabpanel" hidden>
+
+  <section>
+    <h2>world <span>selfie check credentials · $7 000</span></h2>
+    <div class="judge">
+      <div>
+        <h3>что проверяет жюри</h3>
+        <ul>
+          <li>Selfie Check через IDKit в рабочем продукте, проверка на бэкенде через v4 verify. У нас IDKit в ванильном TypeScript без React, RP-подпись и верификация на live-сервере, первая живая проверка прошла в продакшене 13.09.</li>
+          <li>Осмысленная роль credential: не бейдж. У нас это вес голоса в общей памяти мира: 1 против ⅕. Работает и без проверки, только доверяет втрое меньше.</li>
+          <li>Приватность: сервер хранит только хэш токена и срок, никаких имён и кошельков; credential можно положить обратно.</li>
+          <li>Ролик, открытый код. Плюс <code>docs/world-id-feedback.md</code>: подробный фидбек по докам и порталу, команды это ценят.</li>
+        </ul>
+      </div>
+      <div>
+        <h3>что меняется против базы</h3>
+        <p>Сцена «вместе» становится постановкой проблемы: место, увиденное одним, видят все, и это приглашение для пятидесяти вкладок. Сцена person растёт до 55 с: проверка в кадре, фигура меняет тон, слово человека о месте проходит сразу, «a stranger again» кладёт credential обратно. Мейннет и постройка сжаты. Ключевая фраза: it weighs, it does not gate.</p>
+      </div>
+    </div>
+    <div class="bar mono" aria-label="хронометраж версии для world">
+      <div style="flex:12">hook<small>12</small></div>
+      <div style="flex:18">map<small>18</small></div>
+      <div style="flex:15">mainnet<small>15</small></div>
+      <div style="flex:15">wallet<small>15</small></div>
+      <div style="flex:34" class="real">dig · claim<small>34 · tx</small></div>
+      <div style="flex:26" class="real">build · name<small>26 · tx</small></div>
+      <div style="flex:30">together · shared memory<small>30</small></div>
+      <div style="flex:55" class="real">person<small>55 · live</small></div>
+      <div style="flex:20">nine days<small>20</small></div>
+      <div style="flex:15">close<small>15</small></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>сценарий <span>сцены без изменений свёрнуты в одну строку</span></h2>
+    <div class="shots">
+      <div class="shot same"><div class="tc mono"><b>0:00</b>→ 0:12</div><div class="screen"><p>hook как в базе</p></div><div class="vo"><p class="en">You have held tokens for years and never seen them stand anywhere. Ground State gives Ethereum a ground to stand on, with other people.</p></div></div>
+      <div class="shot same"><div class="tc mono"><b>0:12</b>→ 0:30</div><div class="screen"><p>карта как в базе, короче</p></div><div class="vo"><p class="en">The map is the address space itself: forty hex digits, each one cell of a four-by-four grid. Every address has one place; nothing about this was designed.</p></div></div>
+      <div class="shot same"><div class="tc mono"><b>0:30</b>→ 0:45</div><div class="screen"><p>мейннет, взгляд в небо</p></div><div class="vo"><p class="en">Contracts stand as buildings from their code; the block crosses the sky. Nothing is invented; what the chain says is what stands, and what happens.</p></div></div>
+      <div class="shot same"><div class="tc mono"><b>0:45</b>→ 1:00</div><div class="screen"><p>кошелёк, столбы встают</p></div><div class="vo"><p class="en">Type a name and you are there: a wallet is a plate, a post per token, rising as The Graph's Token API answers.</p></div></div>
+      <div class="shot same"><div class="tc mono"><b>1:00</b>→ 1:34</div><div class="screen"><p>копание и клейм как в базе</p></div><div class="vo"><p class="en">Empty ground is dug for: a plot is a contract deployed with CREATE2, so a salt fixes its place. Every core grinds salts, the closest is kept, and one transaction makes it your contract forever. It rises as a drawing.</p></div></div>
+      <div class="shot same"><div class="tc mono"><b>1:34</b>→ 2:00</div><div class="screen"><p>inscribe и name it; code и seal в титре</p></div><div class="vo"><p class="en">Write into it and the words stand out of the wall. Name it under groundstate.eth, ENS version two; point it at code; seal it for good.</p></div></div>
+
+      <div class="shot">
+        <div class="tc mono"><b>2:00</b>→ 2:30<small>together · the problem</small></div>
+        <div class="screen">
+          <h3>Мир видят все, и в этом проблема</h3>
+          <p>Сплит ноутбук и телефон. На ноутбуке набрать адрес кошелька, которого ещё нет в общей памяти: плита встаёт. На телефоне, у другого человека, та же плита встаёт через секунду, без ввода. Потом кадр: три вкладки одного браузера рядом. Титр ставит вопрос.</p>
+          <p class="cap"><kbd>caption</kbd> a place seen by one is seen by all · <kbd>caption</kbd> …so who is «one»? fifty tabs?</p>
+        </div>
+        <div class="vo">
+          <p class="lbl">voiceover</p>
+          <p class="en">Other people are here, and the world is shared: a place seen by one is seen by all, at once and on every later visit. The world resolves faster the more people stand in it. Both of these invite one person with fifty tabs. So the world has to ask who is a person, without asking who you are.</p>
+          <p class="ru">Здесь другие люди, и мир общий: место, увиденное одним, видят все, сразу и в каждый следующий визит. Мир проявляется быстрее, чем больше людей стоит в нём. И то и другое приглашает одного человека с пятьюдесятью вкладками. Значит, мир должен спросить, кто здесь человек, не спрашивая, кто вы.</p>
+          <p class="words mono">60 words</p>
+        </div>
+      </div>
+
+      <div class="shot">
+        <div class="tc mono"><b>2:30</b>→ 3:25<small>person · selfie check</small></div>
+        <div class="screen">
+          <h3>Человек здесь: вес, не барьер</h3>
+          <p><b>1.</b> Панель person: «you, here», кнопка «become a person». Клик. QR в панели, ссылка «open in World App». 6 с. <b>2.</b> Рука с телефоном сканирует QR; на телефоне World App просит подтвердить, экран селфи не показывать. 8 с. <b>3.</b> Панель: «a person here until 12.12.2026», кнопка «a stranger again». 5 с. <b>4.</b> Кадр с телефона второго человека: ваша фигура стала серой, незнакомец рядом белый. 6 с. <b>5.</b> Как человек: набрать новый адрес с чем-то стоящим; на телефоне место встаёт сразу. Титр: как незнакомец, оно ждало бы двух других. 12 с. <b>6.</b> Нажать «a stranger again»: панель обратно, фигура на телефоне белая. Титр: токен удалён и в браузере, и на сервере. 8 с. <b>7.</b> Оверлей схемы одной строкой: page → IDKit → World App → proof → live server → developer.world.org/api/v4/verify → token (hash + expiry). 6 с.</p>
+          <p class="cap"><kbd>caption</kbd> idkit in a vanilla page, no react · rp signature + verify on our server · <kbd>caption</kbd> a person's word = 1 · a stranger's = ⅕ · <kbd>caption</kbd> the server keeps a hash and a date, nothing about you · <kbd>caption</kbd> it weighs, it does not gate</p>
+          <span class="url mono">Перед записью: «a stranger again», чтобы проверку можно было пройти в кадре. Action: stand-as-a-person, production.</span>
+        </div>
+        <div class="vo">
+          <p class="lbl">voiceover</p>
+          <p class="en">World ID's Selfie Check answers that. One check in the World App says a live person is behind this screen; IDKit brings the proof to the page, our server has World verify it, and what it earns is not a name and not a wallet but weight. A person stands in your grey; a stranger in white. A person's word about a place is kept for everybody at once; a stranger's is heard, and kept once five strangers agree. Watch: as a person, the place I reveal stands on her screen immediately. And I can put the credential down: a stranger again, the token gone from the browser and from the server both. The world works the same for a stranger. It just trusts them a fifth as much. It weighs. It does not gate.</p>
+          <p class="ru">На это отвечает Selfie Check. Одна проверка в World App говорит, что за экраном живой человек; IDKit приносит доказательство на страницу, наш сервер даёт World его проверить, и это даёт не имя и не кошелёк, а вес. Человек стоит в вашем сером, незнакомец в белом. Слово человека о месте хранится для всех сразу; слово незнакомца слышат и хранят, когда сойдутся пятеро. Смотрите: как человек, место, которое я открываю, встаёт на её экране сразу. И credential можно положить: снова незнакомец, токен удалён и в браузере, и на сервере. Для незнакомца мир работает так же. Просто доверяет втрое меньше. Это вес. Не барьер.</p>
+          <p class="words mono">133 words · 55 с при 145 wpm, слишком быстро: убрать «Watch: …immediately» и «The world works the same for a stranger», тогда 110 слов и 120 wpm</p>
+        </div>
+      </div>
+
+      <div class="shot same"><div class="tc mono"><b>3:25</b>→ 3:45</div><div class="screen"><p>карточка «девять дней»; на карточке отдельная строка про фидбек-док</p></div><div class="vo"><p class="en">Nine days, one pair of hands, an early version: the game around this world is still to be written, and that comes first. We did not bend the project to a product: the ideas fit the tools, so we began with what we could show. Next for World ID: naming, so a name belongs to a person. What integrating it was like is written down, for the World team.</p></div></div>
+      <div class="shot same"><div class="tc mono"><b>3:45</b>→ 4:00</div><div class="screen"><p>финал как в базе</p></div><div class="vo"><p class="en">The chain already is a world. We only read it out. Ground State. Go and stand in it.</p></div></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>для формы <span>текст в поле трека, по-английски</span></h2>
+    <div class="form">
+      <p>Ground State is a shared world: a place seen by one person is seen by all, and a place resolves faster the more people stand in it. Both invite one person with fifty tabs, so the world asks who is a person, without asking who you are. World ID's Selfie Check runs through IDKit in a vanilla TypeScript page (no React); the relying-party signature is made on our small Node server with <code>@worldcoin/idkit-server</code>, and the proof is verified against <code>developer.world.org/api/v4/verify</code>. What it earns is a weight, not a gate: a person stands in the room in grey and a stranger in white; a person's word about a place is kept for everybody at once, a stranger's once three strangers agree (<code>STRANGER_WORD = 1/3</code>). The server keeps a token hash and its expiry for the credential's ninety days and nothing about anybody; the person can put the credential down at any time, and it is forgotten on both ends. The first live check passed in production on 13 September 2026. Our notes on integrating it, what read well and what was missing in the docs and the Developer Portal, are in <code>docs/world-id-feedback.md</code>. Next: naming weighed the same way, so a name belongs to a person. Source: <code>src/human.ts</code>, <code>live/server.js</code>.</p>
+    </div>
+    <div class="clips mono">
+      <div><b>доп. клипы</b><span>10b-three-tabs.mov: три вкладки рядом, 6 с · 10c-reveal-as-person.mov: ввод нового адреса на ноутбуке, плита встаёт на телефоне сразу, оба экрана · 10d-forget-me.mov: кнопка, панель обратно, фигура белая на телефоне</span><span>3 файла</span></div>
+    </div>
+  </section>
+  </div>
+
+  <!-- ================================================================ ОБЩЕЕ -->
+
+  <section id="clips">
+    <h2>что записать <span>для базы · партнёрские версии добавляют клипы из своих вкладок</span></h2>
+    <div class="intro"><p>Весь экран целиком, 1920×1080, 60 fps, QuickTime или OBS. Курсор не прячьте, я вырежу где нужно. Файлы в одну папку с этими именами. Из одного набора клипов собираются все четыре версии.</p></div>
+    <div class="clips mono">
+      <div><b>01-hook-usdc.mov</b><span>спуск на USDC на мейннете, приземление, 10 с стоять</span><span>≈ 30 с</span></div>
+      <div><b>02-map.mov</b><span>карта: весь мир, зум до клетки фабрики, пауза</span><span>≈ 40 с</span></div>
+      <div><b>03-mainnet.mov</b><span>обход USDC, взгляд в небо 10 с, второй контракт</span><span>≈ 45 с</span></div>
+      <div><b>04-wallet.mov</b><span>ввод имени в поле, спуск, столбы встают, подход к рунам</span><span>≈ 40 с</span></div>
+      <div><b>05-dig.mov</b><span>слайдер, dig here, 20–30 с копания, stop</span><span>≈ 45 с</span></div>
+      <div><b>06-claim.mov</b><span>claim it, окно кошелька, ожидание, чертёж до конца</span><span>≈ 60 с</span></div>
+      <div><b>07-build.mov</b><span>inscribe → name it → имя в поле → point at code → seal, одним дублем с ожиданиями</span><span>≈ 4 мин</span></div>
+      <div><b>08-together-laptop.mov + 08-together-phone.mp4</b><span>оба экрана одновременно, фигура ходит и копает, клейм появляется на втором</span><span>≈ 60 с</span></div>
+      <div><b>09-graph.png</b><span>скриншот запроса и ответа сабграфа</span><span>1 кадр</span></div>
+      <div><b>10-person.mov + 10-person-phone.mp4</b><span>панель person, QR, скан телефоном без лица, «a person here»; с телефона: серая фигура рядом с белой</span><span>≈ 60 с</span></div>
+      <div><b>11-montage.mov</b><span>welcome, шаг тура, переворот темы, меню blockchain, реликвия, телефон со стиком</span><span>≈ 60 с</span></div>
+      <div><b>12-close.mov</b><span>третье лицо, шаг к солнцу мимо чертежа и здания</span><span>≈ 30 с</span></div>
+      <div><b>vo-*.m4a</b><span>голос: база по файлу на сцену, каждая фраза дважды; для партнёрских версий только изменённые сцены отдельными файлами vo-graph-*, vo-ens-*, vo-world-*</span><span>≈ 15 мин</span></div>
+    </div>
+  </section>
+
+  <section id="prep">
+    <h2>подготовка <span>до первого клипа</span></h2>
+    <div class="check">
+      <div>
+        <h3>on chain</h3>
+        <ul>
+          <li>Кошелёк с 0.05+ Sepolia ETH на 6–7 транзакций с запасом.</li>
+          <li>Накопать соль до 400–500 м заранее в том же профиле, чтобы в кадре за 15 с было видно падение.</li>
+          <li>Контракт другого размера кода на Sepolia для «point at code».</li>
+          <li>Label для имени не из зарезервированных; проверить резолв <code>&lt;label&gt;.groundstate.eth</code> в поле после блока и через ENS app на Sepolia.</li>
+          <li>Резервный участок, заклеймленный за час до записи.</li>
+          <li>Кошелёк мейннета с 10–30 токенами для сцены 4; проверить, что Token API отвечает потоком.</li>
+          <li>Live-сервер: сокет отдаёт мир, <code>/live/holdings</code> отвечает, <code>/live/human</code> не 503.</li>
+          <li>World App с Selfie Check на телефоне; в браузере «forget me» перед записью.</li>
+        </ul>
+      </div>
+      <div>
+        <h3>экран</h3>
+        <ul>
+          <li>Свежий профиль Chrome, полноэкранный режим, без закладок и расширений кроме кошелька, масштаб 100 %.</li>
+          <li>Тёмная тема на всём ролике кроме кадра переворота.</li>
+          <li>Мышью медленно, взгляд как поворот головы.</li>
+          <li><code>?welcome</code> показывает welcome-карточку снова.</li>
+          <li>Телефон: тот же <code>?at=</code>, запись экрана средствами системы.</li>
+          <li>Тур не использовать для копания и клейма: там всё «for show».</li>
+          <li>Лица в ролике нет: селфи остаётся на телефоне, в кадре QR и рука.</li>
+        </ul>
+      </div>
+      <div>
+        <h3>звук и сборка</h3>
+        <ul>
+          <li>Голос в тихой комнате, микрофон близко, 125 слов в минуту, ровно. Без музыки, это правило ETHGlobal.</li>
+          <li>Каждую фразу читать дважды подряд.</li>
+          <li>Сборка моя: ffmpeg, титры и карточки в стиле проекта, H.264 1080p ≥ 12 Mbit/s. Четыре версии из одного набора клипов.</li>
+          <li>Длина 3:55–4:00 у каждой версии.</li>
+          <li>В форме выбрать «Top Finalist & Partner Prizes», отметить The Graph, ENS, World. Если форма принимает одно видео, туда идёт база, а партнёрские версии в поле описания трека ссылками.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section id="risks">
+    <h2>риски <span>и что делать</span></h2>
+    <div class="risk">
+      <div><b>Gateway или Token API не отвечает</b><span>Мир падает на Blockscout и Studio сам. Столбы встанут одним куском: снять сцену 4 позже.</span></div>
+      <div><b>Медленные блоки Sepolia</b><span>Резервный участок; газ чуть выше рынка.</span></div>
+      <div><b>Selfie Check не проходит в кадре</b><span>Показать панель «real person · checked with World ID until …» с живым токеном и серую фигуру с телефона; закадр не меняется.</span></div>
+      <div><b>Второго человека нет онлайн</b><span>Телефон в руке и есть второй игрок.</span></div>
+      <div><b>Копание не показывает падение</b><span>Начать с недокопанной находки 400–500 м.</span></div>
+      <div><b>Голос не влезает в 4:00</b><span>Резать сцену 3, потом 2. Позицию и финал не трогать.</span></div>
+      <div><b>Жюри скажет: это движок, а не игра</b><span>Мы говорим это первыми, в сцене 9, спокойно: ранняя версия, игра не написана, это первая работа после хакатона. Что уже игра: землю берут работой, строят, называют, стоят в ней вместе. Сказанное самим читается как позиция, а не как дыра.</span></div>
+      <div><b>Жюри спросит про глубину</b><span>Ответ в одну строку: адрес это дерево, глубина это уровень, на котором стоишь; общие цифры с соседом остаются общими на любой глубине, поэтому ранняя земля рядом с чем-то только дорожает. Цифры: уровень вниз ×4 мир, ×16 работа.</span></div>
+      <div><b>Одно поле для видео в форме</b><span>База в форму, партнёрские версии на YouTube unlisted, ссылки в описании соответствующего трека.</span></div>
+    </div>
+  </section>
+
+  <section id="not">
+    <h2>что не показываем <span>и почему</span></h2>
+    <div class="no">
+      <p><b>Копание из тура.</b> <span>Мок, помечен «for show». Живые данные обязательны.</span></p>
+      <p><b>Лицо и селфи.</b> <span>Приватность, и лишний монтаж.</span></p>
+      <p><b>Transfer.</b> <span>Работает, но шестая подпись и минус 10 секунд.</span></p>
+      <p><b>Ключ к рунам.</b> <span>Игроки должны разгадать сами.</span></p>
+      <p><b>Имена внешних партнёров.</b> <span>«Первые одобрения» без названий: переговоры не закончены, а обещание, которое нельзя проверить, жюри ставят в минус.</span></p>
+      <p><b>Открытые вопросы.</b> <span>Коллизии в метре, NFT без формы: честно в README, не в четырёх минутах.</span></p>
+    </div>
+  </section>
+
+  <footer class="mono">
+    <span>ground state · демо-сценарий · финал · 13.09.2026</span>
+    <span>ethglobal: 2–4 min · ≥720p · audio, no music · the graph: two products, live data · ens: ensv2 central · world: selfie check</span>
+  </footer>
+</div>
+
+<script>
+(function(){
+  var ids=['base','graph','ens','world'];
+  var tabs=document.querySelectorAll('.tabs button');
+  var panels=document.querySelectorAll('.panel');
+  function show(id){
+    if(ids.indexOf(id)<0)id='base';
+    tabs.forEach(function(b){b.setAttribute('aria-selected',b.dataset.tab===id?'true':'false');});
+    panels.forEach(function(p){p.hidden=p.id!=='tab-'+id;});
+    try{localStorage.setItem('gs-script-tab',id);}catch(e){}
+  }
+  tabs.forEach(function(b){b.addEventListener('click',function(){show(b.dataset.tab);});});
+  var start='base';
+  try{start=localStorage.getItem('gs-script-tab')||'base';}catch(e){}
+  var h=location.hash.replace('#','');
+  if(ids.indexOf(h)>=0)start=h;
+  show(start);
+})();
+</script>
+
+</body>
+</html>
