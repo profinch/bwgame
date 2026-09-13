@@ -47,7 +47,7 @@ Everything here was written after the start, 4 September, and is open source und
   five strangers agree; a person stands in your grey, a stranger in white. Live on production:
   the first check passed 13.09.2026 ([world-id-feedback.md](world-id-feedback.md)).
 - Onboarding: a welcome, an arrival descent, a guiding panel, a "what's near" line, how to play,
-  and a walk round in ten steps on mocks of the tour's own — offered the first time, in the menu
+  and a walk round in eleven steps on mocks of the tour's own — offered the first time, in the menu
   after; the same walk either way, left by its own button or by any word of the menu, and the
   walker put back where they stood (rewritten 13.09.2026).
 - Mobile: a thumb stick, on-screen buttons, a one-column layout, battery-aware defaults.
