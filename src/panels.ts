@@ -6,17 +6,17 @@
  * A panel put away is hidden by a class on the body. The other players and the
  * block overhead are not panels and are never put away: they are the world.
  */
-export const PANELS: readonly { key: string }[] = [
+export const PANELS: readonly { key: string; at: string }[] = [
   // where you stand, what is near, the block overhead
-  { key: 'metrics' },
+  { key: 'metrics', at: '.hud.bottom' },
   // an address or a name, and you are there
-  { key: 'jump' },
+  { key: 'jump', at: '.hud.jump' },
   // digging where you stand, and the one transaction that makes it yours
-  { key: 'claim' },
+  { key: 'claim', at: '.hud.claim' },
   // your own plot, when you stand on it: write, point at code, name, seal
-  { key: 'owner' },
+  { key: 'owner', at: '.hud.own' },
   // standing here as a person: the selfie check, and what it earns
-  { key: 'person' },
+  { key: 'person', at: '.hud.person' },
 ];
 
 const KEPT_AS = 'gs-panels-off';
@@ -41,6 +41,23 @@ export class Panels {
       rows.push(row);
     }
     list.replaceChildren(...rows);
+    // a cross in the corner of every panel: the same putting away as the row
+    // in the filter, through the same one place, so the two never disagree
+    for (const panel of PANELS) {
+      const at = document.querySelector<HTMLElement>(panel.at);
+      if (!at) continue;
+      at.classList.add('closable');
+      const cross = document.createElement('button');
+      cross.type = 'button';
+      cross.className = 'panel-x';
+      cross.setAttribute('aria-label', `put the ${panel.key} panel away — "panels" in the menu brings it back`);
+      cross.title = 'put away · panels in the menu brings it back';
+      cross.addEventListener('click', (event) => {
+        event.stopPropagation();
+        if (!this.off.has(panel.key)) this.toggle(panel.key);
+      });
+      at.append(cross);
+    }
     this.apply();
   }
 
