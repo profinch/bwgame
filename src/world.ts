@@ -1227,8 +1227,6 @@ const stick = new Stick(
 );
 
 function walk(seconds: number): void {
-  // digging is aimed at where you stand, so while it runs you stand there
-  if (diggingNow()) return;
   const driven = tour?.running ?? false;
   const forward = driven
     ? demo.forward
@@ -1237,6 +1235,11 @@ function walk(seconds: number): void {
     ? demo.side
     : (held.has('KeyD') || held.has('ArrowRight') ? 1 : 0) - (held.has('KeyA') || held.has('ArrowLeft') ? 1 : 0) + stick.side;
   if (!forward && !side) return;
+  // digging is aimed at where you stand: a step away is the same as pressing
+  // stop — what was found is on the shelf — and then the step is taken. The
+  // onboarding's digging is a picture, and its walker walks through it
+  if (taking.digging) taking.stop();
+  if (demo.dig) return;
 
   // a thumb half way out walks at half pace; a key is all the way
   const push = Math.min(1, Math.hypot(forward, side));
@@ -2209,7 +2212,7 @@ loop({
         `block ${traffic.block || '…'}, ` +
         `${traffic.flying} passing, ${traffic.queued} to come · ` +
         `${arrived ? `at ${arrived} · ` : ''}` +
-        `${taking.digging ? 'digging: stop to walk · ' : ''}` +
+        `${taking.digging ? 'digging: a step stops it · ' : ''}` +
         `${overShoulder ? 'over the shoulder' : 'first person'}`;
       const on = afoot();
       near.textContent = whatIsNear(on);
