@@ -1621,20 +1621,45 @@ function takeDemoJump(): boolean {
           },
           { once: true },
         );
-        clip.after(it);
+        const all = [...frames.values()];
+        (all.length ? all[all.length - 1]! : clip).after(it);
         frames.set(name, it);
       }
       return it;
     };
-    /** A page open in place, or none. */
+    /** How long a page takes to fade in: the stylesheet's transition, and a little. */
+    const PAGE_FADES_IN = 650;
+    /**
+     * A page open in place, or none. From one page to another the one coming
+     * in fades in on top of the one going out, which stays whole underneath
+     * until the fade is over — so the world never shows between two pages.
+     * Back to the world, the page fades out over it as the map always did.
+     */
     const openPage = (next: Page | null) => {
       page = next;
       for (const [name, row] of pageRows) row.classList.toggle('on', name === next);
       document.body.classList.toggle('onpage', next !== null);
       // back from a page opened straight into, the world shows and fades run as usual
       if (next === null) document.documentElement.classList.remove('pagefirst');
-      if (next) frameFor(next);
-      for (const [name, it] of frames) it.classList.toggle('on', name === next && it.dataset.loaded === 'yes');
+      if (next) {
+        const it = frameFor(next);
+        // on top of the others: last among the frames
+        const all = [...frames.values()];
+        const last = all[all.length - 1]!;
+        if (last !== it && it.nextElementSibling !== null) {
+          last.after(it);
+          // moved, its styles are settled before it is told to come in, so that it fades rather than appears
+          void it.offsetWidth;
+        }
+        if (it.dataset.loaded === 'yes') it.classList.add('on');
+      }
+      for (const [name, it] of frames) {
+        if (name === next || !it.classList.contains('on')) continue;
+        if (next === null) it.classList.remove('on');
+        else setTimeout(() => {
+          if (page !== name) it.classList.remove('on');
+        }, PAGE_FADES_IN);
+      }
       history.replaceState(null, '', next ? `#${next}` : location.pathname + location.search);
     };
     const show = (next: typeof section, on: Page | null = null) => {
