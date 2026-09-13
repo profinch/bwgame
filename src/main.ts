@@ -27,18 +27,40 @@ import {
   renameMark,
 } from './map';
 import { balanceOf, formatEther, generate } from './wallet';
+import { CHAINS } from './chains';
+import { LANDMARKS, type Landmark } from './landmarks';
 
 const app = document.querySelector<HTMLElement>('#app');
 if (!app) throw new Error('no #app');
 
 // inside the world's page the map has the world's header over it, not its own
-if (new URLSearchParams(location.search).has('embedded')) document.body.classList.add('embedded');
+const asked = new URLSearchParams(location.search);
+if (asked.has('embedded')) document.body.classList.add('embedded');
+
+/**
+ * The map is a chain's: ethereum's with the places everybody has heard of,
+ * sepolia's with the game's own — the factory and the factories before it,
+ * the names, the registries, and every plot the index knows, by name where
+ * it has one. The world opens the map of the chain it stands on.
+ */
+const chainKey = asked.get('chain') && asked.get('chain')! in CHAINS ? asked.get('chain')! : 'mainnet';
+const onChain = CHAINS[chainKey]!;
+function placesOf(): Landmark[] {
+  if (chainKey === 'mainnet') return [...LANDMARKS];
+  const places: Landmark[] = [];
+  if (onChain.plots) places.push({ name: 'the plot factory', address: onChain.plots });
+  onChain.former?.forEach((it, i) => places.push({ name: `factory of the ${i === 0 ? 'first' : 'second'} ground`, address: it.plots }));
+  if (onChain.ens) places.push({ name: `names under ${onChain.ens.parent}`, address: onChain.ens.names });
+  places.push({ name: 'ens registry', address: '0x00000000000C2E074eC69A0dFb2997BA6C7d2e1e' });
+  places.push({ name: 'groundstate.eth registry', address: '0xbef600d2b4b19918ed7543bfecf61f412d8e210c' });
+  return places;
+}
 
 app.innerHTML = `
   <header class="bar">
     <h1><span class="mark">${mark({ size: 24, rows: 7 })}</span>ground state</h1>
-    <p class="hint">the ethereum address space — drag to move, wheel to zoom</p>
-    <a class="walk" href="/?chain=sepolia">walk in the world</a>
+    <p class="hint">the ${onChain.name} address space — drag to move, wheel to zoom</p>
+    <a class="walk" href="/?chain=${chainKey}">walk in the world</a>
   </header>
 
   <section class="stage">
@@ -78,7 +100,7 @@ const field = jump.querySelector<HTMLInputElement>('input')!;
 const keyButton = app.querySelector<HTMLButtonElement>('.key')!;
 const drawer = app.querySelector<HTMLElement>('.drawer')!;
 
-const world = createWorld();
+const world = createWorld(placesOf());
 let camera: Camera = wholeWorld();
 let groups: Cluster[] = [];
 let hovered: Cluster | null = null;
@@ -128,10 +150,10 @@ const closest = () => camera.span <= MIN_SPAN * 256 + 1e-9;
 function walkTo(address: string): void {
   const at = `0x${normalizeAddress(address)}`;
   if (window.parent !== window) {
-    window.parent.postMessage({ groundState: 'walk', address: at }, location.origin);
+    window.parent.postMessage({ groundState: 'walk', address: at, chain: chainKey }, location.origin);
     return;
   }
-  location.href = `/?chain=mainnet&at=${at}`;
+  location.href = `/?chain=${chainKey}&at=${at}`;
 }
 
 function showCard(group: Cluster): void {
@@ -426,3 +448,26 @@ window.addEventListener('hashchange', () => {
 
 readHash();
 render();
+
+// on the chain with the factory, every plot the index knows comes onto the
+// map as it answers — by its name where it has one, by its address otherwise
+if (onChain.plotsFeed) {
+  void fetch(onChain.plotsFeed)
+    .then((answer) => (answer.ok ? answer.json() : null))
+    .then((feed: { plots?: { id?: string; name?: string }[] } | null) => {
+      const rows = feed?.plots ?? [];
+      const known = new Set(world.marks.map((mark) => normalizeAddress(mark.address)));
+      for (const row of rows) {
+        if (typeof row.id !== 'string' || !/^0x[0-9a-fA-F]{40}$/.test(row.id)) continue;
+        const hex = normalizeAddress(row.id);
+        if (known.has(hex)) continue;
+        known.add(hex);
+        world.marks = [...world.marks, { name: row.name && onChain.ens ? `${row.name}.${onChain.ens.parent}` : `plot ${short(hex)}`, address: hex }];
+      }
+      render();
+    })
+    .catch(() => {
+      // the index not answering leaves the map with the game's fixed places
+    });
+}
+

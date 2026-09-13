@@ -45,8 +45,8 @@ export interface World {
   pinned?: string;
 }
 
-export function createWorld(): World {
-  return { marks: [...LANDMARKS] };
+export function createWorld(marks: readonly Landmark[] = LANDMARKS): World {
+  return { marks: [...marks] };
 }
 
 /**

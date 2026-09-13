@@ -148,6 +148,8 @@ export function ownGround(
   const look = async () => {
     if (busy || held) return;
     owner = (await connected().catch(() => null))?.toLowerCase() ?? null;
+    // the panel may have been taken over — by the onboarding — while the wallet was asked
+    if (held) return;
     plot = owner ? plotOf(owner) : null;
     if (!owner) {
       state('connect');
@@ -158,6 +160,7 @@ export function ownGround(
     }
     if (!plot) {
       state('list');
+      if (held) return;
       sticky = '';
       if (listedFor !== owner || performance.now() - listedAt > LISTS_EVERY) {
         listedFor = owner;

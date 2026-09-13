@@ -88,6 +88,10 @@ What was decided, and why. What was refused, and why. Dated where the date matte
 - **Every chain is a room** (13.09.2026): ethereum has the live room, the revealed memory and the
   person check the same as sepolia; the server keeps the revealed places by room and sends the
   plots only to the room of the factory.
+- **The map is the chain's** (13.09.2026): ethereum's carries the places everybody has heard of,
+  sepolia's the game's own — the factories, the names, the registries, and every plot the index
+  knows, by name where it has one. The world opens the map of the chain it stands on, and a click
+  on a place, as close as the map goes, walks there.
 - **English in code, comments, commits and UI, lowercase in UI.** One contributor in the history.
 
 ## Refused

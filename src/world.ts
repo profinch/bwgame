@@ -143,11 +143,19 @@ function baseOf(structure: Structure): number {
 function reliefUnder(structure: Structure): { high: number; low: number } {
   const x = structure.x - origin.x;
   const z = structure.z - origin.z;
+  // the footprint as it lies — turned as the building is — sampled five by
+  // five, so the lowest ground under a corner of a turned building is found
+  // and the foundation reaches it; nine points on the world's axes missed it,
+  // and a corner hung in the air
+  const sn = Math.sin(structure.turn);
+  const c = Math.cos(structure.turn);
   let high = -Infinity;
   let low = Infinity;
-  for (let ix = -1; ix <= 1; ix++) {
-    for (let iz = -1; iz <= 1; iz++) {
-      const at = ground.surfaceAt(x + (ix * structure.wide) / 2, z + (iz * structure.deep) / 2);
+  for (let ix = -2; ix <= 2; ix++) {
+    for (let iz = -2; iz <= 2; iz++) {
+      const lx = (ix * structure.wide) / 4;
+      const lz = (iz * structure.deep) / 4;
+      const at = ground.surfaceAt(x + c * lx + sn * lz, z + c * lz - sn * lx);
       high = Math.max(high, at);
       low = Math.min(low, at);
     }
@@ -1427,6 +1435,9 @@ function mockPlot(address: string, note: string): Structure {
   const structure = structureOf(account, [], chain.coin, { note, notes: note ? [note] : [], code: null, owner: '0x000000000000000000000000000000000000d3a0', salt: null, name: undefined });
   structure.mock = true;
   structure.label = address.toLowerCase();
+  // turned a little off square to the stand it is seen from, so two edges do
+  // not fall into one line — the drawing and the building alike, being one thing
+  structure.turn = Math.atan2(PLOT_STAND.x - structure.x, PLOT_STAND.z - structure.z) + 0.55;
   return structure;
 }
 /** Whether the auger is in the ground: for real, or for show. */
@@ -1681,7 +1692,7 @@ function takeDemoJump(): boolean {
         it = document.createElement('iframe');
         it.className = 'pageview';
         it.title = `the ${name}`;
-        it.src = name === 'map' ? '/map.html?embedded' : `/${name}.html?embedded`;
+        it.src = name === 'map' ? `/map.html?embedded&chain=${chain.key}` : `/${name}.html?embedded`;
         it.addEventListener(
           'load',
           () => {
@@ -2150,14 +2161,14 @@ function takeDemoJump(): boolean {
     // world travels there, the page staying as it is — the map put away
     window.addEventListener('message', (event) => {
       if (event.origin !== location.origin) return;
-      const said = event.data as { groundState?: string; address?: string } | null;
+      const said = event.data as { groundState?: string; address?: string; chain?: string } | null;
       if (said?.groundState !== 'walk' || typeof said.address !== 'string' || !/^0x[0-9a-fA-F]{40}$/.test(said.address)) return;
       if (tour?.running) return;
       show(null);
-      // the map is ethereum's; standing on another chain, the world goes there
-      if (chain.key !== 'mainnet') {
+      // the map is a chain's; standing on another, the world goes to that chain
+      if (said.chain && said.chain !== chain.key && said.chain in CHAINS) {
         const to = new URL(location.href);
-        to.search = `?chain=mainnet&at=${said.address}`;
+        to.search = `?chain=${said.chain}&at=${said.address}`;
         to.hash = '';
         location.href = to.toString();
         return;
