@@ -1481,7 +1481,7 @@ function takeDemoJump(): boolean {
   const menu = document.querySelector<HTMLElement>('.navlinks');
   const frame = document.querySelector<HTMLElement>('.navlinks .frame');
   const tourLink = document.querySelector<HTMLAnchorElement>('#onboarding');
-  const mapLink = document.querySelector<HTMLAnchorElement>('#map');
+  const infoLink = document.querySelector<HTMLAnchorElement>('#info');
   const panelsLink = document.querySelector<HTMLAnchorElement>('#panels');
   const chainLink = document.querySelector<HTMLAnchorElement>('#blockchain');
   const clip = document.querySelector<HTMLElement>('#subclip');
@@ -1489,12 +1489,14 @@ function takeDemoJump(): boolean {
   const sel = document.querySelector<HTMLElement>('#wsel');
   const cur = document.querySelector<HTMLElement>('#wcur');
   const list = document.querySelector<HTMLElement>('#wlist');
-  const mapView = document.querySelector<HTMLIFrameElement>('#mapview');
+  const pageView = document.querySelector<HTMLIFrameElement>('#pageview');
+  const infoBar = document.querySelector<HTMLElement>('#infobar');
+  const infoList = document.querySelector<HTMLElement>('#ilist');
   const panelBar = document.querySelector<HTMLElement>('#panelbar');
   const panelList = document.querySelector<HTMLElement>('#plist');
   const tourCard = document.querySelector<HTMLElement>('.hud.tour');
-  if (header && menu && frame && tourLink && mapLink && panelsLink && chainLink && clip && bar && sel && cur && list && mapView
-    && panelBar && panelList && tourCard) {
+  if (header && menu && frame && tourLink && infoLink && panelsLink && chainLink && clip && bar && sel && cur && list && pageView
+    && infoBar && infoList && panelBar && panelList && tourCard) {
     cur.textContent = chain.name;
     // sepolia first: the world where ground is taken
     const worlds = [CHAINS.sepolia, CHAINS.mainnet].filter((it) => it !== undefined);
@@ -1553,40 +1555,68 @@ function takeDemoJump(): boolean {
     // the panels: down with the menu's "panels", a row a panel, the arrow takes it away
     const panels = new Panels(panelList);
     panelBar.style.height = `${PAD + panels.count * ROW}px`;
-    clip.style.height = `${PAD + Math.max(rows.length, panels.count) * ROW + ROOM}px`;
 
-    let section: 'onboarding' | 'map' | 'panels' | 'blockchain' | null = null;
-    const show = (next: typeof section) => {
+    // info: down with the menu's "info", a row a page — the map, the whitepaper,
+    // the roadmap — each opened in place under the header, as the site opens its pages
+    const PAGES = ['map', 'whitepaper', 'roadmap'] as const;
+    type Page = (typeof PAGES)[number];
+    const pageRows = new Map<Page, HTMLButtonElement>();
+    for (const name of PAGES) {
+      const row = document.createElement('button');
+      row.type = 'button';
+      row.className = 'wopt';
+      row.textContent = name;
+      row.addEventListener('click', () => openPage(page === name ? null : name));
+      pageRows.set(name, row);
+    }
+    infoList.replaceChildren(...pageRows.values());
+    infoBar.style.height = `${PAD + PAGES.length * ROW}px`;
+    clip.style.height = `${PAD + Math.max(rows.length, panels.count, PAGES.length) * ROW + ROOM}px`;
+
+    let section: 'onboarding' | 'info' | 'panels' | 'blockchain' | null = null;
+    /** The page open under the header, if one is. */
+    let page: Page | null = null;
+    const pageOf = (hash: string): Page | null => (PAGES as readonly string[]).includes(hash.slice(1)) ? (hash.slice(1) as Page) : null;
+    /** A page open in place, or none: the frame fades in as the site's pages do — the first time only once it has loaded, so that what fades in is the page and not a blank one. */
+    const openPage = (next: Page | null) => {
+      page = next;
+      for (const [name, row] of pageRows) row.classList.toggle('on', name === next);
+      document.body.classList.toggle('onpage', next !== null);
+      // back from a page opened straight into, the world shows and fades run as usual
+      if (next === null) document.documentElement.classList.remove('pagefirst');
+      if (next) {
+        const src = next === 'map' ? '/map.html?embedded' : `/${next}.html?embedded`;
+        if (new URL(pageView.src || 'about:blank', location.href).pathname !== new URL(src, location.href).pathname) {
+          pageView.classList.remove('on');
+          pageView.src = src;
+          pageView.addEventListener('load', () => pageView.classList.toggle('on', page === next), { once: true });
+        } else {
+          pageView.classList.add('on');
+        }
+      } else {
+        pageView.classList.remove('on');
+      }
+      history.replaceState(null, '', next ? `#${next}` : location.pathname + location.search);
+    };
+    const show = (next: typeof section, on: Page | null = null) => {
       section = next;
       unfold(false);
       document.body.classList.toggle('subopen', next === 'blockchain');
+      document.body.classList.toggle('infoopen', next === 'info');
       document.body.classList.toggle('panelsopen', next === 'panels');
       tourLink.classList.toggle('active', next === 'onboarding');
-      mapLink.classList.toggle('active', next === 'map');
+      infoLink.classList.toggle('active', next === 'info');
       panelsLink.classList.toggle('active', next === 'panels');
       chainLink.classList.toggle('active', next === 'blockchain');
+      infoLink.setAttribute('aria-expanded', String(next === 'info'));
       panelsLink.setAttribute('aria-expanded', String(next === 'panels'));
       chainLink.setAttribute('aria-expanded', String(next === 'blockchain'));
-      document.body.classList.toggle('onmap', next === 'map');
-      // back from a page opened on the map, the world shows and fades run as usual
-      if (next !== 'map') document.documentElement.classList.remove('mapfirst');
-      // the map fades in as the site's pages do — the first time only once
-      // it has loaded, so that what fades in is the map and not a blank page
-      if (next === 'map') {
-        if (!mapView.src) {
-          mapView.src = '/map.html?embedded';
-          mapView.addEventListener('load', () => mapView.classList.toggle('on', section === 'map'), { once: true });
-        } else {
-          mapView.classList.add('on');
-        }
-      } else {
-        mapView.classList.remove('on');
-      }
-      history.replaceState(null, '', next === 'map' ? '#map' : location.pathname + location.search);
+      // a page stays open only under info
+      openPage(next === 'info' ? on ?? page : null);
       place(framed());
     };
     const framed = () =>
-      section === 'onboarding' ? tourLink : section === 'map' ? mapLink : section === 'panels' ? panelsLink : section === 'blockchain' ? chainLink : 'group';
+      section === 'onboarding' ? tourLink : section === 'info' ? infoLink : section === 'panels' ? panelsLink : section === 'blockchain' ? chainLink : 'group';
 
     // the onboarding drives the world through this; it is the keys and the pointer, as calls
     const driver: Driver = {
@@ -1637,7 +1667,8 @@ function takeDemoJump(): boolean {
           if (section !== 'onboarding') show('onboarding');
           return;
         }
-        show(which);
+        if (which === 'map') show('info', 'map');
+        else show(which);
         tourLink.classList.add('active');
       },
       unfoldWorlds: () => unfold(true),
@@ -1928,15 +1959,24 @@ function takeDemoJump(): boolean {
 
     // the corners' first placing is not a move: no transition until they are placed
     frame.style.transition = 'none';
-    show(location.hash === '#map' ? 'map' : null);
+    // opened on a page: info is down and the page is up from the first frame
+    show(pageOf(location.hash) ? 'info' : null, pageOf(location.hash));
     void frame.offsetWidth;
     frame.style.transition = '';
     addEventListener('resize', () => place(framed()));
 
-    mapLink.addEventListener('click', (event) => {
+    infoLink.addEventListener('click', (event) => {
       event.preventDefault();
       event.stopPropagation();
-      show('map');
+      // pressed again: the bar goes back up, and with it whatever page was open
+      show(section === 'info' ? null : 'info');
+    });
+    // a row pressed keeps the bar down: the page opens under it
+    infoBar.addEventListener('click', (event) => event.stopPropagation());
+    // the arrow on the info bar is the way back to the game
+    infoBar.querySelector<HTMLElement>('.subarrow')!.addEventListener('click', (event) => {
+      event.stopPropagation();
+      show(null);
     });
     chainLink.addEventListener('click', (event) => {
       event.preventDefault();
@@ -1973,7 +2013,7 @@ function takeDemoJump(): boolean {
       // the worlds' bar folds to this world first and goes up next; the panels'
       // bar, whose open state is the list, goes straight up as it is
       if (document.body.classList.contains('listopen')) unfold(false);
-      else if (section === 'blockchain' || section === 'panels') show(null);
+      else if (section === 'blockchain' || section === 'panels' || (section === 'info' && !page)) show(null);
     });
   }
 }

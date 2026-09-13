@@ -1,6 +1,9 @@
 import { defineConfig } from 'vitest/config';
+import { docPages } from './tools/docs';
 
 export default defineConfig({
+  // the whitepaper and the roadmap as pages, from docs/*.md
+  plugins: [docPages()],
   // only our tests: the contract libraries under contracts/lib carry their own
   test: { include: ['test/**/*.test.ts'] },
   build: {

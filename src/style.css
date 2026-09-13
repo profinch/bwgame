@@ -800,6 +800,7 @@ html[data-t="dark"] {
 }
 
 body.subopen #subbar,
+body.infoopen #infobar,
 body.panelsopen #panelbar {
   transform: translateY(0);
   pointer-events: auto;
@@ -883,13 +884,15 @@ body.listopen .subarrow {
   transform: translateY(0) rotate(-135deg);
 }
 
-/* the panels' bar is the list, down; its arrow points up and takes it away */
-#panelbar .wlist {
+/* the panels' bar and the info bar are the list, down; their arrow points up and takes it away */
+#panelbar .wlist,
+#infobar .wlist {
   opacity: 1;
   pointer-events: auto;
 }
 
-#panelbar .subarrow {
+#panelbar .subarrow,
+#infobar .subarrow {
   transform: translateY(0) rotate(-135deg);
 }
 
@@ -958,7 +961,7 @@ body.touring .tg,
 body.touring .subclip,
 body.touring .touchpad,
 body.touring .touchpad-buttons,
-body.touring .mapview {
+body.touring .pageview {
   pointer-events: none !important;
 }
 
@@ -1019,9 +1022,9 @@ body.off-person .hud.person {
   opacity: 1;
 }
 
-/* the map, in the same page under the same header: the map page itself,
-   framed, with its own header left out */
-.mapview {
+/* a page of the site — the map, the whitepaper, the roadmap — in the same
+   page under the same header: the page itself, framed, with its own header left out */
+.pageview {
   position: fixed;
   inset: 0;
   z-index: 1;
@@ -1034,27 +1037,27 @@ body.off-person .hud.person {
   transition: opacity 0.6s ease;
 }
 
-.mapview.on {
+.pageview.on {
   opacity: 1;
   pointer-events: auto;
 }
 
-/* the page opened on the map: the map is there from the first frame, without
-   the fade, and nothing of the world shows behind it while it loads */
-html.mapfirst .mapview {
+/* opened on a page: it is there from the first frame, without the fade, and
+   nothing of the world shows behind it while it loads */
+html.pagefirst .pageview {
   opacity: 1;
   pointer-events: auto;
   transition: none;
 }
 
-html.mapfirst #view,
-html.mapfirst .hud:not(.top),
-html.mapfirst .touchpad,
-html.mapfirst .touchpad-buttons {
+html.pagefirst #view,
+html.pagefirst .hud:not(.top),
+html.pagefirst .touchpad,
+html.pagefirst .touchpad-buttons {
   visibility: hidden;
 }
 
-/* on the map the world's panels — the metrics, the jump, the claim, the owner's, the
+/* on a page the world's panels — the metrics, the jump, the claim, the owner's, the
    thumb controls — fade away with it; the header and the welcome stay */
 .hud.bottom,
 .hud.jump,
@@ -1065,13 +1068,13 @@ html.mapfirst .touchpad-buttons {
   transition: opacity 0.6s ease;
 }
 
-body.onmap .hud.bottom,
-body.onmap .hud.jump,
-body.onmap .hud.claim,
-body.onmap .hud.own,
-body.onmap .hud.person,
-body.onmap .touchpad,
-body.onmap .touchpad-buttons {
+body.onpage .hud.bottom,
+body.onpage .hud.jump,
+body.onpage .hud.claim,
+body.onpage .hud.own,
+body.onpage .hud.person,
+body.onpage .touchpad,
+body.onpage .touchpad-buttons {
   opacity: 0;
   pointer-events: none;
 }

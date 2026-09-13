@@ -9,8 +9,8 @@
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <script>try{var _t=localStorage.getItem('bw-theme');if(_t)document.documentElement.dataset.t=_t;}catch(e){}
-    // opened on the map: the world is not shown first, not even for a frame
-    if(location.hash==='#map')document.documentElement.classList.add('mapfirst');</script>
+    // opened on a page — the map, the whitepaper, the roadmap: the world is not shown first, not even for a frame
+    if(/^#(map|whitepaper|roadmap)$/.test(location.hash))document.documentElement.classList.add('pagefirst');</script>
   </head>
   <body class="world">
     <canvas id="view"></canvas>
@@ -19,7 +19,7 @@
       <p class="hint">the chain on foot</p>
       <nav class="navlinks" aria-label="menu">
         <a href="#onboarding" id="onboarding">onboarding</a>
-        <a href="#map" id="map">map</a>
+        <a href="#info" id="info" aria-haspopup="true" aria-expanded="false">info</a>
         <a href="#panels" id="panels">panels</a>
         <a href="#blockchain" id="blockchain">blockchain</a>
         <span class="frame"><span class="c tl"></span><span class="c tr"></span><span class="c bl"></span><span class="c br"></span></span>
@@ -34,6 +34,12 @@
           <span class="subarrow"></span>
         </div>
       </div>
+      <div class="subbar" id="infobar" aria-label="the map, the whitepaper, the roadmap">
+        <div class="subinner">
+          <div class="wlist" id="ilist"></div>
+          <span class="subarrow" role="button" aria-label="back to the game"></span>
+        </div>
+      </div>
       <div class="subbar" id="panelbar" aria-label="which panels are shown">
         <div class="subinner">
           <div class="wlist" id="plist"></div>
@@ -41,7 +47,7 @@
         </div>
       </div>
     </div>
-    <iframe class="mapview" id="mapview" title="the map"></iframe>
+    <iframe class="pageview" id="pageview" title="the map, the whitepaper or the roadmap"></iframe>
     <section class="welcome" hidden>
       <div class="welcome-card">
         <h2><span class="mark"></span>ground state</h2>

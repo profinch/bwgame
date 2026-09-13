@@ -25,7 +25,8 @@ export interface Driver {
   /** Go where the field says — to the tour's own contract, with the arrival's descent. */
   go(): Promise<void>;
   /** Open a part of the menu, or close it. */
-  section(which: 'map' | 'panels' | 'blockchain' | null): void;
+  /** A section of the menu down, or a page open under it: 'map' is the info section with the map open. */
+  section(which: 'map' | 'info' | 'panels' | 'blockchain' | null): void;
   /** Unfold the worlds in the blockchain bar. */
   unfoldWorlds(): void;
   /** Put a panel away, or bring it back. */

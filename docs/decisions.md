@@ -66,6 +66,10 @@ What was decided, and why. What was refused, and why. Dated where the date matte
   edge in one plane fight for the same depth at any distance. Relief has one plane and things in
   front of it, and nothing to fight about. The posts' runes stay cut in: a post is small and
   read from close, and its grooves are one block each.
+- **The menu is onboarding · info · panels · blockchain** (13.09.2026): the map, the whitepaper and
+  the roadmap are pages of the site and live together under *info*, each opened in place under the
+  header as the site opens its pages, and each a link (`#map`, `#whitepaper`, `#roadmap`). The
+  documents are rendered from `docs/` at build time, so there is one copy of every text.
 - **English in code, comments, commits and UI, lowercase in UI.** One contributor in the history.
 
 ## Refused
