@@ -1288,6 +1288,22 @@ const stick = new Stick(
 
 function walk(seconds: number): void {
   const driven = tour?.running ?? false;
+  // the tour's walker sent somewhere runs straight there and stops on the spot
+  if (driven && demo.goTo) {
+    const dx = demo.goTo.x - (origin.x + player.x);
+    const dz = demo.goTo.z - (origin.z + player.z);
+    const left = Math.hypot(dx, dz);
+    const step = RUN * seconds;
+    if (left <= step) {
+      player.x = demo.goTo.x - origin.x;
+      player.z = demo.goTo.z - origin.z;
+      demo.goTo = null;
+    } else {
+      player.x += (dx / left) * step;
+      player.z += (dz / left) * step;
+    }
+    return;
+  }
   const forward = driven
     ? demo.forward
     : (held.has('KeyW') || held.has('ArrowUp') ? 1 : 0) - (held.has('KeyS') || held.has('ArrowDown') ? 1 : 0) + stick.forward;
@@ -1391,7 +1407,19 @@ function strokesFor(structure: Structure, base: number): Stroke[] {
 let tour: Tour | null = null;
 let startTour: () => void = () => {};
 /** What the tour is doing with the keys and the pointer while it drives. */
-const demo = { forward: 0, side: 0, run: false, jump: false, yawRate: 0, pitchRate: 0, dig: false, rate: 0, claimHeld: false };
+const demo = {
+  forward: 0,
+  side: 0,
+  run: false,
+  jump: false,
+  yawRate: 0,
+  pitchRate: 0,
+  dig: false,
+  rate: 0,
+  claimHeld: false,
+  /** A spot the tour's walker runs to on their own, in metres from home; null when not going anywhere. */
+  goTo: null as { x: number; z: number } | null,
+};
 /** The one other player the tour brings along, who is nobody. */
 const MOCK_PEER = -1;
 /** The address of the plot the tour claimed for show, if any: told apart from its contract. */
@@ -1429,10 +1457,21 @@ function mockAddressAt(x: number, z: number): string {
 }
 
 /** A plot of the tour's own, at an address, with a note or without: never from the chain. */
-function mockPlot(address: string, note: string): Structure {
+/** The notes the tour writes into its plot, in order; a step's scene puts up as many as have been written by then. */
+const TOUR_NOTES = ['hello, world', 'a place, not a page'] as const;
+/** A few steps out from the front wall of the tour's plot, facing it: where the second note is watched coming up. */
+const WALL_OFF = 7;
+function wallStandOf(plot: Structure): { x: number; z: number; yaw: number } {
+  const sn = Math.sin(plot.turn);
+  const c = Math.cos(plot.turn);
+  const out = plot.deep / 2 + WALL_OFF;
+  return { x: plot.x + sn * out, z: plot.z + c * out, yaw: plot.turn };
+}
+function mockPlot(address: string, notes: readonly string[]): Structure {
+  const note = notes[notes.length - 1] ?? '';
   // the smallest building there is, so it is seen whole from where you stand
   const account: Account = { address, codeSize: 64, code: `0x${'a5'.repeat(64)}`, balance: 0n, nonce: 1 };
-  const structure = structureOf(account, [], chain.coin, { note, notes: note ? [note] : [], code: null, owner: '0x000000000000000000000000000000000000d3a0', salt: null, name: undefined });
+  const structure = structureOf(account, [], chain.coin, { note, notes: [...notes], code: null, owner: '0x000000000000000000000000000000000000d3a0', salt: null, name: undefined });
   structure.mock = true;
   structure.label = address.toLowerCase();
   // turned a little off square to the stand it is seen from, so two edges do
@@ -1880,18 +1919,27 @@ function takeDemoJump(): boolean {
         for (let i = inking.length - 1; i >= 0; i--) if (inking[i]!.mock && inking[i]!.address === mockedPlot) inking.splice(i, 1);
         const address = mockAddressAhead();
         mockedPlot = address;
-        startRising(mockPlot(address, ''));
+        startRising(mockPlot(address, []));
         return address;
       },
       mockWrite: (address, note) => {
         if (!address) return;
         const at = structures.findIndex((it) => it.address === address);
-        const drawing = at >= 0 ? structures[at]! : mockPlot(address, '');
+        const before = at >= 0 ? structures[at]! : mockPlot(address, []);
         if (at >= 0) structures.splice(at, 1);
         for (let i = inking.length - 1; i >= 0; i--) if (inking[i]!.address === address) inking.splice(i, 1);
         for (let i = becoming.length - 1; i >= 0; i--) if (becoming[i]!.address === address) becoming.splice(i, 1);
-        // the drawing becomes the building, seen through
-        startBecoming(mockPlot(address, note), drawing);
+        const notes = [...(before.plot?.notes ?? []), note];
+        // a drawing becomes the building, seen through; a building written into anew shows the words coming up
+        if (before.kind === 'framed') startBecoming(mockPlot(address, notes), before);
+        else startInking(mockPlot(address, notes));
+      },
+      approach: () => {
+        const plot = structures.find((it) => it.mock && it.address === mockedPlot);
+        if (!plot) return;
+        const stand = wallStandOf(plot);
+        demo.goTo = { x: stand.x, z: stand.z };
+        turning = { yaw: stand.yaw, pitch: 0 };
       },
       faceMock: () => {
         // an unhurried turn to the tour's plot, wherever the walker stands: to
@@ -1970,6 +2018,7 @@ function takeDemoJump(): boolean {
       reset: () => {
         // nothing moving, nothing marked, no bar down, the map away
         driver.stop();
+        demo.goTo = null;
         driver.mark(null);
         if (section !== 'onboarding') show('onboarding');
         unfold(false);
@@ -2047,8 +2096,19 @@ function takeDemoJump(): boolean {
         // where the claim step left them
         const address = mockAddressAhead();
         mockedPlot = address;
-        const plot = mockPlot(address, which === 'written' ? 'hello, world' : '');
+        const written = which === 'written' ? TOUR_NOTES.slice(0, 1) : which === 'atwall' ? TOUR_NOTES : [];
+        const plot = mockPlot(address, written);
         raise(plot);
+        if (which === 'atwall') {
+          // a few steps out from the front wall, facing it, level: where the writing is read
+          const stand = wallStandOf(plot);
+          player.x = stand.x - origin.x;
+          player.z = stand.z - origin.z;
+          player.yaw = stand.yaw;
+          player.pitch = 0;
+          player.y = ground.surfaceAt(player.x, player.z);
+          return address;
+        }
         player.x = PLOT_STAND.x;
         player.z = PLOT_STAND.z;
         player.y = ground.surfaceAt(player.x, player.z);
@@ -2056,7 +2116,7 @@ function takeDemoJump(): boolean {
         const dz = plot.z - (origin.z + player.z);
         player.yaw = Math.atan2(-dx, -dz);
         // the eyes on the middle of the drawing's height, written into or not, so the steps do not nod
-        const drawn = which === 'written' ? mockPlot(address, '') : plot;
+        const drawn = which === 'written' ? mockPlot(address, []) : plot;
         player.pitch = Math.max(-1.2, Math.min(1.2, Math.atan2(baseOf(drawn) + drawn.tall / 2 - (player.y + EYE), Math.hypot(dx, dz))));
         return address;
       },

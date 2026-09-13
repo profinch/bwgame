@@ -29,6 +29,8 @@ export interface Driver {
   section(which: 'map' | 'info' | 'panels' | 'blockchain' | null): void;
   /** An unhurried turn of the head to the tour's plot, wherever the walker stands. */
   faceMock(): void;
+  /** The walker runs up to the front wall of the tour's plot and stops a few steps off it, facing it, level. */
+  approach(): void;
   /** Speak through the person panel: a stranger with the offer, or a real person with the day. */
   personSays(said: string, note: string, who: 'stranger' | 'person'): void;
   /** Unfold the worlds in the blockchain bar. */
@@ -93,7 +95,7 @@ export interface Driver {
 }
 
 /** What has to be so before a step plays. */
-export type Scene = 'any' | 'open' | 'contract' | 'wallet' | 'claimed' | 'written';
+export type Scene = 'any' | 'open' | 'contract' | 'wallet' | 'claimed' | 'written' | 'atwall';
 
 type Wait = (ms: number) => Promise<void>;
 
@@ -296,6 +298,30 @@ export const STEPS: readonly Step[] = [
   },
   {
     scene: 'written',
+    says: 'up close the writing reads. every note ever written stands on the walls, the latest lowest at head height, the earlier ones climbing above it; write again and the words come up sign by sign.',
+    async play(d, wait) {
+      const plot = lastMock();
+      d.approach();
+      await wait(2600);
+      d.mark('.hud.own');
+      d.ownSays('yours: demo.groundstate.eth', 'says: hello, world\npoints at 0xC0DE0000…5EED, sealed');
+      await wait(600);
+      await d.typeInto('.own-write input', 'a place, not a page', wait);
+      d.press('.own-write button');
+      await wait(300);
+      d.clearField('.own-write input');
+      d.ownSays('writing into it — sign in the wallet', 'says: hello, world\npoints at 0xC0DE0000…5EED, sealed');
+      await wait(1000);
+      d.ownSays('sent. waiting for a block', 'says: hello, world\npoints at 0xC0DE0000…5EED, sealed');
+      await wait(1000);
+      d.ownSays('written', 'says: a place, not a page\npoints at 0xC0DE0000…5EED, sealed');
+      d.mockWrite(plot, 'a place, not a page');
+      await wait(6000);
+      d.mark(null);
+    },
+  },
+  {
+    scene: 'atwall',
     says: 'other people are here too, and what one finds is kept for all. a selfie check with World says one real person is behind the screen: a person\'s finds are kept at once, a stranger\'s once five strangers agree. a person stands in your grey.',
     async play(d, wait) {
       // somebody comes in from the right, ahead, stops a few steps off to the left and digs
@@ -320,7 +346,7 @@ export const STEPS: readonly Step[] = [
     },
   },
   {
-    scene: 'written',
+    scene: 'atwall',
     says: 'the menu. view puts the panels away and brings them back, a cross in a corner does the same; info holds the map, the whitepaper and the roadmap; blockchain is which world this is: sepolia to take ground on, ethereum to walk. the stones turn the page over.',
     async play(d, wait) {
       d.section('panels');
@@ -346,7 +372,7 @@ export const STEPS: readonly Step[] = [
     },
   },
   {
-    scene: 'written',
+    scene: 'atwall',
     says: 'that is all of it, and all of it was for show: nothing was sent, nothing is yours yet. h brings you home; any word of the menu leaves the tour. go and stand in it.',
     async play(d, wait) {
       // turned away from the contracts, to the open horizon, level

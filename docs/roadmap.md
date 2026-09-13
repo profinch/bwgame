@@ -89,11 +89,15 @@ Then, in roughly the order it matters today:
    page by opening the world at that address. The map already turns a place into a link; a
    click on the map inside the world should take the walker to that ground without leaving the
    page or losing what the world holds — the panels, the live room, the tour. Recorded 12.09.2026.
-6. **Telling one person's tabs from five people.** A stranger's word counts a fifth, and five
+6. **A mobile version worth the name.** The world runs on a phone — a thumb stick, buttons, a
+   one-column layout — but badly: the panels crowd the screen, the header and the bars are laid for
+   a desktop, digging drains the battery, the map is a desktop's. It needs its own design, not
+   fixes; there was no time for it within the hackathon (owner, 13.09.2026).
+7. **Telling one person's tabs from five people.** A stranger's word counts a fifth, and five
    tabs are five strangers: the server should learn to tell them apart — one address, one
    connection pattern, one machine — and count them once. Not a wall, a better fraction.
    Recorded 13.09.2026.
-7. **A subgraph with no depth in it.** The `cell` and `tile` fields cut an address at a fixed
+8. **A subgraph with no depth in it.** The `cell` and `tile` fields cut an address at a fixed
    number of digits — the metre and the 256-metre tile of the walkable world — so the index knows
    the depth, and a change of depth leaves it saying the wrong digits until it is republished —
    which is why depth 14, tried on 12.09.2026, was taken back to 13 for the hackathon. Nobody reads
@@ -101,8 +105,8 @@ Then, in roughly the order it matters today:
    with the next version; "everything near here" is a range on `x` and `y`, which are the address
    as 80-bit coordinates and hold at any depth. Then fix the whitepaper's line about it (§8).
    Decided 12.09.2026; the subgraph is not to be touched before the hackathon ends.
-8. **Reverse names for plots** (ENSv2): a plot's address answering `first.groundstate.eth`.
-9. **A top-level name of our own.** Every name today is under `groundstate.eth`. Next, a name of the
+9. **Reverse names for plots** (ENSv2): a plot's address answering `first.groundstate.eth`.
+10. **A top-level name of our own.** Every name today is under `groundstate.eth`. Next, a name of the
    world's own at the top of the tree — `well.ground`, or whatever the label turns out to be — so a
    place is said in two words. ENSv2 makes this the same shape as what stands already: the root is
    a registry like ours, a top-level name is a label in it with its subregistry pointed at our
@@ -110,18 +114,18 @@ Then, in roughly the order it matters today:
    door lets anyone bring a name they already hold: point its subregistry at us, and their plots are
    named under it. What a top-level name costs is not code but the ENS root's consent, which is
    asked for, not taken. Recorded 13.09.2026.
-10. **Buildings shaped by their owners:** the `IGroundStateBuilding` interface and a template
+11. **Buildings shaped by their owners:** the `IGroundStateBuilding` interface and a template
    implementation.
-11. **Kinds of contracts by interface:** tokens, NFT collections, pools, multisigs, proxies, each
+12. **Kinds of contracts by interface:** tokens, NFT collections, pools, multisigs, proxies, each
    with a form; verified names from Sourcify.
-12. **Mountains:** a larger amplitude on the largest cells, so some of the ground rises by
+13. **Mountains:** a larger amplitude on the largest cells, so some of the ground rises by
    hundreds of metres within view; hills are there already.
-13. **GPU digging** (WebGPU): a hundred times the attempts, a tenth of the distance.
-14. **Plots on an L2 and on mainnet;** other chains as other worlds; bridges as passages.
-15. **Economy around plots:** selling, renting, lending a place — as contracts, not as our rules;
+14. **GPU digging** (WebGPU): a hundred times the attempts, a tenth of the distance.
+15. **Plots on an L2 and on mainnet;** other chains as other worlds; bridges as passages.
+16. **Economy around plots:** selling, renting, lending a place — as contracts, not as our rules;
     the name goes with the place, and a reserved label can be sold by its holder.
-16. **A new figure** for the walker.
-17. Beacons, a first-discoverer record, a feed of active addresses to go and see.
+17. **A new figure** for the walker.
+18. Beacons, a first-discoverer record, a feed of active addresses to go and see.
 
 ## Never
 
