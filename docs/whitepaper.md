@@ -10,8 +10,8 @@ of a 4×4 grid, so that every address has one location and every location is one
 chain's state is rendered on it: contracts as buildings whose form follows their code, accounts as
 plates carrying their holdings, the current block as traffic overhead. Ground is claimed by
 computation: a plot is a contract deployed with CREATE2, whose address, and therefore whose
-location, is fixed by a salt the claimant searches for. No party sells land, and precision costs
-work quadratically. A plot is a proxy its owner can point at any contract, so that anything built
+location, is fixed by a salt the claimant searches for. No party sells the first claim to any
+place, and precision costs work quadratically. A plot is a proxy its owner can point at any contract, so that anything built
 in the chain can be given a place. Names are given under a hierarchical ENS registry, and an index
 of plots is kept by a subgraph. Nothing in the world is authored: what the chain says is what
 stands.

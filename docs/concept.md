@@ -21,8 +21,8 @@ Ethereum today; a way of seeing a chain, not one chain.
    your tokens; walk to USDC and watch transactions come down on it. No wallet, no install.
 2. **Ground that cannot be bought.** A plot is a contract whose address is fixed before it exists
    (CREATE2), so mining a salt is mining a location: the longer you dig, the closer. There is no
-   auction and nobody sells land. The price is your processor and your time. Nowhere else offers
-   this.
+   auction and nobody sells the first claim to a place. The price is your processor and your time.
+   What owners do with a place afterwards is theirs. Nowhere else offers this.
 3. **Stake a place and build on it.** One transaction and the place is your contract, forever.
    Then write into it, name it under `groundstate.eth`, point it at any contract of your own — a
    casino, a gallery, a game — and that code runs at this very address; pass it on, sell it, rent
