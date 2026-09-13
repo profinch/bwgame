@@ -207,7 +207,6 @@ async function standing(account: Account, vouched = false): Promise<Structure> {
   });
   // a plot is known by its own address, at the top of every wall
   plot.label = account.address.toLowerCase();
-  plot.labelOn = 'all';
   return plot;
 }
 
@@ -249,23 +248,15 @@ async function growPosts(account: Account): Promise<void> {
 }
 
 /**
- * What the world knows a building by, written at the very top of its front
- * wall: a landmark's name on ethereum, the factory's own address on the
- * chain it stands on — in words of six signs, as long as it is. A wallet's
- * plate and a plot say their own things and are left alone.
+ * What the world knows a building by, written at the very top of every wall:
+ * a landmark's name on ethereum, otherwise the building's own address. A
+ * wallet's plate says its own things and is left alone.
  */
 function labelled(structure: Structure): Structure {
   if (structure.kind !== 'built') return structure;
   const wanted = structure.address.toLowerCase();
-  if (chain.plots && wanted === chain.plots.toLowerCase()) {
-    structure.label = wanted;
-    structure.labelOn = 'all';
-    return structure;
-  }
-  if (chain.key === 'mainnet') {
-    const known = LANDMARKS.find((mark) => mark.address.toLowerCase() === wanted);
-    if (known) structure.label = known.name;
-  }
+  const known = chain.key === 'mainnet' ? LANDMARKS.find((mark) => mark.address.toLowerCase() === wanted) : undefined;
+  structure.label = known?.name ?? wanted;
   return structure;
 }
 
@@ -1436,7 +1427,6 @@ function mockPlot(address: string, note: string): Structure {
   const structure = structureOf(account, [], chain.coin, { note, notes: note ? [note] : [], code: null, owner: '0x000000000000000000000000000000000000d3a0', salt: null, name: undefined });
   structure.mock = true;
   structure.label = address.toLowerCase();
-  structure.labelOn = 'all';
   return structure;
 }
 /** Whether the auger is in the ground: for real, or for show. */
@@ -1511,7 +1501,6 @@ function mockContract(): Structure {
   });
   structure.mock = true;
   structure.label = address.toLowerCase();
-  structure.labelOn = 'all';
   // its front — the wall the words are on — toward the stand
   structure.turn = CONTRACT_STAND.yaw;
   return structure;

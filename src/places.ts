@@ -64,14 +64,12 @@ export interface Structure {
   becoming?: number;
   drawing?: Structure;
   /**
-   * One line at the very top of the lit wall, in the same runes as the notes,
+   * One line at the very top of every wall, in the same runes as the notes,
    * eight tenths of the wall wide and a tenth of the building tall: what the
-   * world knows a building by — a landmark's name, a plot's or the factory's
-   * own address — not what was written into it.
+   * world knows a building by — a landmark's name, otherwise its own address
+   * — not what was written into it.
    */
   label?: string;
-  /** Where the label goes: the lit wall (a name, read from the side the light falls on) or all four (an address, read from anywhere). */
-  labelOn?: 'lit' | 'all';
   /** Put up by the onboarding to show what a thing looks like; taken down when it ends. Never from the chain. */
   mock?: boolean;
   /** @deprecated the ground at the foot of the front wall: `footAt[0]` says it now. */
@@ -877,20 +875,6 @@ function notedBuilding(structure: Structure, base: number, origin: { x: number; 
     wall.lay(u0, u1, lo, hi, -depth, depth, INK);
   };
 
-  /** The wall the sun falls on: the one whose outward face looks most toward it (the sun stands at +x +z). */
-  const litWall = (): number => {
-    const normals: [number, number][] = [[sn, c], [c, -sn], [-sn, -c], [-c, sn]];
-    let best = 0;
-    let most = -Infinity;
-    normals.forEach(([nx, nz], i) => {
-      const toward = nx * 0.62 + nz * 0.28;
-      if (toward > most) {
-        most = toward;
-        best = i;
-      }
-    });
-    return best;
-  };
 
   // what was written, latest first, in words
   const history = structure.plot?.notes?.length ? structure.plot.notes : [structure.plot?.note ?? ''];
@@ -914,9 +898,9 @@ function notedBuilding(structure: Structure, base: number, origin: { x: number; 
   }
   const rowTall = (words: string[]) => (Math.max(1, ...words.map((w) => [...w].length)) * 11 + 2 * EDGE + 2) * across;
   const rowsOn: Row[][] = walls.map(() => []);
-  // the label: one line at the top of the lit wall, eight tenths of its width
+  // the label: one line at the top of every wall, eight tenths of its width
   // and a tenth of the building's height, whichever is the tighter; the notes
-  // on that wall climb no higher than its foot
+  // climb no higher than its foot
   const ceilingOn = walls.map(() => roof);
   if (structure.label) {
     const { cut, wide: cells } = cutOf(structure.label.toLowerCase());
@@ -924,9 +908,7 @@ function notedBuilding(structure: Structure, base: number, origin: { x: number; 
       // raised: the strokes themselves stand out, deeper than the notes' as they are bigger
       const strokes = cut.map((it) => (it === 1 ? 0 : 1));
       const patches = mergeOf(strokes, cells, GRID);
-      const on = structure.labelOn === 'all' ? walls.map((_, i) => i) : [litWall()];
-      for (const i of on) {
-        const w = walls[i]!;
+      walls.forEach((w, i) => {
         const cell = Math.min((0.8 * w.width) / cells, (0.1 * structure.tall) / GRID);
         const lineTop = roof - cell * 3;
         const u0 = -(cells * cell) / 2;
@@ -934,7 +916,7 @@ function notedBuilding(structure: Structure, base: number, origin: { x: number; 
           stroke(w, u0 + p.col * cell, u0 + (p.col + p.cols) * cell, lineTop - (p.row + p.rows) * cell, lineTop - p.row * cell, Math.max(relief, cell * 0.5));
         }
         ceilingOn[i] = lineTop - GRID * cell - cell * 3;
-      }
+      });
     }
   }
   let wall = 0;
