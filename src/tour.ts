@@ -105,113 +105,80 @@ export interface Step {
 export const STEPS: readonly Step[] = [
   {
     scene: 'open',
-    says: 'this is a blockchain as a place. every address is a spot on this ground, and what stands here is what the chain says stands here — nothing is invented.',
+    says: 'a blockchain as a place. every address is a spot on this ground; what stands here is what the chain says stands here, nothing is invented. the block passes overhead, each ribbon a transaction. w a s d walks, shift runs, dragging looks round.',
     async play(d, wait) {
-      // a look to one side and the other, over open ground: the start faces away from what stands near
+      // a look to one side and the other over open ground, the metrics turned over for a moment
       d.look(0.35, 0);
-      await wait(2800);
+      await wait(2600);
+      d.mark('.hud.bottom');
       d.look(-0.35, 0);
-      await wait(4200);
-      d.look(0.35, 0.12);
+      await wait(2600);
+      d.mark(null);
+      // then the sky: up, a couple of failed ones shaking and drawn back, and down again
+      d.look(0.1, 0.3);
+      d.failedTraffic(3);
+      await wait(5000);
+      d.look(0, -0.3);
+      await wait(2200);
+      // and a few steps, to say how
+      d.walk(1, 0, false);
+      await wait(1800);
+      d.walk(1, 0, true);
       await wait(1400);
       d.stop();
     },
   },
   {
     scene: 'open',
-    says: 'you walk it: w a s d, shift to run, space to jump. on a phone, the stick. dragging the picture looks round.',
-    async play(d, wait) {
-      d.walk(1, 0, false);
-      await wait(2500);
-      d.walk(1, 0, true);
-      await wait(2000);
-      d.jump();
-      await wait(1300);
-      d.walk(0, 1, false);
-      d.look(-0.4, 0);
-      await wait(1800);
-      d.stop();
-    },
-  },
-  {
-    scene: 'open',
-    says: 'here is where you stand: the chain, the depth, the address under your feet, what is near — and the block passing overhead. its transactions are the ribbons in the sky, each from its sender toward its receiver; one that failed shakes, stops short, and is drawn back.',
-    async play(d, wait) {
-      // the metrics turned over while they are the subject, then back as they are
-      d.mark('.hud.bottom');
-      await wait(3000);
-      d.mark(null);
-      // then the sky: the ribbons run a few hundred metres up and out toward
-      // the horizon, so the eyes go well up and pan slowly while they cross
-      d.look(0.12, 0.3);
-      await wait(2500);
-      d.look(0.12, 0);
-      // and a couple that failed, so the shake and the drawing back are seen
-      d.failedTraffic(3);
-      await wait(6000);
-      d.look(0, -0.3);
-      await wait(2500);
-      d.stop();
-    },
-  },
-  {
-    scene: 'open',
-    says: 'an address or a name takes you anywhere. this goes to first.groundstate.eth — the first plot of this ground, named under groundstate.eth. here a building of the tour\'s own stands for it.',
+    says: 'an address or a name takes you anywhere. first.groundstate.eth is the first plot of this ground, named under groundstate.eth; a building of the tour\'s own stands for it here.',
     async play(d, wait) {
       d.mark('.hud.jump');
       await d.type('first.groundstate.eth', wait);
       await wait(700);
       d.mark(null);
       await d.go();
-      await wait(7500);
+      await wait(6500);
     },
   },
   {
     scene: 'contract',
-    says: 'a contract stands as a building, its size from its code, its shape from the code\'s hash, the words written into it cut into its wall. a dashed outline is a plot not yet written into; boulders and gates are plots of the earlier grounds.',
+    says: 'a contract is a building: its size from its code, its shape from the code\'s hash, what was written into it standing out of its wall. a dashed outline is a plot nothing is written into yet.',
     async play(d, wait) {
-      // back off from the building, then run the eyes up it to the roof and back down to its foot
+      // back off from the building, then the eyes up it to the roof and down to the words
       d.walk(-1, 0, false);
-      await wait(2200);
+      await wait(2000);
       d.walk(0, 0, false);
       d.look(0, 0.2);
-      await wait(2800);
+      await wait(2600);
       d.look(0, -0.2);
-      await wait(2800);
+      await wait(2600);
       d.stop();
     },
   },
   {
     scene: 'wallet',
-    says: 'a wallet lies as a plate on levelled ground, a post for each token it holds — the post as tall as the share of the token\'s whole supply, its name and the amount cut into it. and other people are here too: standing, walking, digging. a claim anyone makes stands up for everyone within seconds. this plate, and this person, are the tour\'s own.',
+    says: 'a wallet is a plate, a post for each token it holds: as tall as the share of the token\'s whole supply, its name and the amount cut into it in runes. this plate is the tour\'s own.',
     async play(d, wait) {
-      // the plate first; then somebody comes in from the right, ahead of you
-      // and clear of the plate, stops a few steps ahead to the left, digs, and
-      // walks off to the left — in view the whole way, and staying
-      await wait(3000);
-      d.peer(9, 11, false, true);
-      await wait(400);
-      d.peer(-3, 6, false);
-      await wait(9000);
-      d.peer(-3, 6, true);
-      await wait(4500);
-      d.peer(-3, 6, false);
-      await wait(600);
-      d.peer(-9, 11, false);
+      d.look(0, -0.1);
+      await wait(2500);
+      d.look(0.25, 0);
+      await wait(2500);
+      d.look(-0.25, 0);
+      await wait(2500);
+      d.stop();
     },
   },
   {
     scene: 'contract',
-    says: 'empty ground is not bought but dug for. dig here searches for a salt whose contract would land at your feet — every attempt is a place, the closest is kept, and the longer you dig the closer it gets. this is what it looks like.',
+    says: 'empty ground is not bought but dug for: every attempt is a place, the closest is kept, and the longer you dig the closer it gets. more cores, more attempts.',
     async play(d, wait) {
       d.mark('.hud.claim');
       d.claimSays('nobody has claimed this ground. dig here to take it: the longer you dig, the closer the plot', '');
-      // how much of the machine: the slider goes up, and the rate with it
       for (const n of [5, 6, 7, 8, 9, 10, 11, 12]) {
         d.cores(n, 16);
-        await wait(220);
+        await wait(200);
       }
-      await wait(600);
+      await wait(500);
       d.press('.hud.claim .dig');
       await wait(400);
       d.claimButtons(true, false);
@@ -221,204 +188,141 @@ export const STEPS: readonly Step[] = [
       for (let i = 0; i < path.length; i++) {
         d.claimSays(
           'digging for a place beside you. every attempt is a place; the closest is kept. stop whenever you like',
-          `best so far: ${path[i]} m from here · ${(0.7 * (i + 1)).toFixed(1)} M attempts · 14.2 M/s on 12 cores`,
+          `${(0.7 * (i + 1)).toFixed(1)}m tries · 14.2m/s\nclosest so far: ${path[i]} m from here`,
         );
-        await wait(650);
+        await wait(600);
       }
       d.press('.hud.claim .dig');
       await wait(400);
       d.dig(false, 0);
       d.claimButtons(false, true);
-      d.claimSays('stopped. the closest place found is 74 m from here', 'best so far: 74 m from here · 9.8 M attempts');
+      d.claimSays('stopped. claim what you found — 74 m from here — or dig on to get closer', '');
       await wait(2000);
     },
   },
   {
     scene: 'contract',
-    says: 'one transaction makes the closest place found your contract, for good — a plot: yours to write into, build on, name, hand on. it stands up out of the ground as a drawing of the building it will be.',
+    says: 'one transaction makes the closest place found your contract, for good: a plot, yours to write into, build on, name, hand on. it stands up out of the ground as a drawing of the building it will be.',
     async play(d, wait) {
       d.mark('.hud.claim');
       d.claimButtons(false, true);
-      d.claimSays('stopped. the closest place found is 74 m from here', 'best so far: 74 m from here · 9.8 M attempts');
+      d.claimSays('stopped. claim what you found — 74 m from here — or dig on to get closer', '');
       await wait(1200);
       d.press('.hud.claim .take');
       await wait(400);
-      // the button stays, pressed, while the claim is under way, as it does
       d.claimButtons(false, true, true);
       d.claimSays('claiming 74 m from here — sign in the wallet', '');
-      await wait(1800);
+      await wait(1600);
       d.claimSays('sent. waiting for a block', '');
-      await wait(1800);
-      d.claimSays('claimed: yours, 74 m from here. walk over — it is going up', '');
+      await wait(1600);
+      d.claimSays('yours: 74 m from here. walk over — it is going up', '');
       mocked = d.mockClaim();
       d.mark(null);
       // the head turns to where it is going up, ahead and to the right, and lifts a little
       d.look(-0.8, 0.2);
       await wait(1500);
       d.look(0, 0);
-      await wait(8000);
+      await wait(7000);
     },
   },
   {
     scene: 'claimed',
-    says: 'on your own plot the owner\'s panel is yours to act with. write into it — one transaction — and the words are cut into the wall as the drawing becomes a building.',
+    says: 'on your own plot the owner\'s panel acts for you, a transaction each: write into it and the words stand on the wall; point it at a contract of yours and that code runs here; name it under groundstate.eth; seal the code and it can never change.',
     async play(d, wait) {
-      // the head turns to the plot, ahead and to the right, and lifts a little
+      const plot = lastMock();
+      const short = `${plot.slice(0, 10)}…${plot.slice(-4)}`;
       d.look(-0.8, 0.2);
-      await wait(1500);
+      await wait(1200);
       d.look(0, 0);
       d.mark('.hud.own');
-      d.ownSays('yours: 0x3095c19c…d3a0', 'nothing written into it yet\npoints at no code: a drawing until something is written into it');
-      await wait(1200);
+      // written into: the drawing becomes a building and the words come up
+      d.ownSays(`yours: ${short}`, 'nothing written into it yet\npoints at no code: a drawing until something is written into it');
+      await wait(800);
       await d.typeInto('.own-write input', 'hello, world', wait);
-      await wait(600);
       d.press('.own-write button');
-      await wait(400);
+      await wait(300);
       d.clearField('.own-write input');
-      d.ownSays('writing into it — sign in the wallet', 'nothing written into it yet\npoints at no code: a drawing until something is written into it');
-      await wait(1500);
-      d.ownSays('sent. waiting for a block', 'nothing written into it yet\npoints at no code: a drawing until something is written into it');
-      await wait(1500);
-      d.ownSays('written', 'says: hello, world\npoints at no code');
-      // the tour's plot is the newest mock standing: written into now
-      d.mockWrite(lastMock(), 'hello, world');
-      await wait(9000);
-    },
-  },
-  {
-    scene: 'written',
-    says: 'point the plot at a contract of yours and that code runs at this address — a shop, a game, a gallery live here, and other contracts calling this place find it.',
-    async play(d, wait) {
-      // the head turns to the plot, ahead and to the right, and lifts a little
-      d.look(-0.8, 0.2);
-      await wait(1500);
-      d.look(0, 0);
-      d.mark('.hud.own');
-      d.ownSays('written', 'says: hello, world\npoints at no code');
-      await wait(900);
-      await d.typeInto('.own-code input', '0xC0DE…5EED', wait);
-      await wait(500);
-      d.press('.own-code button');
-      await wait(400);
-      d.clearField('.own-code input');
-      d.ownSays('pointing it at code — sign in the wallet', 'says: hello, world\npoints at no code');
-      await wait(1400);
-      d.ownSays('sent. waiting for a block', 'says: hello, world\npoints at no code');
-      await wait(1400);
-      d.ownSays('pointed at code', 'says: hello, world\npoints at 0xC0DE…5EED');
-      await wait(2500);
-    },
-  },
-  {
-    scene: 'written',
-    says: 'name it under groundstate.eth and people come by name: demo.groundstate.eth resolves to this plot, in any wallet that knows ENS. a name belongs to the place and goes with it.',
-    async play(d, wait) {
-      // the head turns to the plot, ahead and to the right, and lifts a little
-      d.look(-0.8, 0.2);
-      await wait(1500);
-      d.look(0, 0);
-      d.mark('.hud.own');
-      d.ownSays('yours: 0x3095c19c…d3a0', 'says: hello, world\npoints at 0xC0DE…5EED');
-      await wait(900);
-      await d.typeInto('.own-name input', 'demo', wait);
-      await wait(500);
-      d.press('.own-name button');
-      await wait(400);
-      d.clearField('.own-name input');
-      d.ownSays('naming it demo.groundstate.eth — sign in the wallet', 'says: hello, world\npoints at 0xC0DE…5EED');
-      await wait(1400);
-      d.ownSays('sent. waiting for a block', 'says: hello, world\npoints at 0xC0DE…5EED');
-      await wait(1400);
-      d.ownSays('yours: demo.groundstate.eth', 'says: hello, world\npoints at 0xC0DE…5EED');
-      await wait(2500);
-    },
-  },
-  {
-    scene: 'written',
-    says: 'seal the code and it can never change — not by you, not by anyone. whoever deals with this place knows it stays what it is. writing and naming stay possible; there is no unsealing.',
-    async play(d, wait) {
-      // the head turns to the plot, ahead and to the right, and lifts a little
-      d.look(-0.8, 0.2);
-      await wait(1500);
-      d.look(0, 0);
-      d.mark('.hud.own');
-      d.ownSays('yours: demo.groundstate.eth', 'says: hello, world\npoints at 0xC0DE…5EED');
+      d.ownSays('writing into it — sign in the wallet', 'nothing written into it yet\npoints at no code');
       await wait(1200);
+      d.ownSays('written', 'says: hello, world\npoints at no code');
+      d.mockWrite(plot, 'hello, world');
+      await wait(4500);
+      // pointed at code
+      await d.typeInto('.own-code input', '0xC0DE000000000000000000000000000000005EED', wait);
+      d.press('.own-code button');
+      await wait(300);
+      d.clearField('.own-code input');
+      d.ownSays('pointing it at that code — sign in the wallet', 'says: hello, world\npoints at no code');
+      await wait(1200);
+      d.ownSays('pointed at it: this place is that code now', 'says: hello, world\npoints at 0xC0DE0000…5EED');
+      await wait(1600);
+      // named
+      await d.typeInto('.own-name input', 'demo', wait);
+      d.press('.own-name button');
+      await wait(300);
+      d.clearField('.own-name input');
+      d.ownSays('naming it demo.groundstate.eth — sign in the wallet', 'says: hello, world\npoints at 0xC0DE0000…5EED');
+      await wait(1200);
+      d.ownSays('yours: demo.groundstate.eth', 'says: hello, world\npoints at 0xC0DE0000…5EED');
+      await wait(1600);
+      // sealed
       d.press('.own-do .seal');
-      await wait(400);
-      d.ownSays('sealing the code for good — sign in the wallet', 'says: hello, world\npoints at 0xC0DE…5EED');
-      await wait(1400);
-      d.ownSays('sent. waiting for a block', 'says: hello, world\npoints at 0xC0DE…5EED');
-      await wait(1400);
-      d.ownSays('sealed: the code is fixed for good', 'says: hello, world\npoints at 0xC0DE…5EED, sealed');
+      await wait(300);
+      d.ownSays('sealing the code for good — sign in the wallet', 'says: hello, world\npoints at 0xC0DE0000…5EED');
+      await wait(1200);
+      d.ownSays('sealed. the code here will never change', 'says: hello, world\npoints at 0xC0DE0000…5EED, sealed');
       await wait(2500);
+      d.mark(null);
     },
   },
   {
-    says: 'anybody can be fifty tabs. a selfie check with World says one real person is behind the screen: a person\'s finds are kept for everybody at once, a stranger\'s once five strangers agree. a person stands in your grey, a stranger in white.',
+    scene: 'written',
+    says: 'other people are here too, and what one finds is kept for all. a selfie check with World says one real person is behind the screen: a person\'s finds are kept at once, a stranger\'s once five strangers agree. a person stands in your grey.',
     async play(d, wait) {
+      // somebody comes in from the right, ahead, stops a few steps off to the left and digs
+      d.peer(9, 11, false, true);
+      await wait(400);
+      d.peer(-3, 6, false);
+      await wait(5000);
+      d.peer(-3, 6, true);
+      // meanwhile the person panel: a stranger, the check, a real person
       d.mark('.hud.person');
       d.personSays('stranger', "a selfie check with World says one real person is behind this screen. a person's finds are kept for everybody at once; a stranger's only once five strangers agree.", 'stranger');
-      await wait(3500);
+      await wait(3000);
       d.press('.hud.person .prove');
       await wait(1200);
       d.personSays('real person', 'checked with World ID until 11.12.2026. what you find is kept in the game for everybody at once: your finds need no confirmation from the community', 'person');
-      await wait(4500);
+      await wait(3500);
       d.mark(null);
+      d.peer(-3, 6, false);
+      await wait(500);
+      d.peer(-9, 11, false);
+      await wait(1500);
     },
   },
   {
-    says: 'the menu. view puts away the panels you do not need, and brings them back; a cross in a panel\'s corner does the same.',
+    says: 'the menu. view puts the panels away and brings them back, a cross in a corner does the same; info holds the map, the whitepaper and the roadmap; blockchain is which world this is: sepolia to take ground on, ethereum to walk.',
     async play(d, wait) {
       d.section('panels');
-      await wait(1800);
-      // the owner's panel and the claim panel put away, then brought back
+      await wait(1200);
       d.togglePanel('owner');
-      await wait(1400);
-      d.togglePanel('claim');
-      await wait(1800);
-      d.togglePanel('claim');
       await wait(1000);
       d.togglePanel('owner');
-      await wait(1400);
-      d.section(null);
-      await wait(600);
-    },
-  },
-  {
-    says: 'blockchain is which world this is: sepolia to take ground on, ethereum to walk.',
-    async play(d, wait) {
-      d.section('blockchain');
-      await wait(1500);
-      d.unfoldWorlds();
-      await wait(3000);
-      d.section(null);
-      await wait(600);
-    },
-  },
-  {
-    says: 'info holds the map, the whitepaper and the roadmap. the map is the whole address space at once — every place on it is a link into the world.',
-    async play(d, wait) {
+      await wait(900);
       d.section('info');
-      await wait(1500);
+      await wait(1200);
       d.section('map');
-      await wait(5000);
+      await wait(4000);
+      d.section('blockchain');
+      await wait(1200);
+      d.unfoldWorlds();
+      await wait(2200);
       d.section(null);
-      await wait(1000);
+      await wait(600);
     },
   },
   {
-    says: 'the stones turn the page over, the world included.',
-    async play(d, wait) {
-      d.flipTheme();
-      await wait(2600);
-      d.flipTheme();
-      await wait(1800);
-      d.mark(null);
-    },
-  },
-  {
-    says: 'that is all of it. everything shown here was for show — nothing was sent, nothing is yours yet. h brings you back to where you first came down; any word of the menu leaves the tour. go and stand in it.',
+    says: 'that is all of it, and all of it was for show: nothing was sent, nothing is yours yet. h brings you home; any word of the menu leaves the tour. go and stand in it.',
     async play(d, wait) {
       d.look(0.3, 0);
       await wait(5000);
