@@ -60,7 +60,15 @@ Everything here was written after the start, 4 September, and is open source und
 
 ## After the hackathon
 
-In roughly the order it matters:
+**First, the game.** What stands is an early version: a world that is read off the chain, a way of
+taking ground by work, a way of building on it and naming it, and other people in it. What a player
+*does* here from one day to the next — why they come back, what a plot is for once it is built,
+what neighbours are to each other, what is won and what is lost — is not formulated yet. It has
+been left open on purpose: the ground had to be real before anything could be played on it. Writing
+the mechanic whole, and reordering this list by it, is the first work after the hackathon.
+Recorded 13.09.2026.
+
+Then, in roughly the order it matters today:
 
 1. **Shared memory of the uncovered ground** — the coverage tiles, merged by maximum, so the veil can
    come back. (The revealed *places* are shared already: see above.)
