@@ -185,10 +185,13 @@ export const STEPS: readonly Step[] = [
       d.dig(true, 1.4e7);
       const path = [412, 388, 301, 296, 212, 187, 187, 154, 131, 119, 96, 96, 88, 74];
       for (let i = 0; i < path.length; i++) {
+        // the counts as the panel writes them; and once there is a find, "claim it" stands beside "stop"
+        const tries = 0.7 * (i + 1);
         d.claimSays(
           'digging for a place beside you. every attempt is a place; the closest is kept. stop whenever you like',
-          `${(0.7 * (i + 1)).toFixed(1)}m tries · 14.2m/s\nclosest so far: ${path[i]} m from here`,
+          `${tries < 1 ? `${(tries * 1000).toFixed(1)}k` : `${tries.toFixed(2)}m`} tries · 14.20m/s\nclosest so far: ${path[i]} m from here`,
         );
+        d.claimButtons(true, true);
         await wait(600);
       }
       d.press('.hud.claim .dig');
@@ -214,8 +217,10 @@ export const STEPS: readonly Step[] = [
       await wait(1600);
       d.claimSays('sent. waiting for a block', '');
       await wait(1600);
-      d.claimSays('yours: 74 m from here. walk over — it is going up', '');
       mocked = d.mockClaim();
+      // landed: the find is off the shelf, the buttons as after any stop, and the panel's own words
+      d.claimButtons(false, false);
+      d.claimSays(`yours: ${mocked.slice(0, 10)}…, 74 m from here. walk to it — then write into it, name it, or point it at code of your own`, '');
       d.mark(null);
       // the head turns to where it is going up, ahead and to the right, and lifts a little
       d.look(-0.8, 0.2);
@@ -241,8 +246,10 @@ export const STEPS: readonly Step[] = [
       d.press('.own-write button');
       await wait(300);
       d.clearField('.own-write input');
-      d.ownSays('writing into it — sign in the wallet', 'nothing written into it yet\npoints at no code');
-      await wait(1200);
+      d.ownSays('writing into it — sign in the wallet', 'nothing written into it yet\npoints at no code: a drawing until something is written into it');
+      await wait(1000);
+      d.ownSays('sent. waiting for a block', 'nothing written into it yet\npoints at no code: a drawing until something is written into it');
+      await wait(1000);
       d.ownSays('written', 'says: hello, world\npoints at no code');
       d.mockWrite(plot, 'hello, world');
       await wait(4500);
@@ -252,7 +259,9 @@ export const STEPS: readonly Step[] = [
       await wait(300);
       d.clearField('.own-code input');
       d.ownSays('pointing it at that code — sign in the wallet', 'says: hello, world\npoints at no code');
-      await wait(1200);
+      await wait(1000);
+      d.ownSays('sent. waiting for a block', 'says: hello, world\npoints at no code');
+      await wait(1000);
       d.ownSays('pointed at it: this place is that code now', 'says: hello, world\npoints at 0xC0DE0000…5EED');
       await wait(1600);
       // named
@@ -261,14 +270,18 @@ export const STEPS: readonly Step[] = [
       await wait(300);
       d.clearField('.own-name input');
       d.ownSays('naming it demo.groundstate.eth — sign in the wallet', 'says: hello, world\npoints at 0xC0DE0000…5EED');
-      await wait(1200);
-      d.ownSays('yours: demo.groundstate.eth', 'says: hello, world\npoints at 0xC0DE0000…5EED');
+      await wait(1000);
+      d.ownSays('sent. waiting for a block', 'says: hello, world\npoints at 0xC0DE0000…5EED');
+      await wait(1000);
+      d.ownSays('named: demo.groundstate.eth', 'says: hello, world\npoints at 0xC0DE0000…5EED');
       await wait(1600);
       // sealed
       d.press('.own-do .seal');
       await wait(300);
       d.ownSays('sealing the code for good — sign in the wallet', 'says: hello, world\npoints at 0xC0DE0000…5EED');
-      await wait(1200);
+      await wait(1000);
+      d.ownSays('sent. waiting for a block', 'says: hello, world\npoints at 0xC0DE0000…5EED');
+      await wait(1000);
       d.ownSays('sealed. the code here will never change', 'says: hello, world\npoints at 0xC0DE0000…5EED, sealed');
       await wait(2500);
       d.mark(null);
