@@ -192,7 +192,9 @@ async function standing(account: Account, vouched = false): Promise<Structure> {
   // a drawing until something is written into it or it is pointed at code —
   // in which case that code is what stands here
   const coded = isPlot(account.code);
-  const claimed = coded && !vouched ? await claimAt(account.address) : null;
+  // the index is asked even for a plot vouched for by its receipt: it may
+  // already have the salt, which naming needs, and the notes' history
+  const claimed = coded ? await claimAt(account.address) : null;
   if (!coded || !(vouched || claimed)) return labelled(structureOf(account, holdings, chain.coin));
   const note = claimed?.note ?? (await noteOf(account.address));
   const pointedAt =
