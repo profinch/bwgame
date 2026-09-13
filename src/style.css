@@ -1591,11 +1591,18 @@ body.touch .touchpad-buttons {
   transition: none;
 }
 
+/* a link in the panel's words, dressed as the owner's "N more unnamed": dotted underneath, brighter under the hand */
 .hud.person .person-note a {
   color: inherit;
-  text-decoration: underline;
-  text-decoration-color: color-mix(in srgb, var(--fg) 45%, transparent);
+  text-decoration: underline dotted;
+  text-decoration-thickness: 1px;
   text-underline-offset: 2px;
+  opacity: 0.7;
+  transition: opacity 0.25s;
+}
+
+.hud.person .person-note a:hover {
+  opacity: 1;
 }
 
 .hud.person .person-note b {
