@@ -70,6 +70,8 @@ export interface Structure {
    * own address — not what was written into it.
    */
   label?: string;
+  /** Where the label goes: the lit wall (a name, read from the side the light falls on) or all four (an address, read from anywhere). */
+  labelOn?: 'lit' | 'all';
   /** Put up by the onboarding to show what a thing looks like; taken down when it ends. Never from the chain. */
   mock?: boolean;
   /** @deprecated the ground at the foot of the front wall: `footAt[0]` says it now. */
@@ -919,17 +921,20 @@ function notedBuilding(structure: Structure, base: number, origin: { x: number; 
   if (structure.label) {
     const { cut, wide: cells } = cutOf(structure.label.toLowerCase());
     if (cells > 0) {
-      const lit = litWall();
-      const w = walls[lit]!;
-      const cell = Math.min((0.8 * w.width) / cells, (0.1 * structure.tall) / GRID);
-      const lineTop = roof - cell * 3;
-      const u0 = -(cells * cell) / 2;
       // raised: the strokes themselves stand out, deeper than the notes' as they are bigger
       const strokes = cut.map((it) => (it === 1 ? 0 : 1));
-      for (const p of mergeOf(strokes, cells, GRID)) {
-        stroke(w, u0 + p.col * cell, u0 + (p.col + p.cols) * cell, lineTop - (p.row + p.rows) * cell, lineTop - p.row * cell, Math.max(relief, cell * 0.5));
+      const patches = mergeOf(strokes, cells, GRID);
+      const on = structure.labelOn === 'all' ? walls.map((_, i) => i) : [litWall()];
+      for (const i of on) {
+        const w = walls[i]!;
+        const cell = Math.min((0.8 * w.width) / cells, (0.1 * structure.tall) / GRID);
+        const lineTop = roof - cell * 3;
+        const u0 = -(cells * cell) / 2;
+        for (const p of patches) {
+          stroke(w, u0 + p.col * cell, u0 + (p.col + p.cols) * cell, lineTop - (p.row + p.rows) * cell, lineTop - p.row * cell, Math.max(relief, cell * 0.5));
+        }
+        ceilingOn[i] = lineTop - GRID * cell - cell * 3;
       }
-      ceilingOn[lit] = lineTop - GRID * cell - cell * 3;
     }
   }
   let wall = 0;

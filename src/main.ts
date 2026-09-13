@@ -117,12 +117,29 @@ function render(): void {
 
 // --- what is this place -------------------------------------------------
 
+/** Whether the map is as close as it goes: the next click on a place is a step into the world. */
+const closest = () => camera.span <= MIN_SPAN * 256 + 1e-9;
+
+/**
+ * Into the world at a place. Inside the world's page the map is a frame under
+ * the world's header: the world is told and travels there itself, the page
+ * staying as it is; on its own the map opens the world at that address.
+ */
+function walkTo(address: string): void {
+  const at = `0x${normalizeAddress(address)}`;
+  if (window.parent !== window) {
+    window.parent.postMessage({ groundState: 'walk', address: at }, location.origin);
+    return;
+  }
+  location.href = `/?chain=mainnet&at=${at}`;
+}
+
 function showCard(group: Cluster): void {
   const rows =
     group.marks.length === 1
       ? `<p class="name">${group.marks[0]!.name}</p>
          <p class="addr">0x${normalizeAddress(group.marks[0]!.address)}</p>
-         <p class="go">click to come closer</p>`
+         <p class="go">${closest() ? 'click to walk there in the world' : 'click to come closer — as close as it goes, a click walks there in the world'}</p>`
       : `<p class="name">${group.marks.length} places, too close to tell apart</p>
          <ul>${group.marks
            .slice(0, 8)
@@ -187,6 +204,13 @@ function endDrag(event: PointerEvent): void {
   const box = canvas.getBoundingClientRect();
   const group = hit(groups, event.clientX - box.left, event.clientY - box.top);
   if (!group) return;
+  // as close as the map goes, a place clicked is walked to
+  if (group.marks.length === 1 && closest()) {
+    card.hidden = true;
+    hovered = null;
+    walkTo(group.marks[0]!.address);
+    return;
+  }
   const closer =
     group.marks.length === 1
       ? focus(group.marks[0]!.address, MIN_SPAN * 256)

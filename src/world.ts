@@ -205,8 +205,9 @@ async function standing(account: Account, vouched = false): Promise<Structure> {
     salt: claimed?.salt ?? null,
     name: named,
   });
-  // a plot is known by its own address, at the top of its wall
+  // a plot is known by its own address, at the top of every wall
   plot.label = account.address.toLowerCase();
+  plot.labelOn = 'all';
   return plot;
 }
 
@@ -258,6 +259,7 @@ function labelled(structure: Structure): Structure {
   const wanted = structure.address.toLowerCase();
   if (chain.plots && wanted === chain.plots.toLowerCase()) {
     structure.label = wanted;
+    structure.labelOn = 'all';
     return structure;
   }
   if (chain.key === 'mainnet') {
@@ -1434,6 +1436,7 @@ function mockPlot(address: string, note: string): Structure {
   const structure = structureOf(account, [], chain.coin, { note, notes: note ? [note] : [], code: null, owner: '0x000000000000000000000000000000000000d3a0', salt: null, name: undefined });
   structure.mock = true;
   structure.label = address.toLowerCase();
+  structure.labelOn = 'all';
   return structure;
 }
 /** Whether the auger is in the ground: for real, or for show. */
@@ -1508,6 +1511,7 @@ function mockContract(): Structure {
   });
   structure.mock = true;
   structure.label = address.toLowerCase();
+  structure.labelOn = 'all';
   // its front — the wall the words are on — toward the stand
   structure.turn = CONTRACT_STAND.yaw;
   return structure;
@@ -2153,6 +2157,26 @@ function takeDemoJump(): boolean {
     frame.style.transition = '';
     addEventListener('resize', () => place(framed()));
 
+    // the map inside the page, as close as it goes, clicked on a place: the
+    // world travels there, the page staying as it is — the map put away
+    window.addEventListener('message', (event) => {
+      if (event.origin !== location.origin) return;
+      const said = event.data as { groundState?: string; address?: string } | null;
+      if (said?.groundState !== 'walk' || typeof said.address !== 'string' || !/^0x[0-9a-fA-F]{40}$/.test(said.address)) return;
+      if (tour?.running) return;
+      show(null);
+      // the map is ethereum's; standing on another chain, the world goes there
+      if (chain.key !== 'mainnet') {
+        const to = new URL(location.href);
+        to.search = `?chain=mainnet&at=${said.address}`;
+        to.hash = '';
+        location.href = to.toString();
+        return;
+      }
+      void travelTo(said.address).then((found) => {
+        arrived = found ? `${said.address!.slice(0, 10)}…` : `${said.address!.slice(0, 10)}… (empty ground)`;
+      });
+    });
     // a word of the menu pressed while the onboarding runs ends it, and then does what it does
     const leavingTour = () => {
       if (tour?.running) tour.end();

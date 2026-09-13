@@ -84,7 +84,9 @@ Then, in roughly the order it matters today:
    with every level the world goes down: the digits shared with a neighbour stay shared. The index
    must hold at any depth first (item 6). Recorded 13.09.2026.
 4. **Arrive at your own plot** when a wallet is connected; the factory otherwise.
-5. **From the map into the world at a point.** The map already turns a place into a link; a
+5. ~~**From the map into the world at a point.**~~ Done 13.09.2026: as close as the map goes, a
+   click on a place walks there — inside the world's page without leaving it, on the map's own
+   page by opening the world at that address. The map already turns a place into a link; a
    click on the map inside the world should take the walker to that ground without leaving the
    page or losing what the world holds — the panels, the live room, the tour. Recorded 12.09.2026.
 6. **Telling one person's tabs from five people.** A stranger's word counts a fifth, and five
