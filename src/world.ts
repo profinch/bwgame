@@ -1469,7 +1469,7 @@ function takeDemoJump(): boolean {
 /**
  * The menu, as on bwtoken.io. The corners frame the whole of it until a
  * section is chosen. "map" brings the map up in this page under this header,
- * and frames itself. "panels" frames itself and slides down a row a panel,
+ * and frames itself. "view" frames itself and slides down a row a panel,
  * each put away or brought back with a press. "blockchain" frames itself and slides the sub-bar down
  * with the worlds listed, this one bright, the one to take ground on first;
  * choosing another world is walking out of this one — the page reloads,
@@ -1551,24 +1551,27 @@ function takeDemoJump(): boolean {
       const under = Math.round(header.getBoundingClientRect().bottom);
       clip.style.top = `${under}px`;
       // a bar is as wide as its longest row and no wider, and hangs under its
-      // own word in the menu: its right edge on the right edge of the corners
-      // round that word; the left follows from the rows
-      for (const [b, link] of [[bar, chainLink], [infoBar, infoLink], [panelBar, panelsLink]] as const) {
+      // own word in the menu — centred on it, except the worlds' bar at the
+      // menu's end, whose right edge is the right edge of the corners round its
+      // word so nothing hangs past the menu
+      for (const [b, link, how] of [[bar, chainLink, 'right'], [infoBar, infoLink, 'centre'], [panelBar, panelsLink, 'centre']] as const) {
         let widest = 0;
         for (const row of b.querySelectorAll<HTMLElement>('.wopt, .wcur')) {
           const text = document.createRange();
           text.selectNodeContents(row);
           widest = Math.max(widest, text.getBoundingClientRect().width);
         }
-        b.style.width = `${Math.ceil(widest) + 2 * BAR_SIDE}px`;
+        const width = Math.ceil(widest) + 2 * BAR_SIDE;
+        const word = link.getBoundingClientRect();
+        b.style.width = `${width}px`;
         b.style.left = 'auto';
-        b.style.right = `${Math.round(last.right + ROOM - (link.getBoundingClientRect().right + 2))}px`;
+        b.style.right = `${Math.round(how === 'right' ? last.right + ROOM - (word.right + 2) : last.right + ROOM - (word.left + word.width / 2 + width / 2))}px`;
       }
     };
     /** Room either side of a bar's longest row: the arrow's, and as much again on the left so the rows stay centred. */
     const BAR_SIDE = 28;
 
-    // the panels: down with the menu's "panels", a row a panel, the arrow takes it away
+    // the panels: down with the menu's "view", a row a panel, the arrow takes it away
     const panels = new Panels(panelList);
     panelBar.style.height = `${PAD + panels.count * ROW}px`;
 

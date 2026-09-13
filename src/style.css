@@ -987,7 +987,7 @@ body.touring #view {
 
 /* the cross in a panel's corner puts it away — the sub-bar's arrow, crossed;
    "panels" in the menu brings it back. The first line keeps clear of it */
-.hud button.panel-x {
+.hud.closable button.panel-x {
   position: absolute;
   top: 8px;
   right: 9px;
@@ -1004,8 +1004,8 @@ body.touring #view {
   z-index: 2;
 }
 
-.hud button.panel-x::before,
-.hud button.panel-x::after {
+.hud.closable button.panel-x::before,
+.hud.closable button.panel-x::after {
   content: '';
   position: absolute;
   top: 50%;
@@ -1016,22 +1016,16 @@ body.touring #view {
   transform: translateY(-50%) rotate(45deg);
 }
 
-.hud button.panel-x::after {
+.hud.closable button.panel-x::after {
   transform: translateY(-50%) rotate(-45deg);
 }
 
-.hud button.panel-x:hover {
+.hud.closable button.panel-x:hover {
   opacity: 1;
 }
 
 .closable > :first-child:not(.panel-x) {
   padding-right: 24px;
-}
-
-/* the metrics have no box: the cross sits at the block's corner, off the text */
-.hud.bottom button.panel-x {
-  top: -4px;
-  right: -6px;
 }
 
 /* a panel put away is not on the page at all */

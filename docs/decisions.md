@@ -46,10 +46,11 @@ What was decided, and why. What was refused, and why. Dated where the date matte
 - **The owner's panel is the way to your ground** (12.09.2026): it stays while it is wanted; with no
   wallet it offers to connect one, off your ground it lists every plot of yours with a button that
   takes you there, on your ground it is the forms.
-- **Panels are a filter**, *panels* in the menu with the site's sub-bar under it: metrics, jump,
-  claim, owner, person, each put away or brought back, kept in the browser. Every panel also
-  carries a cross in its corner (13.09.2026) that puts it away through the same one place, so the
-  cross and the row never disagree; the first line of a panel keeps clear of the cross. The
+- **Panels are a filter**, *view* in the menu with the site's sub-bar under it: metrics, jump,
+  claim, owner, person, each put away or brought back, kept in the browser. Every boxed panel
+  also carries a cross in its corner (13.09.2026) that puts it away through the same one place, so
+  the cross and the row never disagree; the first line keeps clear of the cross. The metrics have
+  no box and no cross. The
   other players and the sky are not panels: they are the world, and stay.
 - **No shadows** on the header, the bars, the stones or the panels: in a world of tones and turned
   over for the dark, a shadow reads as a glow.
@@ -68,7 +69,7 @@ What was decided, and why. What was refused, and why. Dated where the date matte
   edge in one plane fight for the same depth at any distance. Relief has one plane and things in
   front of it, and nothing to fight about. The posts' runes stay cut in: a post is small and
   read from close, and its grooves are one block each.
-- **The menu is onboarding · info · panels · blockchain** (13.09.2026): the map, the whitepaper and
+- **The menu is onboarding · info · view · blockchain** (13.09.2026; *view* was *panels* for a day): the map, the whitepaper and
   the roadmap are pages of the site and live together under *info*, each opened in place under the
   header as the site opens its pages, and each a link (`#map`, `#whitepaper`, `#roadmap`). The
   documents are rendered from `docs/` at build time, so there is one copy of every text.

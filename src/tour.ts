@@ -353,7 +353,7 @@ export const STEPS: readonly Step[] = [
     },
   },
   {
-    says: 'the menu. panels puts away what you do not need, and brings it back.',
+    says: 'the menu. view puts away the panels you do not need, and brings them back.',
     async play(d, wait) {
       d.section('panels');
       await wait(1800);

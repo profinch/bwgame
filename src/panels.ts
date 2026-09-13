@@ -1,14 +1,14 @@
 /**
- * Which panels are on the screen: "panels" in the menu, and under it, in the
+ * Which panels are on the screen: "view" in the menu, and under it, in the
  * sub-bar of bwtoken.io, a row a panel — bright when it is shown, dim when it
  * is not. The choice is kept in this browser.
  *
  * A panel put away is hidden by a class on the body. The other players and the
  * block overhead are not panels and are never put away: they are the world.
  */
-export const PANELS: readonly { key: string; at: string }[] = [
-  // where you stand, what is near, the block overhead
-  { key: 'metrics', at: '.hud.bottom' },
+export const PANELS: readonly { key: string; at: string; cross?: false }[] = [
+  // where you stand, what is near, the block overhead: no box, so no cross — the row in the filter puts it away
+  { key: 'metrics', at: '.hud.bottom', cross: false },
   // an address or a name, and you are there
   { key: 'jump', at: '.hud.jump' },
   // digging where you stand, and the one transaction that makes it yours
@@ -44,14 +44,13 @@ export class Panels {
     // a cross in the corner of every panel: the same putting away as the row
     // in the filter, through the same one place, so the two never disagree
     for (const panel of PANELS) {
-      const at = document.querySelector<HTMLElement>(panel.at);
+      const at = panel.cross === false ? null : document.querySelector<HTMLElement>(panel.at);
       if (!at) continue;
       at.classList.add('closable');
       const cross = document.createElement('button');
       cross.type = 'button';
       cross.className = 'panel-x';
-      cross.setAttribute('aria-label', `put the ${panel.key} panel away — "panels" in the menu brings it back`);
-      cross.title = 'put away · panels in the menu brings it back';
+      cross.setAttribute('aria-label', `put the ${panel.key} panel away`);
       cross.addEventListener('click', (event) => {
         event.stopPropagation();
         if (!this.off.has(panel.key)) this.toggle(panel.key);
