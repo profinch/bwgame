@@ -338,17 +338,22 @@ h1 {
   cursor: progress;
 }
 
+/* dressed as the world's buttons: a line round the word, no fill, the line darkening under the hand */
 .key {
   flex: none;
-  padding: 6px 12px;
-  border: 1px solid var(--fg);
-  background: var(--fg);
-  color: var(--bg);
+  padding: 5px 10px;
+  border: 1px solid color-mix(in srgb, var(--line) 30%, transparent);
+  background: transparent;
+  color: var(--fg);
   font: inherit;
   font-size: 11px;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.06em;
   text-transform: lowercase;
   cursor: pointer;
+}
+
+.key:hover {
+  border-color: var(--fg);
 }
 
 .key:disabled {
@@ -1654,4 +1659,9 @@ body.touch .touchpad-buttons {
   color: #2a2a28;
   text-decoration: none;
   border-bottom: 1px dotted currentColor;
+}
+
+/* on a chain with no factory the claim panel is the way to the one that has: the button a little off the words */
+.hud.claim.elsewhere .claim-do {
+  margin-top: 6px;
 }

@@ -81,6 +81,7 @@ export function takeGround(
    * hides itself is indistinguishable from one that is broken.
    */
   if (!chain.plots) {
+    panel.classList.add('elsewhere');
     const somewhere = Object.values(CHAINS).find((other) => other.plots);
     said.textContent = somewhere
       ? `ground is taken on ${somewhere.name}, which is where the factory stands`

@@ -144,7 +144,8 @@ const revealed = new Map();
 try {
   if (existsSync(REVEALED_FILE)) {
     for (const [address, it] of Object.entries(JSON.parse(readFileSync(REVEALED_FILE, 'utf8')))) {
-      revealed.set(address, { ...it, weight: it.weight ?? 1, kept: it.kept ?? true });
+      // a place kept before rooms were told apart was seen in the room of the factory
+      revealed.set(address, { ...it, weight: it.weight ?? 1, kept: it.kept ?? true, room: it.room ?? ROOM });
     }
     console.log(`${revealed.size} revealed place(s) remembered from ${REVEALED_FILE}`);
   }
@@ -279,8 +280,8 @@ async function holdingsOf(network, address) {
   return asked ? { source: 'the graph token api', network, address: address.toLowerCase(), holdings } : null;
 }
 
-/** The places remembered for everybody: a person's word, or enough strangers'. */
-const keptPlaces = () => [...revealed.entries()].filter(([, it]) => it.kept).map(([address]) => address);
+/** The places remembered for everybody in a room — a chain is a room — on a person's word, or enough strangers'. */
+const keptPlaces = (inRoom) => [...revealed.entries()].filter(([, it]) => it.kept && it.room === inRoom).map(([address]) => address);
 
 /** sha256(token) -> until (ms). Who is a person here, for as long as the credential is. */
 const humans = new Map();
@@ -378,7 +379,7 @@ function saveRevealed() {
     try {
       mkdirSync(dirname(REVEALED_FILE), { recursive: true });
       const rows = {};
-      for (const [address, it] of revealed) if (it.kept) rows[address] = { at: it.at, count: it.count, weight: it.weight, kept: true };
+      for (const [address, it] of revealed) if (it.kept) rows[address] = { at: it.at, count: it.count, weight: it.weight, kept: true, room: it.room };
       writeFileSync(REVEALED_FILE, JSON.stringify(rows));
     } catch (error) {
       console.error('the revealed places could not be kept:', error?.message ?? error);
@@ -448,7 +449,8 @@ const http = createServer((request, response) => {
   // the revealed places, every one remembered for everybody
   if (url.pathname.endsWith('/revealed')) {
     response.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store', 'access-control-allow-origin': '*' });
-    response.end(JSON.stringify({ addresses: keptPlaces() }));
+    const asked = url.searchParams.get('room') ?? ROOM;
+    response.end(JSON.stringify({ addresses: /^[a-z0-9-]{1,32}$/.test(asked) ? keptPlaces(asked) : [] }));
     return;
   }
   // World ID: a signed request to hand IDKit (GET), or a proof to verify (POST)
@@ -488,7 +490,7 @@ const http = createServer((request, response) => {
   response.writeHead(200, { 'content-type': 'application/json' });
   const counts = {};
   for (const [name, people] of rooms) counts[name] = people.size;
-  response.end(JSON.stringify({ rooms: counts, plots: plots.size, block: graphBlock, revealed: keptPlaces().length, heard: revealed.size, people: humans.size, worldId: worldSet }));
+  response.end(JSON.stringify({ rooms: counts, plots: plots.size, block: graphBlock, revealed: [...revealed.values()].filter((it) => it.kept).length, heard: revealed.size, people: humans.size, worldId: worldSet }));
 });
 
 const sockets = new WebSocketServer({ server: http, maxPayload: 4096 });
@@ -515,9 +517,10 @@ sockets.on('connection', (socket) => {
       person = { id, x: 0, z: 0, yaw: 0, dig: false, human, seen: Date.now(), socket };
       room(inRoom).set(id, person);
       tell(socket, { t: 'you', id, human });
-      // and the world as it stands: every plot the index has said, every
-      // place remembered for everybody — so nothing need be asked over HTTP
-      tell(socket, { t: 'world', block: graphBlock, plots: [...plots.values()], revealed: keptPlaces() });
+      // and the world as it stands: every plot the index has said — on the
+      // chain the factory is on — and every place remembered for everybody in
+      // this room, so nothing need be asked over HTTP
+      tell(socket, { t: 'world', block: graphBlock, plots: inRoom === ROOM ? [...plots.values()] : [], revealed: keptPlaces(inRoom) });
       return;
     }
     // a person choosing to be a stranger again: the token is forgotten for good
@@ -545,6 +548,7 @@ sockets.on('connection', (socket) => {
       const address = message.address.toLowerCase();
       const worth = person.human ? 1 : STRANGER_WORD;
       let it = revealed.get(address);
+      if (it && it.room !== inRoom) return;
       if (it) {
         it.count += 1;
         // one voice counts once, however often it speaks
@@ -553,7 +557,7 @@ sockets.on('connection', (socket) => {
         it.weight += worth;
       } else {
         if (revealed.size >= REVEALED_MOST) return;
-        it = { at: now, count: 1, weight: worth, kept: false, by: new Set([id]) };
+        it = { at: now, count: 1, weight: worth, kept: false, by: new Set([id]), room: inRoom };
         revealed.set(address, it);
         // heard by the room at once, whoever said it
         if (inRoom) for (const other of room(inRoom).values()) if (other.id !== id) tell(other.socket, { t: 'revealed', addresses: [address] });

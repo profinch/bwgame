@@ -110,6 +110,11 @@ export const CHAINS: Record<string, Chain> = {
     // what a wallet holds comes from The Graph's Token API, through the live
     // server, which holds the key; Blockscout only if that does not answer
     holdingsFeed: 'https://gs.bwtoken.io/live/holdings?network=mainnet',
+    // the same room server as sepolia's, a room of its own: who is here, what
+    // has been found here, and who is a person — the same everywhere
+    live: 'wss://gs.bwtoken.io/live',
+    revealedFeed: 'https://gs.bwtoken.io/live/revealed?room=mainnet',
+    humanFeed: 'https://gs.bwtoken.io/live/human',
     coin: { symbol: 'eth', supply: 120_500_000n * 10n ** 18n },
     tokens: [
       { at: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48', symbol: 'usdc', decimals: 6 },

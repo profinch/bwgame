@@ -77,6 +77,13 @@ What was decided, and why. What was refused, and why. Dated where the date matte
   the roadmap are pages of the site and live together under *info*, each opened in place under the
   header as the site opens its pages, and each a link (`#map`, `#whitepaper`, `#roadmap`). The
   documents are rendered from `docs/` at build time, so there is one copy of every text.
+- **A building is labelled at the top of its front wall** (13.09.2026) with what the world knows it
+  by, in the notes' runes: a landmark's name on ethereum (the map's list), the factory's own
+  address on sepolia in words of six signs. Notes climb no higher than the label. Plates and plots
+  say their own things and carry no label.
+- **Every chain is a room** (13.09.2026): ethereum has the live room, the revealed memory and the
+  person check the same as sepolia; the server keeps the revealed places by room and sends the
+  plots only to the room of the factory.
 - **English in code, comments, commits and UI, lowercase in UI.** One contributor in the history.
 
 ## Refused

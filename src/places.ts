@@ -63,6 +63,12 @@ export interface Structure {
    */
   becoming?: number;
   drawing?: Structure;
+  /**
+   * Words at the very top of the front wall, in the same runes as the notes:
+   * a landmark's name, the factory's address — what the world knows a
+   * building by, not what was written into it.
+   */
+  label?: string[];
   /** Put up by the onboarding to show what a thing looks like; taken down when it ends. Never from the chain. */
   mock?: boolean;
   /** @deprecated the ground at the foot of the front wall: `footAt[0]` says it now. */
@@ -888,6 +894,21 @@ function notedBuilding(structure: Structure, base: number, origin: { x: number; 
   }
   const rowTall = (words: string[]) => (Math.max(1, ...words.map((w) => [...w].length)) * 11 + 2 * EDGE + 2) * across;
   const rowsOn: Row[][] = walls.map(() => []);
+  // the label hangs from the roof of the front wall; the notes climb no higher than its foot
+  let ceiling = roof;
+  if (structure.label?.length) {
+    const words = structure.label.map((word) => word.toLowerCase().slice(0, NOTE_SIGNS));
+    const perRow = Math.max(1, Math.floor((walls[0]!.width - POST) / POST));
+    const chunks: string[][] = [];
+    for (let i = 0; i < words.length; i += perRow) chunks.push(words.slice(i, i + perRow));
+    let y = roof - (EDGE + 2) * across;
+    for (const chunk of chunks) {
+      const tall = rowTall(chunk);
+      y -= tall;
+      rowsOn[0]!.push({ words: chunk, y0: y, tall, latest: false });
+    }
+    ceiling = y;
+  }
   let wall = 0;
   let cursor = walls[0]!.foot + NOTE_HEAD - (EDGE + 2) * across;
   for (let n = 0; n < notes.length && wall < walls.length; n++) {
@@ -904,7 +925,7 @@ function notedBuilding(structure: Structure, base: number, origin: { x: number; 
       const chunks: string[][] = [];
       for (let i = 0; i < words.length; i += perRow) chunks.push(words.slice(i, i + perRow));
       const height = chunks.reduce((sum, chunk) => sum + rowTall(chunk), 0);
-      if (cursor + height > roof) {
+      if (cursor + height > (wall === 0 ? ceiling : roof)) {
         wall++;
         cursor = wall < walls.length ? walls[wall]!.foot + NOTE_HEAD - (EDGE + 2) * across : 0;
         continue;
@@ -1145,7 +1166,7 @@ export function piecesOf(structure: Structure, base: number, origin = { x: 0, z:
   // a drawing is not made of stone: see blueprint.ts
   if (structure.kind === 'framed') return new Float32Array(0);
   if (structure.kind === 'relic') return relicPieces(structure, base, origin);
-  if (structure.kind === 'built' && (structure.plot?.note || structure.plot?.notes?.some(Boolean))) return notedBuilding(structure, base, origin);
+  if (structure.kind === 'built' && (structure.plot?.note || structure.plot?.notes?.some(Boolean) || structure.label?.length)) return notedBuilding(structure, base, origin);
   if (structure.kind !== 'written') return instanceOf(structure, base, origin);
 
   const posts = structure.posts ?? [];

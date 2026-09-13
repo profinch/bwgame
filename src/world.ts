@@ -43,6 +43,7 @@ import { Chips } from './chips';
 import { claimAt, claimedPlots, formerPlots, implementationOf, isPlot, knownPlots, noteOf, ownerOf, plotNameOf, relicOf, revealedPlaces, worldFrom } from './plot';
 import { ownGround } from './owning';
 import { beHuman } from './human';
+import { LANDMARKS } from './landmarks';
 import { Panels } from './panels';
 import { type Driver, Tour } from './tour';
 import { Live } from './live';
@@ -184,7 +185,7 @@ async function standing(account: Account, vouched = false): Promise<Structure> {
   // in which case that code is what stands here
   const coded = isPlot(account.code);
   const claimed = coded && !vouched ? await claimAt(account.address) : null;
-  if (!coded || !(vouched || claimed)) return structureOf(account, holdings, chain.coin);
+  if (!coded || !(vouched || claimed)) return labelled(structureOf(account, holdings, chain.coin));
   const note = claimed?.note ?? (await noteOf(account.address));
   const pointedAt =
     claimed?.implementation !== undefined ? claimed.implementation : await implementationOf(account.address);
@@ -241,6 +242,27 @@ async function growPosts(account: Account): Promise<void> {
   } catch {
     // what was answered stands
   }
+}
+
+/**
+ * What the world knows a building by, written at the very top of its front
+ * wall: a landmark's name on ethereum, the factory's own address on the
+ * chain it stands on — in words of six signs, as long as it is. A wallet's
+ * plate and a plot say their own things and are left alone.
+ */
+function labelled(structure: Structure): Structure {
+  if (structure.kind !== 'built') return structure;
+  const wanted = structure.address.toLowerCase();
+  if (chain.plots && wanted === chain.plots.toLowerCase()) {
+    const hex = structure.address.replace(/^0x/, '').toLowerCase();
+    structure.label = ['0x', ...(hex.match(/.{1,6}/g) ?? [])];
+    return structure;
+  }
+  if (chain.key === 'mainnet') {
+    const known = LANDMARKS.find((mark) => mark.address.toLowerCase() === wanted);
+    if (known) structure.label = known.name.split(/\s+/);
+  }
+  return structure;
 }
 
 /**

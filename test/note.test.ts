@@ -102,3 +102,19 @@ describe('a note on a building', () => {
     expect(front(piecesOf(whole, 10)).words).toBe(3);
   });
 });
+
+describe('a label on a building', () => {
+  it('hangs from the roof of the front wall, in the same runes, and the notes climb no higher', () => {
+    const plain = { ...noted(''), label: ['usdc'] } as Structure;
+    const pieces = piecesOf(plain, 10);
+    expect(pieces.length / INSTANCE_FLOATS).toBeGreaterThan(1);
+    const { strokes, words } = front(pieces);
+    expect(words).toBe(1);
+    // near the roof: the building is 9 tall on a base of 10
+    expect(Math.min(...strokes.map((p) => p[1]!))).toBeGreaterThan(10 + 9 - 1.5);
+    // a long address comes as several words, all placed
+    const factory = { ...noted(''), wide: 30, deep: 20, label: ['0x', 'cea322', '619d37', '5b381b', 'ff95e5', '3a02ef', '92ea81', 'b5df'] } as Structure;
+    const many = piecesOf(factory, 10);
+    expect(many.length / INSTANCE_FLOATS).toBeGreaterThan(40);
+  });
+});
