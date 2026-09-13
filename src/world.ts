@@ -1550,7 +1550,23 @@ function takeDemoJump(): boolean {
       clip.style.width = `${Math.round(last.right - first.left) + 2 * ROOM}px`;
       const under = Math.round(header.getBoundingClientRect().bottom);
       clip.style.top = `${under}px`;
+      // a bar is as wide as its longest row and no wider, and hangs under its
+      // own word in the menu: its right edge on the right edge of the corners
+      // round that word; the left follows from the rows
+      for (const [b, link] of [[bar, chainLink], [infoBar, infoLink], [panelBar, panelsLink]] as const) {
+        let widest = 0;
+        for (const row of b.querySelectorAll<HTMLElement>('.wopt, .wcur')) {
+          const text = document.createRange();
+          text.selectNodeContents(row);
+          widest = Math.max(widest, text.getBoundingClientRect().width);
+        }
+        b.style.width = `${Math.ceil(widest) + 2 * BAR_SIDE}px`;
+        b.style.left = 'auto';
+        b.style.right = `${Math.round(last.right + ROOM - (link.getBoundingClientRect().right + 2))}px`;
+      }
     };
+    /** Room either side of a bar's longest row: the arrow's, and as much again on the left so the rows stay centred. */
+    const BAR_SIDE = 28;
 
     // the panels: down with the menu's "panels", a row a panel, the arrow takes it away
     const panels = new Panels(panelList);
