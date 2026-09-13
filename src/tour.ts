@@ -114,13 +114,17 @@ export const STEPS: readonly Step[] = [
       d.look(-0.35, 0);
       await wait(2600);
       d.mark(null);
-      // then the sky: up, a couple of failed ones shaking and drawn back, and down again
+      // then the sky: up, a couple of failed ones shaking and drawn back while
+      // the eyes pan slowly, and down again by exactly as much
       d.look(0.1, 0.3);
+      await wait(2500);
+      d.look(0.1, 0);
       d.failedTraffic(3);
-      await wait(5000);
+      await wait(4000);
       d.look(0, -0.3);
-      await wait(2200);
-      // and a few steps, to say how
+      await wait(2500);
+      d.look(0, 0);
+      // and a few steps, level, to say how
       d.walk(1, 0, false);
       await wait(1800);
       d.walk(1, 0, true);

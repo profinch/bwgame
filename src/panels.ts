@@ -85,7 +85,23 @@ export class Panels {
 
   /** Every panel on the screen for the while — the onboarding shows them all — the choice kept. */
   suspend(): void {
-    for (const panel of PANELS) document.body.classList.remove(`off-${panel.key}`);
+    const rows = this.list.children;
+    PANELS.forEach((panel, i) => {
+      rows[i]?.classList.add('on');
+      document.body.classList.remove(`off-${panel.key}`);
+    });
+  }
+
+  /**
+   * A panel put away or brought back for show — the onboarding's — without
+   * touching the choice: the body's class and the row's light only, undone by
+   * `suspend`, and the choice itself back with `restore`.
+   */
+  pretend(key: string): void {
+    const i = PANELS.findIndex((panel) => panel.key === key);
+    if (i < 0) return;
+    const off = document.body.classList.toggle(`off-${key}`);
+    this.list.children[i]?.classList.toggle('on', !off);
   }
 
   /** The choice back on the screen. */

@@ -1711,9 +1711,8 @@ function takeDemoJump(): boolean {
         tourLink.classList.add('active');
       },
       unfoldWorlds: () => unfold(true),
-      togglePanel: (key) => {
-        for (const row of panelList.querySelectorAll<HTMLButtonElement>('.wopt')) if (row.textContent === key) row.click();
-      },
+      // for show: the choice is not touched, and every step begins with every panel on
+      togglePanel: (key) => panels.pretend(key),
       flipTheme: () => document.querySelector<HTMLElement>('#tg')?.click(),
       view: (firstPerson) => {
         overShoulder = !firstPerson;
@@ -1853,7 +1852,8 @@ function takeDemoJump(): boolean {
         // the page the way round it was when the tour began, and the view as it was
         if ((document.documentElement.dataset.t ?? 'light') !== (beforeTour?.theme ?? 'light')) driver.flipTheme();
         if (beforeTour) overShoulder = beforeTour.overShoulder;
-        // the panels speaking for themselves, the fields empty, the slider as it was
+        // every panel on the screen, speaking for itself; the fields empty, the slider as it was
+        panels.suspend();
         demo.dig = false;
         demo.claimHeld = false;
         driver.claimButtons(false, false);
