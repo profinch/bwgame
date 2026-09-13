@@ -161,15 +161,10 @@ export const STEPS: readonly Step[] = [
   },
   {
     scene: 'wallet',
-    says: 'a wallet is a plate, a post for each token it holds: as tall as the share of the token\'s whole supply, its name and the amount cut into it in runes. this plate is the tour\'s own.',
+    says: 'a wallet is a plate, a post for each token it holds, coming up one by one as the chain is read: as tall as the share of the token\'s whole supply, its name and the amount cut into it in runes. this plate is the tour\'s own.',
     async play(d, wait) {
-      d.look(0, -0.1);
-      await wait(2500);
-      d.look(0.25, 0);
-      await wait(2500);
-      d.look(-0.25, 0);
-      await wait(2500);
-      d.stop();
+      // the eyes stay on the plate while its posts come up
+      await wait(9000);
     },
   },
   {

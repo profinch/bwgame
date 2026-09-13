@@ -1123,7 +1123,7 @@ export function standingOn(
       halfWide: post.wide / 2,
       halfDeep: post.wide / 2,
       turn: post.turn,
-      top: foot + post.tall * (post.grown ?? 1),
+      top: foot + post.tall * Math.max(0, post.grown ?? 1),
     };
   });
 }
@@ -1175,7 +1175,8 @@ export function piecesOf(structure: Structure, base: number, origin = { x: 0, z:
     // rectangles that go round the strokes, so the strokes are the gap
     // one still coming up stands as tall as it has grown, its writing riding
     // on the top and cut off at the plate, the way a building's is
-    const tall = post.tall * (post.grown ?? 1);
+    // a post told to wait its turn stands below zero until its turn comes: nothing of it yet
+    const tall = post.tall * Math.max(0, post.grown ?? 1);
     if (post.wide < WORTH_WRITING) {
       // too small to write on: a bare peg, and the readout still names it
       put(px, foot, pz, post.wide, tall, post.wide, post.turn);

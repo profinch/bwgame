@@ -1892,6 +1892,7 @@ function takeDemoJump(): boolean {
         for (let i = structures.length - 1; i >= 0; i--) if (structures[i]!.mock) structures.splice(i, 1);
         for (let i = rising.length - 1; i >= 0; i--) if (rising[i]!.mock) rising.splice(i, 1);
         for (let i = inking.length - 1; i >= 0; i--) if (inking[i]!.mock) inking.splice(i, 1);
+        for (let i = sprouting.length - 1; i >= 0; i--) if (sprouting[i]!.mock) sprouting.splice(i, 1);
         settle();
         mockPeer.on = false;
         live?.peers.delete(MOCK_PEER);
@@ -1923,7 +1924,11 @@ function takeDemoJump(): boolean {
           player.y = ground.surfaceAt(player.x, player.z);
           descent = 0;
           turning = null;
-          raise(mockWallet());
+          // its posts come up one after another, as a real plate's do while the feed is read
+          const plate = mockWallet();
+          plate.posts?.forEach((post, i) => (post.grown = -i * 0.8));
+          raise(plate);
+          sprouting.push(plate);
           return null;
         }
         // beside the tour's contract, on the same spot every time, the contract standing
@@ -1956,6 +1961,7 @@ function takeDemoJump(): boolean {
         for (let i = structures.length - 1; i >= 0; i--) if (structures[i]!.mock) structures.splice(i, 1);
         for (let i = rising.length - 1; i >= 0; i--) if (rising[i]!.mock) rising.splice(i, 1);
         for (let i = inking.length - 1; i >= 0; i--) if (inking[i]!.mock) inking.splice(i, 1);
+        for (let i = sprouting.length - 1; i >= 0; i--) if (sprouting[i]!.mock) sprouting.splice(i, 1);
         settle();
         mockPeer.on = false;
         live?.peers.delete(MOCK_PEER);
