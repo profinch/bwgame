@@ -118,17 +118,19 @@ describe('a label on a building', () => {
     const pieces = piecesOf(plain, 10);
     const marks = inked(pieces);
     expect(marks.length).toBeGreaterThan(4);
-    // at the top: the building is 9 tall on a base of 10, the line a tenth of it, three cells under the roof
-    const top = Math.max(...marks.map((p) => p[1]! + p[4]!));
-    const foot = Math.min(...marks.map((p) => p[1]!));
-    expect(top).toBeLessThanOrEqual(19 + 1e-6);
-    expect(top - foot).toBeLessThanOrEqual(0.9 + 1e-6);
-    expect(top - foot).toBeGreaterThan(0.5);
-    // on every wall, and on each no wider than eight tenths of it: the front wall's pieces stand just past z = 2.5
+    // on every wall — the front wall's pieces stand just past z = 2.5, the right wall's past x = 3 —
+    // each wall's line sized to that wall
     const onFront = marks.filter((p) => p[2]! > 2.5);
     const onRight = marks.filter((p) => p[0]! > 3);
     expect(onFront.length).toBeGreaterThan(4);
     expect(onRight.length).toBeGreaterThan(4);
+    // at the top: the building is 9 tall on a base of 10, the line a tenth of it, three cells under the roof
+    const top = Math.max(...onFront.map((p) => p[1]! + p[4]!));
+    const foot = Math.min(...onFront.map((p) => p[1]!));
+    expect(top).toBeLessThanOrEqual(19 + 1e-6);
+    expect(top - foot).toBeLessThanOrEqual(0.9 + 1e-6);
+    expect(top - foot).toBeGreaterThan(0.5);
+    // and no wider than eight tenths of the wall
     const xs = onFront.flatMap((p) => [p[0]! - p[3]! / 2, p[0]! + p[3]! / 2]);
     expect(Math.max(...xs) - Math.min(...xs)).toBeLessThanOrEqual(0.8 * 6 + 1e-6);
     // a whole address fits in the line too
