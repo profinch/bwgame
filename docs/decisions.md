@@ -62,8 +62,9 @@ What was decided, and why. What was refused, and why. Dated where the date matte
   is closed to a stranger — the world shows the chain, and the chain has no persons — but what is
   *kept* for everybody rests on a person's word at once and on strangers' only when five agree.
   A person is drawn in the walker's grey, a stranger in white; nothing else about them is known
-  or shown. The token lives in the browser for the credential's ninety days. The panel is put
-  away by default (13.09.2026): it is asked for under *view*, and is as tall as its words.
+  or shown. The token lives in the browser for the credential's ninety days. The panel is as tall
+  as its words, and shown by default like every panel for the hackathon (a panel can carry a
+  default of its own; none does yet).
 - **What is written on a building stands out of the wall** (13.09.2026): each stroke a small dark
   block on the face, the wall itself one whole box. Cut in as grooves — the face laid back in
   pieces round the strokes over a dark floor — the writing shimmered: pieces meeting edge to

@@ -15,8 +15,8 @@ export const PANELS: readonly { key: string; at: string; cross?: false; shown?: 
   { key: 'claim', at: '.hud.claim' },
   // your own plot, when you stand on it: write, point at code, name, seal
   { key: 'owner', at: '.hud.own' },
-  // standing here as a person: the selfie check, and what it earns — put away until asked for
-  { key: 'person', at: '.hud.person', shown: false },
+  // standing here as a person: the selfie check, and what it earns
+  { key: 'person', at: '.hud.person' },
 ];
 
 /** The choice, a panel at a time: `{ "claim": false }` says the claim panel is put away. */
