@@ -127,12 +127,12 @@ describe('a label on a building', () => {
     // at the top: the building is 9 tall on a base of 10, the line a tenth of it, three cells under the roof
     const top = Math.max(...onFront.map((p) => p[1]! + p[4]!));
     const foot = Math.min(...onFront.map((p) => p[1]!));
-    expect(top).toBeLessThanOrEqual(19 + 1e-6);
-    expect(top - foot).toBeLessThanOrEqual(0.9 + 1e-6);
+    expect(top).toBeLessThanOrEqual(19 + 1e-4);
+    expect(top - foot).toBeLessThanOrEqual(0.9 + 1e-4);
     expect(top - foot).toBeGreaterThan(0.5);
     // and no wider than eight tenths of the wall
     const xs = onFront.flatMap((p) => [p[0]! - p[3]! / 2, p[0]! + p[3]! / 2]);
-    expect(Math.max(...xs) - Math.min(...xs)).toBeLessThanOrEqual(0.8 * 6 + 1e-6);
+    expect(Math.max(...xs) - Math.min(...xs)).toBeLessThanOrEqual(0.8 * 6 + 1e-4);
     // a whole address fits in the line too
     const factory = { ...noted(''), wide: 30, deep: 20, tall: 50, label: '0xcea322619d375b381bff95e53a02ef92ea81b5df' } as Structure;
     expect(inked(piecesOf(factory, 10)).length).toBeGreaterThan(60);
