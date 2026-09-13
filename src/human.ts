@@ -176,7 +176,7 @@ export function beHuman(panel: HTMLElement, feed: string | null, live: Live | nu
     const have = kept();
     if (!have && serverSet === false) {
       state('none');
-      said.textContent = 'a stranger, here';
+      said.textContent = 'stranger';
       note.textContent = 'the selfie check with World is not set up on this server yet: everybody here is a stranger, and the world works the same';
       return;
     }
@@ -195,8 +195,9 @@ export function beHuman(panel: HTMLElement, feed: string | null, live: Live | nu
       return;
     }
     state('idle');
-    said.textContent = 'a stranger, here';
-    note.textContent = `${STRANGER_SAID} a selfie check with World says one real person is behind this screen: a person's finds are kept for everybody at once.`;
+    said.textContent = 'stranger';
+    note.textContent =
+      "a selfie check with World says one real person is behind this screen. a person's finds are kept for everybody at once; a stranger's only once five strangers agree.";
   };
 
   // told once the room has heard the token, or not
@@ -209,7 +210,7 @@ export function beHuman(panel: HTMLElement, feed: string | null, live: Live | nu
   const fail = (why: string) => {
     asking = null;
     state('idle');
-    said.textContent = 'a stranger, here';
+    said.textContent = 'stranger';
     note.textContent = why;
     saidUntil = Date.now() + 12_000;
   };
