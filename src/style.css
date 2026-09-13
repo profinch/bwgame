@@ -1084,7 +1084,7 @@ body.off-person .hud.person {
 
 /* opened on a page: it is there from the first frame, without the fade, and
    nothing of the world shows behind it while it loads */
-html.pagefirst .pageview {
+html.pagefirst .pageview.on {
   opacity: 1;
   pointer-events: auto;
   transition: none;

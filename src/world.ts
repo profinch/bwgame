@@ -1492,13 +1492,12 @@ function takeDemoJump(): boolean {
   const sel = document.querySelector<HTMLElement>('#wsel');
   const cur = document.querySelector<HTMLElement>('#wcur');
   const list = document.querySelector<HTMLElement>('#wlist');
-  const pageView = document.querySelector<HTMLIFrameElement>('#pageview');
   const infoBar = document.querySelector<HTMLElement>('#infobar');
   const infoList = document.querySelector<HTMLElement>('#ilist');
   const panelBar = document.querySelector<HTMLElement>('#panelbar');
   const panelList = document.querySelector<HTMLElement>('#plist');
   const tourCard = document.querySelector<HTMLElement>('.hud.tour');
-  if (header && menu && frame && tourLink && infoLink && panelsLink && chainLink && clip && bar && sel && cur && list && pageView
+  if (header && menu && frame && tourLink && infoLink && panelsLink && chainLink && clip && bar && sel && cur && list
     && infoBar && infoList && panelBar && panelList && tourCard) {
     cur.textContent = chain.name;
     // sepolia first: the world where ground is taken
@@ -1599,25 +1598,43 @@ function takeDemoJump(): boolean {
     /** The page open under the header, if one is. */
     let page: Page | null = null;
     const pageOf = (hash: string): Page | null => (PAGES as readonly string[]).includes(hash.slice(1)) ? (hash.slice(1) as Page) : null;
-    /** A page open in place, or none: the frame fades in as the site's pages do — the first time only once it has loaded, so that what fades in is the page and not a blank one. */
+    /**
+     * A frame a page, made when the page is first asked for and kept: so a page
+     * fades in as the site's pages do — the first time only once it has loaded,
+     * so that what fades in is the page and not a blank one — and two pages
+     * cross-fade, the one going out under the one coming in, with no blank
+     * frame and no flash of the world between them.
+     */
+    const frames = new Map<Page, HTMLIFrameElement>();
+    const frameFor = (name: Page): HTMLIFrameElement => {
+      let it = frames.get(name);
+      if (!it) {
+        it = document.createElement('iframe');
+        it.className = 'pageview';
+        it.title = `the ${name}`;
+        it.src = name === 'map' ? '/map.html?embedded' : `/${name}.html?embedded`;
+        it.addEventListener(
+          'load',
+          () => {
+            it!.dataset.loaded = 'yes';
+            it!.classList.toggle('on', page === name);
+          },
+          { once: true },
+        );
+        clip.after(it);
+        frames.set(name, it);
+      }
+      return it;
+    };
+    /** A page open in place, or none. */
     const openPage = (next: Page | null) => {
       page = next;
       for (const [name, row] of pageRows) row.classList.toggle('on', name === next);
       document.body.classList.toggle('onpage', next !== null);
       // back from a page opened straight into, the world shows and fades run as usual
       if (next === null) document.documentElement.classList.remove('pagefirst');
-      if (next) {
-        const src = next === 'map' ? '/map.html?embedded' : `/${next}.html?embedded`;
-        if (new URL(pageView.src || 'about:blank', location.href).pathname !== new URL(src, location.href).pathname) {
-          pageView.classList.remove('on');
-          pageView.src = src;
-          pageView.addEventListener('load', () => pageView.classList.toggle('on', page === next), { once: true });
-        } else {
-          pageView.classList.add('on');
-        }
-      } else {
-        pageView.classList.remove('on');
-      }
+      if (next) frameFor(next);
+      for (const [name, it] of frames) it.classList.toggle('on', name === next && it.dataset.loaded === 'yes');
       history.replaceState(null, '', next ? `#${next}` : location.pathname + location.search);
     };
     const show = (next: typeof section, on: Page | null = null) => {
