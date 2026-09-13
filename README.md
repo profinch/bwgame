@@ -58,7 +58,7 @@ What one person finds is kept for everybody: a place seen by one is seen by all,
 visit. That invites one person with fifty tabs — so the world asks who is a person. **World ID's
 Selfie Check** (a selfie in the World App: one live person behind the screen) makes you one: a
 person's word about a place is kept at once, and they stand in the room in the same grey as you;
-a stranger's word is heard by the room and kept once three strangers agree, and they stand in
+a stranger's word is heard by the room and kept once five strangers agree, and they stand in
 white. The credential is a weight, not a gate — the world works the same for a stranger, it just
 trusts them a third as much. Panel *person*, `src/human.ts`, `live/server.js`; what building it
 was like is in [`docs/world-id-feedback.md`](docs/world-id-feedback.md).
@@ -130,7 +130,7 @@ link: `?at=0x…` or `?at=name.eth`; `?chain=mainnet` walks the mainnet instead.
 | subgraph | [`ground-state`](https://thegraph.com/studio/subgraph/ground-state) on Subgraph Studio — [query](https://api.studio.thegraph.com/query/1760017/ground-state/v0.5.0), source in `subgraph/`; read by the live server, pushed to pages |
 | token api | The Graph's Token API (Pinax), asked by the live server for mainnet wallets' holdings — `live/server.js`, `/live/holdings` |
 | live server | `wss://gs.bwtoken.io/live` — who else is here, and word of a claim as the indexer has it; source in `live/` |
-| world id | Selfie Check through IDKit; the live server signs the request (`/live/human`) and has World verify the proof at `developer.world.org/api/v4/verify`; a person's word weighs three strangers' |
+| world id | Selfie Check through IDKit; the live server signs the request (`/live/human`) and has World verify the proof at `developer.world.org/api/v4/verify`; a person's word weighs five strangers' |
 | names (ENSv2, Sepolia) | `groundstate.eth` on the ENSv2 beta → registry [`0xbef600d2b4b19918ed7543bfecf61f412d8e210c`](https://eth-sepolia.blockscout.com/address/0xbef600d2b4b19918ed7543bfecf61f412d8e210c) (a `UserRegistry` via the VerifiableFactory), resolver and registrar [`Names` `0x2E32A8CE61f46c7276Bc3786e0a7AE32da2E29ED`](https://eth-sepolia.blockscout.com/address/0x2E32A8CE61f46c7276Bc3786e0a7AE32da2E29ED) — `contracts/src/Names.sol` |
 | first named plot | `first.groundstate.eth` → [`0x3095c27de366b76074b604d83c7440d22fa33aad`](https://eth-sepolia.blockscout.com/address/0x3095c27de366b76074b604d83c7440d22fa33aad) |
 

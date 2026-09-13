@@ -9,7 +9,7 @@ A place in Ground State resolves faster the more people stand in it, and what on
 kept for everybody. Both invite one person with fifty tabs. Selfie Check is our answer: a person
 who has passed it stands in the room as a person, drawn in the same grey as you; a stranger is
 drawn in white. A person's word about a place — "there is a wallet standing here" — is kept for
-everybody at once; a stranger's is heard by the room and kept once three strangers agree. The
+everybody at once; a stranger's is heard by the room and kept once five strangers agree. The
 credential is used as a weight, not a gate: the world works the same for a stranger, it just
 trusts them a third as much (`live/server.js`, `STRANGER_WORD`; `src/human.ts`).
 

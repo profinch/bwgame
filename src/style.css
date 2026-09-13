@@ -1280,7 +1280,7 @@ body.embedded #app {
   gap: 8px;
 }
 
-.hud.own .warn {
+.hud .warn {
   position: relative;
   width: 18px;
   height: 16px;
@@ -1289,7 +1289,7 @@ body.embedded #app {
 }
 
 /* a triangle with rounded corners: a stroked path, as a mask, in the text's tone */
-.hud.own .warn::before {
+.hud .warn::before {
   content: '';
   position: absolute;
   inset: 0;
@@ -1298,7 +1298,7 @@ body.embedded #app {
   mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 18'%3E%3Cpath d='M10 2.5 L18 15.5 H2 Z' fill='%23000' stroke='%23000' stroke-width='3' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat;
 }
 
-.hud.own .warn::after {
+.hud .warn::after {
   content: '!';
   position: absolute;
   left: 0;
@@ -1310,7 +1310,7 @@ body.embedded #app {
 }
 
 /* the word, to the right of the sign, its top level with the sign's */
-.hud.own .warn-said {
+.hud .warn-said {
   position: absolute;
   left: calc(100% + 10px);
   top: -2px;
@@ -1329,8 +1329,8 @@ body.embedded #app {
   z-index: 2;
 }
 
-.hud.own .warn:hover .warn-said,
-.hud.own .warn:focus .warn-said {
+.hud .warn:hover .warn-said,
+.hud .warn:focus .warn-said {
   opacity: 1;
 }
 
@@ -1568,14 +1568,44 @@ body.touch .touchpad-buttons {
   bottom: auto;
   pointer-events: auto;
   width: 320px;
-  min-height: 200px;
   padding: 12px 16px;
   align-content: start;
   border-radius: 22px;
   border: 1px solid color-mix(in srgb, var(--line) 8%, transparent);
   background: color-mix(in srgb, var(--bg) 78%, transparent);
   display: grid;
+  /* as tall as its words and no taller: the foot moves with them, smoothly (the height is set by the panel itself) */
+  box-sizing: border-box;
+  transition: height 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.hud.person .person-body {
+  display: grid;
   gap: 6px;
+  align-content: start;
+  transition: opacity 0.2s;
+}
+
+.hud.person .person-body.changing {
+  opacity: 0;
+  transition: none;
+}
+
+.hud.person .person-note a {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--fg) 45%, transparent);
+  text-underline-offset: 2px;
+}
+
+.hud.person .person-note b {
+  font-weight: 700;
+}
+
+/* at the right edge of the page the word opens to the left of the sign */
+.hud.person .warn-said {
+  left: auto;
+  right: calc(100% + 10px);
 }
 
 .hud.person p {

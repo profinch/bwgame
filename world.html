@@ -93,14 +93,19 @@
       </p>
     </aside>
     <aside class="hud person" hidden>
-      <p class="person-said">you, here</p>
-      <p class="person-note"></p>
-      <p class="person-do"><button type="button" class="prove">check that you are a person</button></p>
-      <p class="person-undo" hidden><button type="button" class="forget">a stranger again</button></p>
-      <div class="person-code" hidden>
-        <canvas class="person-qr" width="168" height="168"></canvas>
-        <p class="person-how"></p>
-        <p class="person-links"><a class="person-open" target="_blank" rel="noopener">open in World App</a><button type="button" class="person-cancel">not now</button></p>
+      <div class="person-body">
+        <p class="person-said">you, here</p>
+        <p class="person-note"></p>
+        <p class="person-do"><button type="button" class="prove">check that you are a person</button></p>
+        <p class="person-undo" hidden>
+          <button type="button" class="forget">forget me</button>
+          <span class="warn" tabindex="0" role="note" aria-label="what forgetting does"><span class="warn-said person-forget-said" role="tooltip"></span></span>
+        </p>
+        <div class="person-code" hidden>
+          <canvas class="person-qr" width="168" height="168"></canvas>
+          <p class="person-how"></p>
+          <p class="person-links"><a class="person-open" target="_blank" rel="noopener">open in World App</a><button type="button" class="person-cancel">not now</button></p>
+        </div>
       </div>
     </aside>
     <aside class="hud own" hidden>

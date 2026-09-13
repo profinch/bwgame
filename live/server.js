@@ -66,10 +66,12 @@ const SAWS_AT_MOST_EVERY = 1500;
  * person, checked by World (a selfie: one live person behind the screen), is
  * counted whole: what they found is kept for everybody at once. A stranger's
  * word is heard by the room, and kept only once this many strangers have said
- * the same. Not a wall — three tabs are three strangers — but the cost of
+ * the same. Not a wall — five tabs are five strangers — but the cost of
  * filling the memory becomes work rather than a loop, which is the point.
+ * Telling one person's tabs from five people is for the server to learn:
+ * see the roadmap.
  */
-const STRANGER_WORD = 1 / 3;
+const STRANGER_WORD = 1 / 5;
 
 /**
  * World ID, Selfie Check: who here is a person.

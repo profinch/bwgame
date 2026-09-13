@@ -6,7 +6,7 @@
  * A panel put away is hidden by a class on the body. The other players and the
  * block overhead are not panels and are never put away: they are the world.
  */
-export const PANELS: readonly { key: string; at: string; cross?: false }[] = [
+export const PANELS: readonly { key: string; at: string; cross?: false; shown?: false }[] = [
   // where you stand, what is near, the block overhead: no box, so no cross — the row in the filter puts it away
   { key: 'metrics', at: '.hud.bottom', cross: false },
   // an address or a name, and you are there
@@ -15,21 +15,35 @@ export const PANELS: readonly { key: string; at: string; cross?: false }[] = [
   { key: 'claim', at: '.hud.claim' },
   // your own plot, when you stand on it: write, point at code, name, seal
   { key: 'owner', at: '.hud.own' },
-  // standing here as a person: the selfie check, and what it earns
-  { key: 'person', at: '.hud.person' },
+  // standing here as a person: the selfie check, and what it earns — put away until asked for
+  { key: 'person', at: '.hud.person', shown: false },
 ];
 
-const KEPT_AS = 'gs-panels-off';
+/** The choice, a panel at a time: `{ "claim": false }` says the claim panel is put away. */
+const KEPT_AS = 'gs-panels';
+/** The choice as it was kept before 13.09.2026: the list of panels put away. Read once, then kept the new way. */
+const KEPT_AS_BEFORE = 'gs-panels-off';
 
 export class Panels {
   private readonly off = new Set<string>();
 
   constructor(private readonly list: HTMLElement) {
+    // a panel not chosen either way stands as its default; one chosen, as chosen
+    for (const panel of PANELS) if (panel.shown === false) this.off.add(panel.key);
     try {
-      const kept = JSON.parse(localStorage.getItem(KEPT_AS) ?? '[]') as unknown;
-      if (Array.isArray(kept)) for (const key of kept) if (typeof key === 'string') this.off.add(key);
+      const kept = JSON.parse(localStorage.getItem(KEPT_AS) ?? 'null') as unknown;
+      if (kept && typeof kept === 'object') {
+        for (const [key, shown] of Object.entries(kept as Record<string, unknown>)) {
+          if (typeof shown !== 'boolean') continue;
+          if (shown) this.off.delete(key);
+          else this.off.add(key);
+        }
+      } else {
+        const before = JSON.parse(localStorage.getItem(KEPT_AS_BEFORE) ?? '[]') as unknown;
+        if (Array.isArray(before)) for (const key of before) if (typeof key === 'string') this.off.add(key);
+      }
     } catch {
-      // then everything is shown
+      // then every panel stands as its default
     }
     const rows: HTMLElement[] = [];
     for (const panel of PANELS) {
@@ -84,7 +98,10 @@ export class Panels {
     else this.off.add(key);
     this.apply();
     try {
-      localStorage.setItem(KEPT_AS, JSON.stringify([...this.off]));
+      const choice: Record<string, boolean> = {};
+      for (const panel of PANELS) choice[panel.key] = !this.off.has(panel.key);
+      localStorage.setItem(KEPT_AS, JSON.stringify(choice));
+      localStorage.removeItem(KEPT_AS_BEFORE);
     } catch {
       // then it is forgotten with the page
     }

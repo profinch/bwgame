@@ -57,12 +57,13 @@ What was decided, and why. What was refused, and why. Dated where the date matte
 - **The header is bwtoken.io's nav to the pixel**, so a tab switch between the two moves nothing;
   the menu is the site's — *map*, *blockchain* with the corners round it — and the chains hang
   under it in the site's sub-bar. The line by the mark: *the chain on foot*.
-- **A person's word weighs three strangers'** (13.09.2026): World ID's Selfie Check is used as a
+- **A person's word weighs five strangers'** (13.09.2026, three until the evening): World ID's Selfie Check is used as a
   weight in the shared memory of revealed places, not as a gate on anything. Nothing in the world
   is closed to a stranger — the world shows the chain, and the chain has no persons — but what is
-  *kept* for everybody rests on a person's word at once and on strangers' only when three agree.
+  *kept* for everybody rests on a person's word at once and on strangers' only when five agree.
   A person is drawn in the walker's grey, a stranger in white; nothing else about them is known
-  or shown. The token lives in the browser for the credential's ninety days.
+  or shown. The token lives in the browser for the credential's ninety days. The panel is put
+  away by default (13.09.2026): it is asked for under *view*, and is as tall as its words.
 - **What is written on a building stands out of the wall** (13.09.2026): each stroke a small dark
   block on the face, the wall itself one whole box. Cut in as grooves — the face laid back in
   pieces round the strokes over a dark floor — the writing shimmered: pieces meeting edge to

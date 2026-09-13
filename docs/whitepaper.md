@@ -171,7 +171,7 @@ does not yet decide it.
 *Sybil.* A place resolves faster with more people present, and what one finds is kept for all,
 which invites one person with many tabs. A proof of personhood (World ID's Selfie Check) lets a
 verified person count as a unit and a stranger as a fraction: a person's word is kept at once, a
-stranger's when three agree. It weighs; it does not gate.
+stranger's when five agree. It weighs; it does not gate.
 
 *Enumeration.* The world cannot list a chain. It is discovered. A shared memory of what has been
 revealed, kept by the small server, makes a place seen by one seen by all.
