@@ -104,17 +104,32 @@ describe('a note on a building', () => {
 });
 
 describe('a label on a building', () => {
-  it('hangs from the roof of the front wall, in the same runes, and the notes climb no higher', () => {
-    const plain = { ...noted(''), label: ['usdc'] } as Structure;
+  /** The dark raised pieces on any wall, with their spans. */
+  const inked = (pieces: Float32Array) => {
+    const out: number[][] = [];
+    for (let i = INSTANCE_FLOATS; i < pieces.length; i += INSTANCE_FLOATS) {
+      const piece = [...pieces.subarray(i, i + INSTANCE_FLOATS)];
+      if (Math.abs(piece[7]! - 0.08) < 1e-6) out.push(piece);
+    }
+    return out;
+  };
+  it('is one line at the top of a wall, eight tenths of it wide and a tenth of the building tall, in the same runes', () => {
+    const plain = { ...noted(''), label: 'usdc' } as Structure;
     const pieces = piecesOf(plain, 10);
-    expect(pieces.length / INSTANCE_FLOATS).toBeGreaterThan(1);
-    const { strokes, words } = front(pieces);
-    expect(words).toBe(1);
-    // near the roof: the building is 9 tall on a base of 10
-    expect(Math.min(...strokes.map((p) => p[1]!))).toBeGreaterThan(10 + 9 - 1.5);
-    // a long address comes as several words, all placed
-    const factory = { ...noted(''), wide: 30, deep: 20, label: ['0x', 'cea322', '619d37', '5b381b', 'ff95e5', '3a02ef', '92ea81', 'b5df'] } as Structure;
-    const many = piecesOf(factory, 10);
-    expect(many.length / INSTANCE_FLOATS).toBeGreaterThan(40);
+    const marks = inked(pieces);
+    expect(marks.length).toBeGreaterThan(4);
+    // at the top: the building is 9 tall on a base of 10, the line a tenth of it, three cells under the roof
+    const top = Math.max(...marks.map((p) => p[1]! + p[4]!));
+    const foot = Math.min(...marks.map((p) => p[1]!));
+    expect(top).toBeLessThanOrEqual(19 + 1e-6);
+    expect(top - foot).toBeLessThanOrEqual(0.9 + 1e-6);
+    expect(top - foot).toBeGreaterThan(0.5);
+    // and no wider than eight tenths of a wall
+    const xs = marks.flatMap((p) => [p[0]! - p[3]! / 2, p[0]! + p[3]! / 2]);
+    const zs = marks.flatMap((p) => [p[2]! - p[5]! / 2, p[2]! + p[5]! / 2]);
+    expect(Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...zs) - Math.min(...zs))).toBeLessThanOrEqual(0.8 * 6 + 1e-6);
+    // a whole address fits in the line too
+    const factory = { ...noted(''), wide: 30, deep: 20, tall: 50, label: '0xcea322619d375b381bff95e53a02ef92ea81b5df' } as Structure;
+    expect(inked(piecesOf(factory, 10)).length).toBeGreaterThan(60);
   });
 });

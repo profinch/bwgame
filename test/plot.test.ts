@@ -94,12 +94,13 @@ describe('a plot nobody has written into', () => {
     expect(pointed.turn).not.toBe(bare.turn);
   });
 
-  it('is drawn at seven tenths of the building it will be', () => {
+  it('is drawn at the size of the building it will be, its lines where the walls will stand', () => {
     const drawing = structureOf(plot, [], undefined, { note: '' });
     const building = structureOf(plot, [], undefined, { note: 'here' });
-    expect(drawing.wide).toBeCloseTo(building.wide * 0.7, 6);
-    expect(drawing.deep).toBeCloseTo(building.deep * 0.7, 6);
-    expect(drawing.tall).toBeCloseTo(building.tall * 0.7, 6);
+    expect(drawing.kind).toBe('framed');
+    expect(drawing.wide).toBeCloseTo(building.wide, 6);
+    expect(drawing.deep).toBeCloseTo(building.deep, 6);
+    expect(drawing.tall).toBeCloseTo(building.tall, 6);
     expect(drawing.turn).toBe(building.turn);
   });
 

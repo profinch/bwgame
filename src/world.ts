@@ -197,7 +197,7 @@ async function standing(account: Account, vouched = false): Promise<Structure> {
   const wanted = account.address.toLowerCase();
   const history = claimed?.notes ?? knownPlots().find((it) => it.plot.toLowerCase() === wanted)?.notes ?? [];
   const notes = note && history[history.length - 1] !== note ? [...history, note] : history;
-  return structureOf(account, holdings, chain.coin, {
+  const plot = structureOf(account, holdings, chain.coin, {
     note,
     notes,
     code: code && code.codeSize > 0 ? code : null,
@@ -205,6 +205,9 @@ async function standing(account: Account, vouched = false): Promise<Structure> {
     salt: claimed?.salt ?? null,
     name: named,
   });
+  // a plot is known by its own address, at the top of its wall
+  plot.label = account.address.toLowerCase();
+  return plot;
 }
 
 /**
@@ -254,13 +257,12 @@ function labelled(structure: Structure): Structure {
   if (structure.kind !== 'built') return structure;
   const wanted = structure.address.toLowerCase();
   if (chain.plots && wanted === chain.plots.toLowerCase()) {
-    const hex = structure.address.replace(/^0x/, '').toLowerCase();
-    structure.label = ['0x', ...(hex.match(/.{1,6}/g) ?? [])];
+    structure.label = wanted;
     return structure;
   }
   if (chain.key === 'mainnet') {
     const known = LANDMARKS.find((mark) => mark.address.toLowerCase() === wanted);
-    if (known) structure.label = known.name.split(/\s+/);
+    if (known) structure.label = known.name;
   }
   return structure;
 }
@@ -289,7 +291,7 @@ async function refresh(address: string): Promise<void> {
   // a drawing that has become a building goes up out of the ground; a
   // building written into anew shows the writing coming up; anything else is
   // simply itself again
-  if (before?.kind === 'framed' && now.kind !== 'framed') startRising(now);
+  if (before?.kind === 'framed' && now.kind !== 'framed') startBecoming(now, before);
   else if (before && before.plot?.note !== now.plot?.note) startInking(now);
   else raise(now);
 }
@@ -374,7 +376,8 @@ async function raiseNearby(growing = false): Promise<void> {
       const structure = await standing(account);
       // new to this world, or a drawing become a building: it goes up while
       // you watch; written into anew: the writing comes up
-      if (growing || (already?.kind === 'framed' && structure.kind !== 'framed')) startRising(structure);
+      if (already?.kind === 'framed' && structure.kind !== 'framed') startBecoming(structure, already);
+      else if (growing) startRising(structure);
       else if (already && (already.plot?.note ?? '') !== (structure.plot?.note ?? '')) startInking(structure);
       else raise(structure);
     }
@@ -1047,7 +1050,7 @@ function ride(seconds: number): void {
  * Seen in the onboarding first (13.09.2026); the game follows when the owner
  * has looked at it.
  */
-const JUMP_THROWS_GROUND = false;
+const JUMP_THROWS_GROUND = true;
 
 function fall(seconds: number): void {
   const standing = player.rise === 0;
@@ -1410,7 +1413,7 @@ function mockAddressAhead(): string {
   // the drawing fits under the header whole
   const c = Math.cos(CONTRACT_STAND.yaw);
   const sn = Math.sin(CONTRACT_STAND.yaw);
-  const right = 36;
+  const right = 44;
   const lz = -40;
   const at = { x: CONTRACT_STAND.x + c * right + sn * lz, z: CONTRACT_STAND.z + c * lz - sn * right };
   return mockAddressAt(at.x, at.z);
@@ -1430,6 +1433,7 @@ function mockPlot(address: string, note: string): Structure {
   const account: Account = { address, codeSize: 64, code: `0x${'a5'.repeat(64)}`, balance: 0n, nonce: 1 };
   const structure = structureOf(account, [], chain.coin, { note, notes: note ? [note] : [], code: null, owner: '0x000000000000000000000000000000000000d3a0', salt: null, name: undefined });
   structure.mock = true;
+  structure.label = address.toLowerCase();
   return structure;
 }
 /** Whether the auger is in the ground: for real, or for show. */
@@ -1503,6 +1507,7 @@ function mockContract(): Structure {
     name: 'first',
   });
   structure.mock = true;
+  structure.label = address.toLowerCase();
   // its front — the wall the words are on — toward the stand
   structure.turn = CONTRACT_STAND.yaw;
   return structure;
@@ -2503,8 +2508,18 @@ loop({
       // a building still becoming one keeps its drawing's lines over it, fading once the body is whole
       if (structure.drawing && structure.becoming !== undefined && structure.becoming < 1) {
         const fade = Math.max(0, Math.min(1, 1 - (structure.becoming - BODIED_AT) / (1 - BODIED_AT)));
-        const base = baseOf(structure.drawing);
-        inkOf(strokesFor(structure.drawing, base).map((stroke) => ({ ...stroke, ink: stroke.ink * fade })), 1, at, drawn);
+        // the drawing is seven tenths of the thing: its lines grow to the
+        // thing's own size as the body comes up inside them, so the building
+        // stands exactly where the drawing stood, only whole
+        const share = structure.grown ?? 0;
+        const lines: Structure = {
+          ...structure.drawing,
+          wide: structure.drawing.wide + (structure.wide - structure.drawing.wide) * share,
+          deep: structure.drawing.deep + (structure.deep - structure.drawing.deep) * share,
+          tall: structure.drawing.tall + (structure.tall - structure.drawing.tall) * share,
+        };
+        const base = baseOf(lines);
+        inkOf(strokesFor(lines, base).map((stroke) => ({ ...stroke, ink: stroke.ink * fade })), 1, at, drawn);
         continue;
       }
       if (structure.kind !== 'framed') continue;

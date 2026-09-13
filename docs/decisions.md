@@ -28,7 +28,10 @@ What was decided, and why. What was refused, and why. Dated where the date matte
   an owner deploys can run at the plot's address; `seal()` fixes it for good. Refused instead: a
   shared upgradeable implementation controlled by us.
 - **A plot with nothing in it is drawn, not built.** A blueprint in ink — dashed edges, smoked
-  glass — at seven tenths of the building's size, drawn stroke by stroke.
+  glass — at the building's own size, its lines where the walls will stand, drawn stroke by stroke
+  (seven tenths until 13.09.2026: a building coming up inside a smaller drawing did not read as the
+  same place). When something is written into it, the body comes up inside the lines, the lines
+  fade off it once it stands whole, and the words come up: one process, in the game as in the tour.
 - **Earlier generations are relics**, not hidden and not pretending: boulders with runes for the
   first ground, gates for the second.
 - **Names belong to places.** A label under `groundstate.eth` is registered with a zero role

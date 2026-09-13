@@ -64,11 +64,12 @@ export interface Structure {
   becoming?: number;
   drawing?: Structure;
   /**
-   * Words at the very top of the front wall, in the same runes as the notes:
-   * a landmark's name, the factory's address — what the world knows a
-   * building by, not what was written into it.
+   * One line at the very top of the lit wall, in the same runes as the notes,
+   * eight tenths of the wall wide and a tenth of the building tall: what the
+   * world knows a building by — a landmark's name, a plot's or the factory's
+   * own address — not what was written into it.
    */
-  label?: string[];
+  label?: string;
   /** Put up by the onboarding to show what a thing looks like; taken down when it ends. Never from the chain. */
   mock?: boolean;
   /** @deprecated the ground at the foot of the front wall: `footAt[0]` says it now. */
@@ -665,9 +666,11 @@ export function structureOf(
   const sized = plot?.code ?? account;
   const bulk = Math.log2(Math.max(64, sized.codeSize)) / Math.log2(24576);
   // a plot with nothing said into it and no code yet is the drawing of a
-  // building, and a drawing is smaller than the thing: seven tenths
+  // building — at the building's own size, its lines where the walls will
+  // stand, so what comes up comes up exactly where it was drawn (it was seven
+  // tenths until 13.09.2026)
   const drawn = plot !== null && plot.note.length === 0 && !plot.code;
-  const scale = drawn ? 0.7 : 1;
+  const scale = 1;
 
   return {
     kind: drawn ? 'framed' : 'built',
@@ -865,11 +868,26 @@ function notedBuilding(structure: Structure, base: number, origin: { x: number; 
     { width: structure.deep, foot: feet[3], lay: (u0, u1, y0, y1, inset, thick, a) => put(-(halfW - inset - thick / 2), y0, (u0 + u1) / 2, thick, y1 - y0, u1 - u0, a) },
   ];
   /** A stroke standing out of a wall's face, as much of it as the wall has grown to. */
-  const stroke = (wall: Wall, u0: number, u1: number, y0: number, y1: number) => {
+  const stroke = (wall: Wall, u0: number, u1: number, y0: number, y1: number, depth = relief) => {
     const lo = Math.max(y0, bottom);
     const hi = Math.min(y1, top);
     if (hi - lo < 1e-4 || u1 - u0 < 1e-4) return;
-    wall.lay(u0, u1, lo, hi, -relief, relief, INK);
+    wall.lay(u0, u1, lo, hi, -depth, depth, INK);
+  };
+
+  /** The wall the sun falls on: the one whose outward face looks most toward it (the sun stands at +x +z). */
+  const litWall = (): number => {
+    const normals: [number, number][] = [[sn, c], [c, -sn], [-sn, -c], [-c, sn]];
+    let best = 0;
+    let most = -Infinity;
+    normals.forEach(([nx, nz], i) => {
+      const toward = nx * 0.62 + nz * 0.28;
+      if (toward > most) {
+        most = toward;
+        best = i;
+      }
+    });
+    return best;
   };
 
   // what was written, latest first, in words
@@ -894,20 +912,25 @@ function notedBuilding(structure: Structure, base: number, origin: { x: number; 
   }
   const rowTall = (words: string[]) => (Math.max(1, ...words.map((w) => [...w].length)) * 11 + 2 * EDGE + 2) * across;
   const rowsOn: Row[][] = walls.map(() => []);
-  // the label hangs from the roof of the front wall; the notes climb no higher than its foot
-  let ceiling = roof;
-  if (structure.label?.length) {
-    const words = structure.label.map((word) => word.toLowerCase().slice(0, NOTE_SIGNS));
-    const perRow = Math.max(1, Math.floor((walls[0]!.width - POST) / POST));
-    const chunks: string[][] = [];
-    for (let i = 0; i < words.length; i += perRow) chunks.push(words.slice(i, i + perRow));
-    let y = roof - (EDGE + 2) * across;
-    for (const chunk of chunks) {
-      const tall = rowTall(chunk);
-      y -= tall;
-      rowsOn[0]!.push({ words: chunk, y0: y, tall, latest: false });
+  // the label: one line at the top of the lit wall, eight tenths of its width
+  // and a tenth of the building's height, whichever is the tighter; the notes
+  // on that wall climb no higher than its foot
+  const ceilingOn = walls.map(() => roof);
+  if (structure.label) {
+    const { cut, wide: cells } = cutOf(structure.label.toLowerCase());
+    if (cells > 0) {
+      const lit = litWall();
+      const w = walls[lit]!;
+      const cell = Math.min((0.8 * w.width) / cells, (0.1 * structure.tall) / GRID);
+      const lineTop = roof - cell * 3;
+      const u0 = -(cells * cell) / 2;
+      // raised: the strokes themselves stand out, deeper than the notes' as they are bigger
+      const strokes = cut.map((it) => (it === 1 ? 0 : 1));
+      for (const p of mergeOf(strokes, cells, GRID)) {
+        stroke(w, u0 + p.col * cell, u0 + (p.col + p.cols) * cell, lineTop - (p.row + p.rows) * cell, lineTop - p.row * cell, Math.max(relief, cell * 0.5));
+      }
+      ceilingOn[lit] = lineTop - GRID * cell - cell * 3;
     }
-    ceiling = y;
   }
   let wall = 0;
   let cursor = walls[0]!.foot + NOTE_HEAD - (EDGE + 2) * across;
@@ -925,7 +948,7 @@ function notedBuilding(structure: Structure, base: number, origin: { x: number; 
       const chunks: string[][] = [];
       for (let i = 0; i < words.length; i += perRow) chunks.push(words.slice(i, i + perRow));
       const height = chunks.reduce((sum, chunk) => sum + rowTall(chunk), 0);
-      if (cursor + height > (wall === 0 ? ceiling : roof)) {
+      if (cursor + height > ceilingOn[wall]!) {
         wall++;
         cursor = wall < walls.length ? walls[wall]!.foot + NOTE_HEAD - (EDGE + 2) * across : 0;
         continue;
@@ -1166,7 +1189,7 @@ export function piecesOf(structure: Structure, base: number, origin = { x: 0, z:
   // a drawing is not made of stone: see blueprint.ts
   if (structure.kind === 'framed') return new Float32Array(0);
   if (structure.kind === 'relic') return relicPieces(structure, base, origin);
-  if (structure.kind === 'built' && (structure.plot?.note || structure.plot?.notes?.some(Boolean) || structure.label?.length)) return notedBuilding(structure, base, origin);
+  if (structure.kind === 'built' && (structure.plot?.note || structure.plot?.notes?.some(Boolean) || structure.label)) return notedBuilding(structure, base, origin);
   if (structure.kind !== 'written') return instanceOf(structure, base, origin);
 
   const posts = structure.posts ?? [];

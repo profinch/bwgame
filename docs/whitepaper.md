@@ -126,7 +126,7 @@ never change: the promise a user of that code wants. The plot's own state lives 
 slots, so an implementation is written as any contract is.
 
 The world draws a plot as what it contains. A plot with nothing in it is drawn as a blueprint — the
-edges of the building it will be, in ink, at seven tenths of the size — and becomes a building the
+edges of the building it will be, in ink, at its own size — and becomes a building the
 moment something is written into it, or the code it points at when it points at code.
 
 Plots of earlier generations of the factory are not hidden and do not pretend: they stand as
