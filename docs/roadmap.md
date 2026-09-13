@@ -86,17 +86,25 @@ In roughly the order it matters:
    as 80-bit coordinates and hold at any depth. Then fix the whitepaper's line about it (§8).
    Decided 12.09.2026; the subgraph is not to be touched before the hackathon ends.
 7. **Reverse names for plots** (ENSv2): a plot's address answering `first.groundstate.eth`.
-8. **Buildings shaped by their owners:** the `IGroundStateBuilding` interface and a template
+8. **A top-level name of our own.** Every name today is under `groundstate.eth`. Next, a name of the
+   world's own at the top of the tree — `well.ground`, or whatever the label turns out to be — so a
+   place is said in two words. ENSv2 makes this the same shape as what stands already: the root is
+   a registry like ours, a top-level name is a label in it with its subregistry pointed at our
+   registry, and `Names` goes on being the registrar and the wildcard resolver underneath. The same
+   door lets anyone bring a name they already hold: point its subregistry at us, and their plots are
+   named under it. What a top-level name costs is not code but the ENS root's consent, which is
+   asked for, not taken. Recorded 13.09.2026.
+9. **Buildings shaped by their owners:** the `IGroundStateBuilding` interface and a template
    implementation.
-9. **Kinds of contracts by interface:** tokens, NFT collections, pools, multisigs, proxies, each
+10. **Kinds of contracts by interface:** tokens, NFT collections, pools, multisigs, proxies, each
    with a form; verified names from Sourcify.
-10. **Mountains:** a larger amplitude on the largest cells, so some of the ground rises by
+11. **Mountains:** a larger amplitude on the largest cells, so some of the ground rises by
    hundreds of metres within view; hills are there already.
-11. **GPU digging** (WebGPU): a hundred times the attempts, a tenth of the distance.
-12. **Plots on an L2 and on mainnet;** other chains as other worlds; bridges as passages.
-13. **Economy around plots:** selling, renting, lending a place — as contracts, not as our rules.
-14. **A new figure** for the walker.
-15. Beacons, a first-discoverer record, a feed of active addresses to go and see.
+12. **GPU digging** (WebGPU): a hundred times the attempts, a tenth of the distance.
+13. **Plots on an L2 and on mainnet;** other chains as other worlds; bridges as passages.
+14. **Economy around plots:** selling, renting, lending a place — as contracts, not as our rules.
+15. **A new figure** for the walker.
+16. Beacons, a first-discoverer record, a feed of active addresses to go and see.
 
 ## Never
 
