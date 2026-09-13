@@ -1422,7 +1422,8 @@ const CONTRACT_STAND = (() => {
 function mockContract(): Structure {
   const address = mockAddressAt(CONTRACT_AT.x, CONTRACT_AT.z);
   const account: Account = { address, codeSize: 2271, code: `0x${'a5'.repeat(2271)}`, balance: 0n, nonce: 1 };
-  const notes = ['profinch was here', 'make the world a little bit better'];
+  // the first plot's words as they stand on it (13.09.2026), so the tour's building reads as the real one does
+  const notes = ['profinch was here', 'make the world a little bit better', 'I am a possible assistant in cases covered with a veil of ignorance'];
   const structure = structureOf(account, [], chain.coin, {
     note: notes[notes.length - 1]!,
     notes,
