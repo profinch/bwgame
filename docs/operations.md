@@ -19,7 +19,7 @@ from the chain; the test uses a fixture read off the chain.
 ## The site
 
 The build also renders `docs/whitepaper.md` and `docs/roadmap.md` into `whitepaper.html` and
-`roadmap.html` (`build/docs.ts`, a Vite plugin over `marked`), which the world's menu opens in place
+`roadmap.html` (`tools/docs.ts`, a Vite plugin over `marked`), which the world's menu opens in place
 under *info*, beside the map. Edit the markdown; the pages follow at the next build.
 
 Static files, served by nginx behind Cloudflare. `deploy/io-bwtoken-gs.conf` is the vhost: it
