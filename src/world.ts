@@ -1460,7 +1460,7 @@ function mockAddressAt(x: number, z: number): string {
 /** The notes the tour writes into its plot, in order; a step's scene puts up as many as have been written by then. */
 const TOUR_NOTES = ['hello, world', 'a place, not a page'] as const;
 /** A few steps out from the front wall of the tour's plot, facing it: where the second note is watched coming up. */
-const WALL_OFF = 5;
+const WALL_OFF = 9;
 function wallStandOf(plot: Structure): { x: number; z: number; yaw: number } {
   const sn = Math.sin(plot.turn);
   const c = Math.cos(plot.turn);

@@ -330,12 +330,12 @@ export const STEPS: readonly Step[] = [
     scene: 'atwall',
     says: 'other people are here too, and what one finds is kept for all. a selfie check with World says one real person is behind the screen: a person\'s finds are kept at once, a stranger\'s once five strangers agree. a person stands in your grey.',
     async play(d, wait) {
-      // somebody comes in from the right, ahead, stops a few steps off to the left and digs
-      d.peer(9, 11, false, true);
+      // somebody comes in from the right, between you and the wall, stops a few steps off to the left and digs
+      d.peer(10, 5, false, true);
       await wait(400);
-      d.peer(-3, 6, false);
+      d.peer(-3, 4, false);
       await wait(5000);
-      d.peer(-3, 6, true);
+      d.peer(-3, 4, true);
       // meanwhile the person panel: a stranger, the check, a real person
       d.mark('.hud.person');
       d.personSays('stranger', "a selfie check with World says one real person is behind this screen. a person's finds are kept for everybody at once; a stranger's only once five strangers agree.", 'stranger');
@@ -345,9 +345,9 @@ export const STEPS: readonly Step[] = [
       d.personSays('real person', 'checked with World ID until 11.12.2026. what you find is kept in the game for everybody at once: your finds need no confirmation from the community', 'person');
       await wait(3500);
       d.mark(null);
-      d.peer(-3, 6, false);
+      d.peer(-3, 4, false);
       await wait(500);
-      d.peer(-9, 11, false);
+      d.peer(-10, 5, false);
       await wait(1500);
     },
   },
