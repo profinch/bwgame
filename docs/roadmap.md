@@ -114,10 +114,16 @@ Then, in roughly the order it matters today:
    hundreds of metres within view; hills are there already.
 13. **GPU digging** (WebGPU): a hundred times the attempts, a tenth of the distance.
 14. **Plots on an L2 and on mainnet;** other chains as other worlds; bridges as passages.
-15. **Economy around plots:** selling, renting, lending a place — as contracts, not as our rules.
+15. **Economy around plots:** selling, renting, lending a place — as contracts, not as our rules;
+    the name goes with the place, and a reserved label can be sold by its holder.
 16. **A new figure** for the walker.
 17. Beacons, a first-discoverer record, a feed of active addresses to go and see.
 
 ## Never
 
-Scenery. Time as a dimension. Mock data. Content we author. Selling land.
+Scenery. Time as a dimension. Mock data. Content we author. Selling land *ourselves*: the first
+owner of any place is whoever dug it, and no auction, price list or primary sale of ground will ever
+stand between a person and the work. What owners do with a place afterwards is theirs — a plot can
+be handed on today (`transfer`), and selling, renting and lending it are on the list above (15), as
+contracts, not as our rules. Names go the same way: a name belongs to its place and moves with it,
+and a reserved label can be put up for sale by whoever holds it. Recorded 13.09.2026.
