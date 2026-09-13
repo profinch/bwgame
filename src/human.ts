@@ -15,6 +15,7 @@
  * Without a live server on the chain there is no room to stand in and the
  * panel says so; without World's keys on the server, likewise.
  */
+import { elastic } from './fitting';
 import type { Live } from './live';
 
 export interface Human {
@@ -65,6 +66,13 @@ function keep(it: Kept | null): void {
   } catch {
     // no storage: a person for this visit only
   }
+}
+
+/** A CSS colour as the QR drawer wants it: six hex digits. `rgb(42, 42, 40)` → `#2a2a28`. */
+export function hexOf(colour: string): string {
+  const m = /rgba?\((\d+),\s*(\d+),\s*(\d+)/.exec(colour);
+  if (!m) return colour.startsWith('#') ? colour.slice(0, 7) : '#2a2a28';
+  return `#${[m[1], m[2], m[3]].map((n) => Number(n).toString(16).padStart(2, '0')).join('')}`;
 }
 
 /** A date as the panel says it: 11.12.2026. */
@@ -131,35 +139,8 @@ export function beHuman(panel: HTMLElement, feed: string | null, live: Live | nu
     prove.disabled = of === 'asking';
   };
 
-  /**
-   * The panel as tall as its words: measured after every change and set, so
-   * the foot slides to where the words end rather than jumping, and there is
-   * no empty stone under a short word. Words that grow the panel come in once
-   * it has grown, so nothing shows past its edge on the way.
-   */
-  let fitted = 0;
-  const fit = () => {
-    // put away, the panel has no height to fit: it is left to size itself when it comes back
-    if (panel.getClientRects().length === 0) {
-      panel.style.height = '';
-      return;
-    }
-    const was = panel.getBoundingClientRect().height;
-    panel.style.height = 'auto';
-    const wants = panel.getBoundingClientRect().height;
-    if (Math.abs(wants - was) < 0.5) return;
-    panel.style.height = `${was}px`;
-    if (wants > was) {
-      body.classList.add('changing');
-      const at = ++fitted;
-      setTimeout(() => {
-        if (at === fitted) body.classList.remove('changing');
-      }, 350);
-    }
-    void panel.offsetHeight;
-    panel.style.height = `${wants}px`;
-  };
-  new MutationObserver(fit).observe(body, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['hidden', 'class', 'src'] });
+  // as tall as its words, see fitting.ts
+  const { fit } = elastic(panel, body);
 
   /** The note as words, a link and a date: World ID underlined, the day in bold. */
   const say = (...parts: (string | { link: string; to: string } | { bold: string })[]) => {
@@ -256,7 +237,9 @@ export function beHuman(panel: HTMLElement, feed: string | null, live: Live | nu
         action_description: 'stand in Ground State as a person',
       }).preset(selfieCheckLegacy());
       if (done.signal.aborted) return;
-      await toCanvas(qr, flow.connectorURI, { width: 168, margin: 1, color: { dark: '#2a2a28', light: '#ffffff' } });
+      // drawn in the panel's own tones: the modules in the text's colour, the stone showing between them
+      const ink = getComputedStyle(panel).color;
+      await toCanvas(qr, flow.connectorURI, { width: 168, margin: 1, color: { dark: hexOf(ink), light: '#00000000' } });
       open.href = flow.connectorURI;
       open.hidden = false;
       how.textContent = 'scan with the World App, or open it on this phone. the check is a selfie: one live person behind the screen';

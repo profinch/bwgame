@@ -43,7 +43,9 @@ What was decided, and why. What was refused, and why. Dated where the date matte
 - **Buildings stand on foundations, the ground is not flattened** (11.09.2026): a structure is
   set on the highest ground under it and reaches down to the lowest, so hills can be as steep as
   they like without breaking what stands on them.
-- **The owner's panel is the way to your ground** (12.09.2026): it stays while it is wanted; with no
+- **The owner's panel is the way to your ground** (12.09.2026; as tall as its words since 13.09, like the
+  person's, and its list five rows — the named first, then the newest — with the rest counted and
+  unfolded for ten quiet seconds at a press): it stays while it is wanted; with no
   wallet it offers to connect one, off your ground it lists every plot of yours with a button that
   takes you there, on your ground it is the forms.
 - **Panels are a filter**, *view* in the menu with the site's sub-bar under it: metrics, jump,

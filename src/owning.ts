@@ -15,6 +15,7 @@ import { type Claimed, claimedPlots } from './plot';
 import { connect, connected, landed, onOurChain, send } from './signer';
 
 import { chain } from './chains';
+import { elastic } from './fitting';
 
 /** `inscribe(string)`, `setCode(address)` and `seal()` on a plot; `name(bytes32,string)` on Names. */
 const INSCRIBE = '0x911a6512';
@@ -49,8 +50,10 @@ export interface Owning {
 
 /** How often the indexer is asked which ground is yours, while you are not standing on any. */
 const LISTS_EVERY = 15_000;
-/** How many unnamed plots the list shows, newest first; named ones are all shown. */
-const LISTS_UNNAMED = 3;
+/** How many plots the list shows: the named first, then the newest of the rest; the rest are counted. */
+const LISTS = 5;
+/** How long the unfolded list stays unfolded with nobody's hand on the panel. */
+const FOLDS_AFTER = 10_000;
 
 /** An address with its head and its tail: `0x3095c19c…5423`. */
 function shortOf(address: string): string {
@@ -88,6 +91,8 @@ export function ownGround(
   let listedAt = 0;
 
   const forms = [writing, coding, naming, panel.querySelector<HTMLElement>('.own-do')!];
+  // as tall as its words, see fitting.ts
+  const { fit } = elastic(panel, panel.querySelector<HTMLElement>('.own-body')!);
   /** The panel in one of its states: the forms are for standing on your own ground, the rest for not. */
   const state = (of: 'connect' | 'list' | 'here') => {
     connecting.hidden = of !== 'connect';
@@ -101,6 +106,44 @@ export function ownGround(
    * to connect one; a wallet, every plot of yours listed, each a button that
    * takes you there; none, the word that digging is where ground comes from.
    */
+  /** The plots of the wallet as last listed, named first, newest first. */
+  let listed: Claimed[] = [];
+  /** Until when the list stays unfolded whole: a hand on the panel keeps it so. */
+  let unfoldedUntil = 0;
+  const rowOf = (it: Claimed) => {
+    const go = document.createElement('button');
+    go.type = 'button';
+    go.className = 'own-go';
+    const name = it.name && chain.ens ? `${it.name}.${chain.ens.parent}` : shortOf(it.plot);
+    go.innerHTML = `${name} <span>go there</span>`;
+    go.addEventListener('click', () => goTo(it.plot));
+    return go;
+  };
+  /** The list, folded to its first rows with the rest counted, or unfolded whole. */
+  const relist = () => {
+    const whole = Date.now() < unfoldedUntil;
+    const rows: HTMLElement[] = (whole ? listed : listed.slice(0, LISTS)).map(rowOf);
+    if (!whole && listed.length > LISTS) {
+      const rest = document.createElement('button');
+      rest.type = 'button';
+      rest.className = 'own-rest';
+      const left = listed.slice(LISTS);
+      rest.textContent = `${left.length} more${left.every((it) => !it.name) ? ' unnamed' : ''}`;
+      rest.addEventListener('click', () => {
+        unfoldedUntil = Date.now() + FOLDS_AFTER;
+        relist();
+      });
+      rows.push(rest);
+    }
+    listing.replaceChildren(...rows);
+  };
+  // a hand on the panel keeps the list unfolded; ten quiet seconds fold it
+  for (const kind of ['pointermove', 'pointerdown', 'wheel', 'keydown', 'focusin'] as const) {
+    panel.addEventListener(kind, () => {
+      if (Date.now() < unfoldedUntil) unfoldedUntil = Date.now() + FOLDS_AFTER;
+    });
+  }
+
   let held = false;
   const look = async () => {
     if (busy || held) return;
@@ -121,32 +164,13 @@ export function ownGround(
         listedAt = performance.now();
         const wanted = owner;
         mine = (await claimedPlots()).filter((it) => it.owner.toLowerCase() === wanted);
-        // every named plot, then the last few unnamed: a name is how a plot
-        // keeps its place in the list, and the rest are counted
-        const named = mine.filter((it) => it.name);
+        // the named plots first — a name is how a plot keeps its place in the
+        // list — then the newest of the rest, five in all; the others are
+        // counted, and the count unfolds them for a while
+        const named = mine.filter((it) => it.name).sort((a, b) => (b.updatedIn ?? 0) - (a.updatedIn ?? 0));
         const unnamed = mine.filter((it) => !it.name).sort((a, b) => (b.updatedIn ?? 0) - (a.updatedIn ?? 0));
-        const rowOf = (it: Claimed) => {
-          const go = document.createElement('button');
-          go.type = 'button';
-          go.className = 'own-go';
-          const name = it.name && chain.ens ? `${it.name}.${chain.ens.parent}` : shortOf(it.plot);
-          go.innerHTML = `${name} <span>go there</span>`;
-          go.addEventListener('click', () => goTo(it.plot));
-          return go;
-        };
-        const rows: HTMLElement[] = [...named, ...unnamed.slice(0, LISTS_UNNAMED)].map(rowOf);
-        if (unnamed.length > LISTS_UNNAMED) {
-          // the rest are counted, and the count unfolds them
-          const rest = document.createElement('button');
-          rest.type = 'button';
-          rest.className = 'own-rest';
-          rest.textContent = `${unnamed.length - LISTS_UNNAMED} more unnamed`;
-          rest.addEventListener('click', () => {
-            rest.replaceWith(...unnamed.slice(LISTS_UNNAMED).map(rowOf));
-          });
-          rows.push(rest);
-        }
-        listing.replaceChildren(...rows);
+        listed = [...named, ...unnamed];
+        relist();
       }
       said.textContent = mine.length ? `your ground: ${mine.length} ${mine.length === 1 ? 'plot' : 'plots'} on this chain` : 'your ground';
       noteLine.textContent = mine.length
@@ -174,7 +198,15 @@ export function ownGround(
   void look().then(() => {
     panel.hidden = false;
   });
-  const looking = setInterval(look, 1000);
+  const looking = setInterval(() => {
+    // the unfolded list folds when its while is over, and the panel's height follows its words
+    if (unfoldedUntil && Date.now() >= unfoldedUntil && !listing.hidden) {
+      unfoldedUntil = 0;
+      relist();
+    }
+    fit();
+    void look();
+  }, 1000);
 
   /** One transaction to the plot: the wallet's chain, the wallet's signature, the block. */
   const act = async (data: string, doing: string, done: string, to?: string) => {
