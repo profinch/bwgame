@@ -124,10 +124,13 @@ describe('a label on a building', () => {
     expect(top).toBeLessThanOrEqual(19 + 1e-6);
     expect(top - foot).toBeLessThanOrEqual(0.9 + 1e-6);
     expect(top - foot).toBeGreaterThan(0.5);
-    // and no wider than eight tenths of a wall
-    const xs = marks.flatMap((p) => [p[0]! - p[3]! / 2, p[0]! + p[3]! / 2]);
-    const zs = marks.flatMap((p) => [p[2]! - p[5]! / 2, p[2]! + p[5]! / 2]);
-    expect(Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...zs) - Math.min(...zs))).toBeLessThanOrEqual(0.8 * 6 + 1e-6);
+    // on every wall, and on each no wider than eight tenths of it: the front wall's pieces stand just past z = 2.5
+    const onFront = marks.filter((p) => p[2]! > 2.5);
+    const onRight = marks.filter((p) => p[0]! > 3);
+    expect(onFront.length).toBeGreaterThan(4);
+    expect(onRight.length).toBeGreaterThan(4);
+    const xs = onFront.flatMap((p) => [p[0]! - p[3]! / 2, p[0]! + p[3]! / 2]);
+    expect(Math.max(...xs) - Math.min(...xs)).toBeLessThanOrEqual(0.8 * 6 + 1e-6);
     // a whole address fits in the line too
     const factory = { ...noted(''), wide: 30, deep: 20, tall: 50, label: '0xcea322619d375b381bff95e53a02ef92ea81b5df' } as Structure;
     expect(inked(piecesOf(factory, 10)).length).toBeGreaterThan(60);
