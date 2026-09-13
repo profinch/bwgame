@@ -24,6 +24,8 @@ export interface Driver {
   type(text: string, wait: (ms: number) => Promise<void>): Promise<void>;
   /** Go where the field says — to the tour's own contract, with the arrival's descent. */
   go(): Promise<void>;
+  /** Go where the field says — to the tour's own plate, with the arrival's descent; its posts come up once down. */
+  goWallet(): Promise<void>;
   /** Open a part of the menu, or close it. */
   /** A section of the menu down, or a page open under it: 'map' is the info section with the map open. */
   section(which: 'map' | 'info' | 'panels' | 'blockchain' | null): void;
@@ -143,7 +145,19 @@ export const STEPS: readonly Step[] = [
   },
   {
     scene: 'open',
-    says: 'an address or a name takes you anywhere. first.groundstate.eth is the first plot of this ground, named under groundstate.eth; a building of the tour\'s own stands for it here.',
+    says: 'an address takes you anywhere. this is a wallet: a plate, a post for each token it holds, coming up one by one as the chain is read — as tall as the share of the token\'s whole supply, its name and the amount cut into it in runes. the plate is the tour\'s own.',
+    async play(d, wait) {
+      d.mark('.hud.jump');
+      await d.type('0x3095c19c92551bba70bCFA9AAfa99D145347b5f8', wait);
+      await wait(700);
+      d.mark(null);
+      await d.goWallet();
+      await wait(11000);
+    },
+  },
+  {
+    scene: 'wallet',
+    says: 'a name takes you there as well. first.groundstate.eth is the first plot of this ground, named under groundstate.eth; a building of the tour\'s own stands for it here.',
     async play(d, wait) {
       d.mark('.hud.jump');
       await d.type('first.groundstate.eth', wait);
@@ -169,21 +183,13 @@ export const STEPS: readonly Step[] = [
     },
   },
   {
-    scene: 'wallet',
-    says: 'a wallet is a plate, a post for each token it holds, coming up one by one as the chain is read: as tall as the share of the token\'s whole supply, its name and the amount cut into it in runes. this plate is the tour\'s own.',
-    async play(_d, wait) {
-      // the eyes stay on the plate while its posts come up
-      await wait(9000);
-    },
-  },
-  {
     scene: 'contract',
     says: 'empty ground is not bought but dug for: every attempt is a place, the closest is kept, and the longer you dig the closer it gets. more cores, more attempts.',
     async play(d, wait) {
       d.mark('.hud.claim');
       d.claimSays('nobody has claimed this ground. dig here to take it: the longer you dig, the closer the plot', '');
       for (const n of [5, 6, 7, 8, 9, 10, 11, 12]) {
-        d.cores(n, 16);
+        d.cores(n, 15);
         await wait(200);
       }
       await wait(500);

@@ -1571,9 +1571,11 @@ const WALLET_AHEAD = 9;
  * and the plate lies that far ahead.
  */
 const WALLET_STAND = { x: OPEN_STAND.x, z: OPEN_STAND.z, yaw: 0 };
+/** The wallet the tour goes to by address: the owner's own, standing in for any wallet — its plate a mock, laid on the tour's ground. */
+const TOUR_WALLET = '0x3095c19c92551bba70bCFA9AAfa99D145347b5f8';
 function mockWallet(): Structure {
   const at = { x: WALLET_STAND.x, z: WALLET_STAND.z - WALLET_AHEAD };
-  const address = mockAddressAt(at.x, at.z);
+  const address = TOUR_WALLET;
   const account: Account = { address, codeSize: 0, code: '0x', balance: 2_400_000_000_000_000_000n, nonce: 37 };
   const holdings = [
     { symbol: 'usdc', amount: 12_500_000_000n, decimals: 6, supply: 40_000_000_000_000_000n },
@@ -1582,7 +1584,18 @@ function mockWallet(): Structure {
   ];
   const structure = structureOf(account, holdings, chain.coin);
   structure.mock = true;
+  // the address is the wallet's; the plate lies on the tour's own ground, not where the address is
+  structure.x = at.x;
+  structure.z = at.z;
   return structure;
+}
+
+/** The tour's plate, its posts to come up one after another, as a real plate's do while the feed is read — after a wait, if the walker is still coming down. */
+function raiseTourPlate(after = 0): void {
+  const plate = mockWallet();
+  plate.posts?.forEach((post, i) => (post.grown = -after - i * 0.8));
+  raise(plate);
+  sprouting.push(plate);
 }
 
 function takeDemoJump(): boolean {
@@ -1834,12 +1847,25 @@ function takeDemoJump(): boolean {
           await wait(110);
         }
       },
+      goWallet: async () => {
+        // the arrival by address at the wallet: the full descent onto the spot
+        // before the tour's plate, whose posts come up once the walker is down
+        where.value = '';
+        if (!structures.some((it) => it.mock && it.address === TOUR_WALLET)) raiseTourPlate(3.2);
+        player.x = WALLET_STAND.x;
+        player.z = WALLET_STAND.z;
+        player.yaw = WALLET_STAND.yaw;
+        player.pitch = -0.3;
+        player.y = ground.surfaceAt(player.x, player.z);
+        descent = DESCENT_FROM;
+        turning = null;
+      },
       go: async () => {
         // the arrival, as an arrival is — the full descent onto the spot
         // beside the building — but to the tour's own contract, with nothing
         // asked of anybody
         where.value = '';
-        if (!structures.some((it) => it.mock && it.address !== mockedPlot)) raise(mockContract());
+        if (!structures.some((it) => it.mock && it.plot?.name === 'first')) raise(mockContract());
         player.x = CONTRACT_STAND.x;
         player.z = CONTRACT_STAND.z;
         player.yaw = CONTRACT_STAND.yaw;
@@ -2075,11 +2101,8 @@ function takeDemoJump(): boolean {
           player.y = ground.surfaceAt(player.x, player.z);
           descent = 0;
           turning = null;
-          // its posts come up one after another, as a real plate's do while the feed is read
-          const plate = mockWallet();
-          plate.posts?.forEach((post, i) => (post.grown = -i * 0.8));
-          raise(plate);
-          sprouting.push(plate);
+          // the plate whole: its posts were seen coming up on the way here
+          raise(mockWallet());
           return null;
         }
         // beside the tour's contract, on the same spot every time, the contract standing
