@@ -107,7 +107,7 @@ export interface Step {
 export const STEPS: readonly Step[] = [
   {
     scene: 'open',
-    says: 'a blockchain as a place. every address is a spot on this ground; what stands here is what the chain says stands here, nothing is invented. the block passes overhead, each ribbon a transaction. w a s d walks, shift runs, dragging looks round.',
+    says: 'a blockchain as a place. every address is a spot on this ground; what stands here is what the chain says stands here, nothing is invented. the block passes overhead, each ribbon a transaction. w a s d walks, shift runs, space jumps, dragging looks round.',
     async play(d, wait) {
       // a look to one side and the other over open ground, the metrics turned over for a moment
       d.look(0.35, 0);
@@ -126,11 +126,13 @@ export const STEPS: readonly Step[] = [
       d.look(0, -0.3);
       await wait(2500);
       d.look(0, 0);
-      // and a few steps, level, to say how
+      // and a few steps, level, to say how: a walk, a run, a jump
       d.walk(1, 0, false);
       await wait(1800);
       d.walk(1, 0, true);
-      await wait(1400);
+      await wait(900);
+      d.jump();
+      await wait(1600);
       d.stop();
     },
   },

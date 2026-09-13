@@ -111,6 +111,21 @@ export class Chips {
     return this.chips.length;
   }
 
+  /**
+   * A handful of ground thrown up at once from under the feet: a jump taking
+   * off, a landing. The same chips as the auger's, kicked outward and up by
+   * `kick` — a landing kicks harder than a take-off.
+   */
+  burst(source: Source, count: number, kick = 1): void {
+    for (let i = 0; i < count && this.chips.length < MOST; i++) {
+      const chip = this.throwFrom(source);
+      chip.vx *= 1.6 * kick;
+      chip.vz *= 1.6 * kick;
+      chip.vy *= 0.8 * kick;
+      this.chips.push(chip);
+    }
+  }
+
   private throwFrom(source: Source): Chip {
     const angle = Math.random() * 2 * Math.PI;
     const out = Math.cos(angle);

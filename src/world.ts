@@ -1042,21 +1042,34 @@ function ride(seconds: number): void {
   lift += (wanted - lift) * (1 - Math.exp(-seconds * 12));
 }
 
+/**
+ * Whether a jump throws up the ground it leaves and lands on, in the game.
+ * Seen in the onboarding first (13.09.2026); the game follows when the owner
+ * has looked at it.
+ */
+const JUMP_THROWS_GROUND = false;
+
 function fall(seconds: number): void {
   const standing = player.rise === 0;
   const floor = supportAt(player.x, player.z, player.y + (standing ? STEP_UP : 0));
+  const throws = JUMP_THROWS_GROUND || (tour?.running ?? false);
 
   const asked = tour?.running ? takeDemoJump() : held.has('Space') || stick.takeJump();
   if (asked && standing && player.y <= floor + 0.01 && !diggingNow()) {
     player.rise = JUMP;
+    // the ground kicked up as the feet leave it
+    if (throws) chips.burst({ x: player.x, y: floor, z: player.z }, 10);
   }
 
+  const falling = player.rise;
   player.rise -= GRAVITY * seconds;
   player.y += player.rise * seconds;
 
   if (player.y <= floor) {
     player.y = floor;
     player.rise = 0;
+    // and thrown up again where they come down, harder than they left
+    if (falling < -2 && throws) chips.burst({ x: player.x, y: floor, z: player.z }, 16, 1.3);
   }
 }
 
