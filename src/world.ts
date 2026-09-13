@@ -611,6 +611,27 @@ function startInking(structure: Structure): void {
   inking.push(structure);
 }
 
+/** How long a drawing takes to become its building, in seconds; and the ones becoming. */
+const BECOMES_IN = 5;
+/** How far into the becoming the body is whole and the lines begin to fade. */
+const BODIED_AT = 0.7;
+const becoming: Structure[] = [];
+
+/**
+ * A drawing becomes the building: the body comes up out of the ground inside
+ * the drawing's lines, which stay; when it stands whole the lines fade off
+ * it; then the words come up on the wall. One process, seen through, rather
+ * than a drawing one frame and a building the next.
+ */
+function startBecoming(structure: Structure, drawing: Structure): void {
+  if (!raise(structure)) return;
+  structure.grown = 0;
+  structure.inked = 0;
+  structure.becoming = 0;
+  structure.drawing = drawing;
+  becoming.push(structure);
+}
+
 /**
  * Put a plot up and let it be seen going up.
  *
@@ -1347,12 +1368,16 @@ const MOCK_PEER_PACE = 1.5;
  * the contract straight ahead — the cell there, and any digits after.
  */
 function mockAddressAhead(): string {
-  const c = Math.cos(player.yaw);
-  const sn = Math.sin(player.yaw);
-  // well to the right: thirty metres off, where the contract straight ahead is out of the picture
-  const right = 30;
-  const lz = -14;
-  const at = { x: player.x + c * right + sn * lz, z: player.z + c * lz - sn * right };
+  // from the contract stand, whichever way the walker has moved since: the
+  // plot is one fixed spot, so a step that backs off and a step that begins
+  // on the stand see the same plot in the same place. Well to the right and
+  // a way ahead, where the contract straight ahead is out of the picture and
+  // the drawing fits under the header whole
+  const c = Math.cos(CONTRACT_STAND.yaw);
+  const sn = Math.sin(CONTRACT_STAND.yaw);
+  const right = 36;
+  const lz = -40;
+  const at = { x: CONTRACT_STAND.x + c * right + sn * lz, z: CONTRACT_STAND.z + c * lz - sn * right };
   return mockAddressAt(at.x, at.z);
 }
 
@@ -1419,6 +1444,16 @@ const CONTRACT_STAND = (() => {
   const z = CONTRACT_AT.z + off.z;
   return { x, z, yaw: Math.atan2(x - CONTRACT_AT.x, z - CONTRACT_AT.z) };
 })();
+/**
+ * Where the walker stands for the plot: back from the contract stand by a few
+ * steps, facing the tour's plot — where the claim step ends up after backing
+ * off, so the steps after it open on the same picture.
+ */
+const PLOT_BACK = 19;
+const PLOT_STAND = {
+  x: CONTRACT_STAND.x + Math.sin(CONTRACT_STAND.yaw) * PLOT_BACK,
+  z: CONTRACT_STAND.z + Math.cos(CONTRACT_STAND.yaw) * PLOT_BACK,
+};
 function mockContract(): Structure {
   const address = mockAddressAt(CONTRACT_AT.x, CONTRACT_AT.z);
   const account: Account = { address, codeSize: 2271, code: `0x${'a5'.repeat(2271)}`, balance: 0n, nonce: 1 };
@@ -1807,9 +1842,28 @@ function takeDemoJump(): boolean {
       mockWrite: (address, note) => {
         if (!address) return;
         const at = structures.findIndex((it) => it.address === address);
+        const drawing = at >= 0 ? structures[at]! : mockPlot(address, '');
         if (at >= 0) structures.splice(at, 1);
         for (let i = inking.length - 1; i >= 0; i--) if (inking[i]!.address === address) inking.splice(i, 1);
-        startInking(mockPlot(address, note));
+        for (let i = becoming.length - 1; i >= 0; i--) if (becoming[i]!.address === address) becoming.splice(i, 1);
+        // the drawing becomes the building, seen through
+        startBecoming(mockPlot(address, note), drawing);
+      },
+      faceMock: () => {
+        // an unhurried turn to the tour's plot, wherever the walker stands: to
+        // the middle of its height, so the drawing is looked at, not up at
+        const plot = structures.find((it) => it.mock && it.address === mockedPlot);
+        if (!plot) return;
+        const here = afoot();
+        const dx = plot.x - here.x;
+        const dz = plot.z - here.z;
+        const up = baseOf(plot) + plot.tall / 2 - (player.y + EYE);
+        demo.yawRate = 0;
+        demo.pitchRate = 0;
+        turning = {
+          yaw: Math.atan2(-dx, -dz),
+          pitch: Math.max(-1.2, Math.min(1.2, Math.atan2(up, Math.hypot(dx, dz)))),
+        };
       },
       personSays: (said, note, who) => {
         person.pause(true);
@@ -1893,6 +1947,7 @@ function takeDemoJump(): boolean {
         for (let i = rising.length - 1; i >= 0; i--) if (rising[i]!.mock) rising.splice(i, 1);
         for (let i = inking.length - 1; i >= 0; i--) if (inking[i]!.mock) inking.splice(i, 1);
         for (let i = sprouting.length - 1; i >= 0; i--) if (sprouting[i]!.mock) sprouting.splice(i, 1);
+        for (let i = becoming.length - 1; i >= 0; i--) if (becoming[i]!.mock) becoming.splice(i, 1);
         settle();
         mockPeer.on = false;
         live?.peers.delete(MOCK_PEER);
@@ -1943,10 +1998,22 @@ function takeDemoJump(): boolean {
         turning = null;
         if (which === 'contract') return null;
         // the tour's plot, as the step needs it: a drawing, or written into —
-        // put up at once, the growing and the writing having been shown already
+        // put up at once, the growing and the writing having been shown already;
+        // and the walker a few steps back from the contract, facing the plot,
+        // where the claim step left them
         const address = mockAddressAhead();
         mockedPlot = address;
-        raise(mockPlot(address, which === 'written' ? 'hello, world' : ''));
+        const plot = mockPlot(address, which === 'written' ? 'hello, world' : '');
+        raise(plot);
+        player.x = PLOT_STAND.x;
+        player.z = PLOT_STAND.z;
+        player.y = ground.surfaceAt(player.x, player.z);
+        const dx = plot.x - (origin.x + player.x);
+        const dz = plot.z - (origin.z + player.z);
+        player.yaw = Math.atan2(-dx, -dz);
+        // the eyes on the middle of the drawing's height, written into or not, so the steps do not nod
+        const drawn = which === 'written' ? mockPlot(address, '') : plot;
+        player.pitch = Math.max(-1.2, Math.min(1.2, Math.atan2(baseOf(drawn) + drawn.tall / 2 - (player.y + EYE), Math.hypot(dx, dz))));
         return address;
       },
       clean: () => {
@@ -1962,6 +2029,7 @@ function takeDemoJump(): boolean {
         for (let i = rising.length - 1; i >= 0; i--) if (rising[i]!.mock) rising.splice(i, 1);
         for (let i = inking.length - 1; i >= 0; i--) if (inking[i]!.mock) inking.splice(i, 1);
         for (let i = sprouting.length - 1; i >= 0; i--) if (sprouting[i]!.mock) sprouting.splice(i, 1);
+        for (let i = becoming.length - 1; i >= 0; i--) if (becoming[i]!.mock) becoming.splice(i, 1);
         settle();
         mockPeer.on = false;
         live?.peers.delete(MOCK_PEER);
@@ -2213,7 +2281,7 @@ loop({
       player.yaw += demo.yawRate * seconds;
       player.pitch = Math.max(-1.2, Math.min(1.2, player.pitch + demo.pitchRate * seconds));
     }
-    if (rising.length || inking.length || sprouting.length) {
+    if (rising.length || inking.length || sprouting.length || becoming.length) {
       for (let i = rising.length - 1; i >= 0; i--) {
         const structure = rising[i]!;
         structure.grown = Math.min(1, (structure.grown ?? 0) + seconds / BUILDS_IN);
@@ -2223,6 +2291,18 @@ loop({
         const structure = inking[i]!;
         structure.inked = Math.min(1, (structure.inked ?? 0) + seconds / INKS_IN);
         if (structure.inked >= 1) inking.splice(i, 1);
+      }
+      for (let i = becoming.length - 1; i >= 0; i--) {
+        const structure = becoming[i]!;
+        const far = Math.min(1, (structure.becoming ?? 0) + seconds / BECOMES_IN);
+        structure.becoming = far;
+        structure.grown = Math.min(1, far / BODIED_AT);
+        if (far >= 1) {
+          becoming.splice(i, 1);
+          delete structure.drawing;
+          // and now the words
+          inking.push(structure);
+        }
       }
       for (let i = sprouting.length - 1; i >= 0; i--) {
         let standing = true;
@@ -2385,6 +2465,13 @@ loop({
     // the plots not yet written into are drawings, and go down in the same ink
     const drawn: number[] = [];
     for (const structure of structures) {
+      // a building still becoming one keeps its drawing's lines over it, fading once the body is whole
+      if (structure.drawing && structure.becoming !== undefined && structure.becoming < 1) {
+        const fade = Math.max(0, Math.min(1, 1 - (structure.becoming - BODIED_AT) / (1 - BODIED_AT)));
+        const base = baseOf(structure.drawing);
+        inkOf(strokesFor(structure.drawing, base).map((stroke) => ({ ...stroke, ink: stroke.ink * fade })), 1, at, drawn);
+        continue;
+      }
       if (structure.kind !== 'framed') continue;
       const base = baseOf(structure);
       const grown = structure.grown ?? 1;

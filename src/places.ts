@@ -56,6 +56,13 @@ export interface Structure {
   grown?: number;
   /** How much of a note just written is on the wall yet, 0 to 1: the signs come up in reading order. */
   inked?: number;
+  /**
+   * How far a drawing has become the building, 0 to 1: the body comes up out
+   * of the ground inside the drawing's lines, then the lines fade, then the
+   * words come up. The drawing it was is kept to be drawn over it meanwhile.
+   */
+  becoming?: number;
+  drawing?: Structure;
   /** Put up by the onboarding to show what a thing looks like; taken down when it ends. Never from the chain. */
   mock?: boolean;
   /** @deprecated the ground at the foot of the front wall: `footAt[0]` says it now. */

@@ -27,6 +27,8 @@ export interface Driver {
   /** Open a part of the menu, or close it. */
   /** A section of the menu down, or a page open under it: 'map' is the info section with the map open. */
   section(which: 'map' | 'info' | 'panels' | 'blockchain' | null): void;
+  /** An unhurried turn of the head to the tour's plot, wherever the walker stands. */
+  faceMock(): void;
   /** Speak through the person panel: a stranger with the offer, or a real person with the day. */
   personSays(said: string, note: string, who: 'stranger' | 'person'): void;
   /** Unfold the worlds in the blockchain bar. */
@@ -206,10 +208,14 @@ export const STEPS: readonly Step[] = [
     scene: 'contract',
     says: 'one transaction makes the closest place found your contract, for good: a plot, yours to write into, build on, name, hand on. it stands up out of the ground as a drawing of the building it will be.',
     async play(d, wait) {
+      // a few steps back first, so the drawing going up is seen whole
+      d.walk(-1, 0, false);
+      await wait(1200);
+      d.walk(0, 0, false);
       d.mark('.hud.claim');
       d.claimButtons(false, true);
       d.claimSays('stopped. claim what you found — 74 m from here — or dig on to get closer', '');
-      await wait(1200);
+      await wait(1000);
       d.press('.hud.claim .take');
       await wait(400);
       d.claimButtons(false, true, true);
@@ -222,11 +228,9 @@ export const STEPS: readonly Step[] = [
       d.claimButtons(false, false);
       d.claimSays(`yours: ${mocked.slice(0, 10)}…, 74 m from here. walk to it — then write into it, name it, or point it at code of your own`, '');
       d.mark(null);
-      // the head turns to where it is going up, ahead and to the right, and lifts a little
-      d.look(-0.8, 0.2);
-      await wait(1500);
-      d.look(0, 0);
-      await wait(7000);
+      // the head turns to where it is going up, on its own, as it does in the game
+      d.faceMock();
+      await wait(8500);
     },
   },
   {
@@ -235,9 +239,6 @@ export const STEPS: readonly Step[] = [
     async play(d, wait) {
       const plot = lastMock();
       const short = `${plot.slice(0, 10)}…${plot.slice(-4)}`;
-      d.look(-0.8, 0.2);
-      await wait(1200);
-      d.look(0, 0);
       d.mark('.hud.own');
       // written into: the drawing becomes a building and the words come up
       d.ownSays(`yours: ${short}`, 'nothing written into it yet\npoints at no code: a drawing until something is written into it');
@@ -251,8 +252,9 @@ export const STEPS: readonly Step[] = [
       d.ownSays('sent. waiting for a block', 'nothing written into it yet\npoints at no code: a drawing until something is written into it');
       await wait(1000);
       d.ownSays('written', 'says: hello, world\npoints at no code');
+      // the drawing becomes the building, and the words come up: watched through
       d.mockWrite(plot, 'hello, world');
-      await wait(4500);
+      await wait(9500);
       // pointed at code
       await d.typeInto('.own-code input', '0xC0DE000000000000000000000000000000005EED', wait);
       d.press('.own-code button');
@@ -313,7 +315,8 @@ export const STEPS: readonly Step[] = [
     },
   },
   {
-    says: 'the menu. view puts the panels away and brings them back, a cross in a corner does the same; info holds the map, the whitepaper and the roadmap; blockchain is which world this is: sepolia to take ground on, ethereum to walk.',
+    scene: 'written',
+    says: 'the menu. view puts the panels away and brings them back, a cross in a corner does the same; info holds the map, the whitepaper and the roadmap; blockchain is which world this is: sepolia to take ground on, ethereum to walk. the stones turn the page over.',
     async play(d, wait) {
       d.section('panels');
       await wait(1200);
@@ -331,13 +334,19 @@ export const STEPS: readonly Step[] = [
       await wait(2200);
       d.section(null);
       await wait(600);
+      d.flipTheme();
+      await wait(2500);
+      d.flipTheme();
+      await wait(1000);
     },
   },
   {
+    scene: 'written',
     says: 'that is all of it, and all of it was for show: nothing was sent, nothing is yours yet. h brings you home; any word of the menu leaves the tour. go and stand in it.',
     async play(d, wait) {
-      d.look(0.3, 0);
-      await wait(5000);
+      // turned away from the contracts, to the open horizon, level
+      d.look(0.6, -0.05);
+      await wait(5200);
       d.stop();
     },
   },
