@@ -954,7 +954,6 @@ body.listopen .subarrow {
 
 /* while the tour plays, the page is not to be touched: only the card's buttons answer */
 body.touring .hud:not(.tour),
-body.touring .navlinks,
 body.touring .tg,
 body.touring .subclip,
 body.touring .touchpad,

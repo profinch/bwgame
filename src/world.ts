@@ -1769,6 +1769,15 @@ function takeDemoJump(): boolean {
         for (let i = inking.length - 1; i >= 0; i--) if (inking[i]!.address === address) inking.splice(i, 1);
         startInking(mockPlot(address, note));
       },
+      personSays: (said, note, who) => {
+        person.pause(true);
+        personage.hidden = false;
+        personage.querySelector<HTMLElement>('.person-said')!.textContent = said;
+        personage.querySelector<HTMLElement>('.person-note')!.textContent = note;
+        personage.querySelector<HTMLElement>('.person-do')!.hidden = who !== 'stranger';
+        personage.querySelector<HTMLElement>('.person-undo')!.hidden = who !== 'person';
+        personage.querySelector<HTMLElement>('.person-code')!.hidden = true;
+      },
       ownSays: (said, note) => {
         ownPanel.pause(true);
         owning.hidden = false;
@@ -1987,9 +1996,14 @@ function takeDemoJump(): boolean {
     frame.style.transition = '';
     addEventListener('resize', () => place(framed()));
 
+    // a word of the menu pressed while the onboarding runs ends it, and then does what it does
+    const leavingTour = () => {
+      if (tour?.running) tour.end();
+    };
     infoLink.addEventListener('click', (event) => {
       event.preventDefault();
       event.stopPropagation();
+      leavingTour();
       // pressed again: the bar goes back up, and with it whatever page was open
       show(section === 'info' ? null : 'info');
     });
@@ -2003,12 +2017,14 @@ function takeDemoJump(): boolean {
     chainLink.addEventListener('click', (event) => {
       event.preventDefault();
       event.stopPropagation();
+      leavingTour();
       // pressed again: the bar goes back up, and the corners round the menu
       show(section === 'blockchain' ? null : 'blockchain');
     });
     panelsLink.addEventListener('click', (event) => {
       event.preventDefault();
       event.stopPropagation();
+      leavingTour();
       show(section === 'panels' ? null : 'panels');
     });
     // a row pressed keeps the bar down: several may be put away in a row

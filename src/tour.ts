@@ -27,6 +27,8 @@ export interface Driver {
   /** Open a part of the menu, or close it. */
   /** A section of the menu down, or a page open under it: 'map' is the info section with the map open. */
   section(which: 'map' | 'info' | 'panels' | 'blockchain' | null): void;
+  /** Speak through the person panel: a stranger with the offer, or a real person with the day. */
+  personSays(said: string, note: string, who: 'stranger' | 'person'): void;
   /** Unfold the worlds in the blockchain bar. */
   unfoldWorlds(): void;
   /** Put a panel away, or bring it back. */
@@ -353,7 +355,20 @@ export const STEPS: readonly Step[] = [
     },
   },
   {
-    says: 'the menu. view puts away the panels you do not need, and brings them back.',
+    says: 'anybody can be fifty tabs. a selfie check with World says one real person is behind the screen: a person\'s finds are kept for everybody at once, a stranger\'s once five strangers agree. a person stands in your grey, a stranger in white.',
+    async play(d, wait) {
+      d.mark('.hud.person');
+      d.personSays('stranger', "a selfie check with World says one real person is behind this screen. a person's finds are kept for everybody at once; a stranger's only once five strangers agree.", 'stranger');
+      await wait(3500);
+      d.press('.hud.person .prove');
+      await wait(1200);
+      d.personSays('real person', 'checked with World ID until 11.12.2026. what you find is kept in the game for everybody at once: your finds need no confirmation from the community', 'person');
+      await wait(4500);
+      d.mark(null);
+    },
+  },
+  {
+    says: 'the menu. view puts away the panels you do not need, and brings them back; a cross in a panel\'s corner does the same.',
     async play(d, wait) {
       d.section('panels');
       await wait(1800);
@@ -382,10 +397,12 @@ export const STEPS: readonly Step[] = [
     },
   },
   {
-    says: 'map is the whole address space at once — every place there is a link into the world.',
+    says: 'info holds the map, the whitepaper and the roadmap. the map is the whole address space at once — every place on it is a link into the world.',
     async play(d, wait) {
+      d.section('info');
+      await wait(1500);
       d.section('map');
-      await wait(6000);
+      await wait(5000);
       d.section(null);
       await wait(1000);
     },
@@ -401,7 +418,7 @@ export const STEPS: readonly Step[] = [
     },
   },
   {
-    says: 'that is all of it. everything shown here was for show — nothing was sent, nothing is yours yet. h brings you back to where you first came down. go and stand in it.',
+    says: 'that is all of it. everything shown here was for show — nothing was sent, nothing is yours yet. h brings you back to where you first came down; any word of the menu leaves the tour. go and stand in it.',
     async play(d, wait) {
       d.look(0.3, 0);
       await wait(5000);
@@ -498,7 +515,8 @@ export class Tour {
     await step.play(this.driver, wait);
   }
 
-  private end(watched = false): void {
+  /** Over, whether watched through or left — by its own button, or by a press on the menu. */
+  end(watched = false): void {
     if (!this.running) return;
     this.run++;
     this.at = -1;
