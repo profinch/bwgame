@@ -171,10 +171,9 @@ export const STEPS: readonly Step[] = [
     scene: 'contract',
     says: 'a contract is a building: its size from its code, its shape from the code\'s hash, what was written into it standing out of its wall. a dashed outline is a plot nothing is written into yet.',
     async play(d, wait) {
-      // back off from the building, then the eyes up it to the roof and down to the words
-      d.walk(-1, 0, false);
-      await wait(2000);
-      d.walk(0, 0, false);
+      // standing where the jump landed, the eyes up the building to the roof
+      // and down to the words — no step taken, so the digging begins on this
+      // same spot
       d.look(0, 0.2);
       await wait(2600);
       d.look(0, -0.2);
