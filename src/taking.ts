@@ -16,6 +16,7 @@ import { CHAINS, chain } from './chains';
 import { type Progress, type Search, chooseThreads, coresAvailable, mindTheBattery, search, threadsChosen } from './claim';
 import { HOME } from './engine/land';
 import { drop, keep, keyOf, nearest, recall } from './finds';
+import { elastic } from './fitting';
 import { type Dig, type Found, bytesOf, placeOf } from './mine';
 import { connect, connected, landed, onOurChain, send, wallet } from './signer';
 
@@ -96,6 +97,8 @@ export function takeGround(
   }
   const factory = chain.plots;
   const home = placeOf(bytesOf(HOME));
+  // as tall as its words, see fitting.ts; on the page's foot, so the top edge is what moves
+  const { fit } = elastic(panel, panel.querySelector<HTMLElement>('.claim-body')!);
   const IDLE = 'nobody has claimed this ground. dig here to take it: the longer you dig, the closer the plot';
   said.textContent = IDLE;
 
@@ -149,7 +152,10 @@ export function takeGround(
     owner = had ? had.toLowerCase() : null;
     showEarlier();
   });
-  setInterval(showEarlier, 1000);
+  setInterval(() => {
+    showEarlier();
+    fit();
+  }, 1000);
 
   // --- how much of the machine ------------------------------------------------
 

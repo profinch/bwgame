@@ -608,16 +608,14 @@ html[data-t="dark"] {
   right: 24px;
   bottom: 20px;
   pointer-events: auto;
-  /* one size whatever it says — idle, digging with its counts, claimed */
+  /* as tall as its words (fitting.ts); standing on the page's foot, it is the top that moves */
   width: 320px;
-  min-height: 200px;
   padding: 12px 16px;
   align-content: start;
   border-radius: 22px;
   border: 1px solid color-mix(in srgb, var(--line) 8%, transparent);
   background: color-mix(in srgb, var(--bg) 78%, transparent);
   display: grid;
-  gap: 6px;
 }
 
 .hud.claim p {
